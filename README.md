@@ -6,6 +6,10 @@
 
 # LumenPass — Password Manager
 
+<p align="center">
+  <img src="assets/lumenpass-dark-rounded.png" alt="LumenPass app icon" width="160" />
+</p>
+
 **Secure access, simplified.**
 
 A premium, privacy-first password manager that keeps your logins, passkeys, credit cards, secure notes, and TOTP codes inside one encrypted vault you control.
