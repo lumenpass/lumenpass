@@ -165,35 +165,13 @@ The full LumenPass desktop experience — vault overview, item editor, generator
 
 Responsive, touch-first design with biometric unlock and one-tap AutoFill on the go.
 
-<img src="screenshots/mobile/Screenshot%2001.png" alt="LumenPass mobile — unlock screen" width="200" />
-
-<img src="screenshots/mobile/Screenshot%2002.png" alt="LumenPass mobile — vault list" width="200" />
-
-<img src="screenshots/mobile/Screenshot%2003.png" alt="LumenPass mobile — login detail" width="200" />
-
-<img src="screenshots/mobile/Screenshot%2004.png" alt="LumenPass mobile — password generator" width="200" />
-
-<img src="screenshots/mobile/Screenshot%2005.png" alt="LumenPass mobile — secure notes" width="200" />
-
-<img src="screenshots/mobile/Screenshot%2006.png" alt="LumenPass mobile — TOTP codes" width="200" />
-
-<img src="screenshots/mobile/Screenshot%2007.png" alt="LumenPass mobile — AutoFill prompt" width="200" />
-
-<img src="screenshots/mobile/Screenshot%2008.png" alt="LumenPass mobile — settings" width="200" />
+<img src="screenshots/mobile/Screenshot%2001.png" alt="LumenPass mobile — unlock screen" width="180" /> <img src="screenshots/mobile/Screenshot%2002.png" alt="LumenPass mobile — vault list" width="180" /> <img src="screenshots/mobile/Screenshot%2003.png" alt="LumenPass mobile — login detail" width="180" /> <img src="screenshots/mobile/Screenshot%2004.png" alt="LumenPass mobile — password generator" width="180" /> <img src="screenshots/mobile/Screenshot%2005.png" alt="LumenPass mobile — secure notes" width="180" /> <img src="screenshots/mobile/Screenshot%2006.png" alt="LumenPass mobile — TOTP codes" width="180" /> <img src="screenshots/mobile/Screenshot%2007.png" alt="LumenPass mobile — AutoFill prompt" width="180" /> <img src="screenshots/mobile/Screenshot%2008.png" alt="LumenPass mobile — settings" width="180" />
 
 ### 🧩 Browser Extension
 
 Sign in with one click on any site you visit.
 
-<img src="screenshots/extension/ext-screenshot-1.png" alt="LumenPass browser extension — popup" width="360" />
-
-<img src="screenshots/extension/ext-screenshot-2.png" alt="LumenPass browser extension — autofill" width="360" />
-
-<img src="screenshots/extension/ext-screenshot-3.png" alt="LumenPass browser extension — passkey sign-in" width="360" />
-
-<img src="screenshots/extension/ext-screenshot-4.png" alt="LumenPass browser extension — generator" width="360" />
-
-<img src="screenshots/extension/ext-screenshot-5.png" alt="LumenPass browser extension — vault search" width="360" />
+<img src="screenshots/extension/ext-screenshot-1.png" alt="LumenPass browser extension — popup" width="320" /> <img src="screenshots/extension/ext-screenshot-2.png" alt="LumenPass browser extension — autofill" width="320" /> <img src="screenshots/extension/ext-screenshot-3.png" alt="LumenPass browser extension — passkey sign-in" width="320" /> <img src="screenshots/extension/ext-screenshot-4.png" alt="LumenPass browser extension — generator" width="320" /> <img src="screenshots/extension/ext-screenshot-5.png" alt="LumenPass browser extension — vault search" width="320" />
 
 ---
 
