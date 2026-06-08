@@ -18,6 +18,16 @@ A premium, privacy-first password manager that keeps your logins, passkeys, cred
 
 ---
 
+## Public Source Code Notice
+
+The `source-code/` folder contains a review-only subset of the LumenPass source code.
+
+> **Important:** the code in `source-code/` is intentionally incomplete and cannot be built or released from that folder.
+
+It is provided for public code review only. Build/release artifacts, secret or environment configuration files, premium/subscription backend wiring, and files required to produce a full build are intentionally excluded.
+
+---
+
 ## Overview
 
 LumenPass is built for people who want strong security without friction. Save once, sign in anywhere — with one-tap AutoFill, biometric unlock (Face ID / Touch ID / Windows Hello), and end-to-end encryption that puts privacy first.

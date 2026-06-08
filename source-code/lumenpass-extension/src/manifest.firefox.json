@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "LumenPass - Password Manager",
+  "version": "1.0.5",
+  "description": "Autofill passwords from LumenPass Desktop – the secure, privacy-first password manager.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "LumenPass - Password Manager"
+  },
+  "background": {
+    "scripts": ["src/background/service-worker.ts"],
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["src/content/content-script.ts"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "alarms",
+    "tabs",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*",
+    "http://127.0.0.1:19455/*"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "lumenpass@lumenpass.app",
+      "strict_min_version": "109.0"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ]
+}
