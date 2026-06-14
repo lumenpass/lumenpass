@@ -55,11 +55,21 @@ Whether you're an individual safeguarding personal accounts, a freelancer juggli
 - **Biometric unlock** with Face ID, Touch ID, fingerprint, or Windows Hello
 
 ### 🛡️ Security You Can Trust
-- **End-to-end encryption** with AES-256 and modern key derivation
-- **Zero-knowledge architecture** — your master password is never transmitted or stored
+- **End-to-end encryption** using the KeePass-compatible KDBX vault format
+- **Zero-knowledge architecture** — your master password is never transmitted to LumenPass servers
 - **Open vault format** based on the proven KDBX standard
 - **Local-first storage** with optional encrypted cloud sync
 - **Breach monitoring** alerts you if a saved credential appears in a known leak
+
+### Security Model & Threat Scope
+
+LumenPass stores vault data in the KeePass-compatible KDBX format and uses the Dart `kdbx` library to open, create, and save encrypted databases. KDBX credentials are built from the user's master password and/or key file; the encrypted vault can be stored locally or synced through supported cloud providers.
+
+This model is designed to protect against attackers who obtain a copy of the encrypted vault file from disk, backup, or cloud storage, assuming the master password and any key file remain secret and strong.
+
+LumenPass does not claim protection against a compromised local device or operating system. After a vault is unlocked, entry values must be available to the app for search, display, copy, AutoFill, and sync operations, so decrypted secrets may exist in process memory as normal application values until the vault is locked, references are cleared, and the runtime garbage-collects them. Malware, debuggers, memory dump tools, screen capture tools, or another user with control of the same machine/session are outside this threat model.
+
+PIN and biometric unlock are convenience features for trusted devices. When enabled, they rely on platform secure storage such as Keychain/Keystore/Windows-backed secure storage to protect the saved unlock secret.
 
 ### 📱 Works Everywhere You Do
 - **Desktop:** Windows, macOS, Linux
