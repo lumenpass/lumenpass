@@ -47,13 +47,17 @@ class WindowsGoogleAuth implements GoogleAuth {
   ///   http://127.0.0.1:17824/callback
   ///   http://localhost:17824/callback
   static const int _redirectPort = 17824;
-  static const String _redirectUri =
-      'http://127.0.0.1:$_redirectPort/callback';
+  static const String _redirectUri = 'http://127.0.0.1:$_redirectPort/callback';
 
   static const _persistedFileName = 'windows_google_auth.json';
 
   _WindowsGoogleCredentials? _currentUser;
-  bool _hydrated = false;
+
+  /// Shared future that serializes first-time disk hydration. Concurrent
+  /// [signInSilently] callers (e.g. parallel vault health probes) must all
+  /// await this same future so none of them observe `_currentUser == null`
+  /// mid-hydrate and incorrectly report "not signed in".
+  Future<void>? _hydrateFuture;
 
   @override
   GoogleCredentials? get currentUser => _currentUser;
@@ -245,17 +249,23 @@ class WindowsGoogleAuth implements GoogleAuth {
 
   @override
   Future<GoogleCredentials?> signInSilently() async {
-    if (!_hydrated) {
-      await _hydrateFromDisk();
-    }
+    await _ensureHydrated();
     final current = _currentUser;
     if (current == null) return null;
     if (DateTime.now()
         .isBefore(current._expiry.subtract(const Duration(minutes: 1)))) {
       return current;
     }
-    final refreshed = await _refreshAccessToken(current);
-    return refreshed;
+    // Transient network failures during refresh must NOT be treated as
+    // "not signed in" — rethrow so the health probe can classify them as a
+    // network error rather than a credential wipe.
+    return _refreshAccessToken(current);
+  }
+
+  /// Ensures persisted credentials have been loaded from disk exactly once.
+  /// Concurrent callers share the same in-flight future.
+  Future<void> _ensureHydrated() {
+    return _hydrateFuture ??= _hydrateFromDisk();
   }
 
   @override
@@ -302,9 +312,19 @@ class WindowsGoogleAuth implements GoogleAuth {
       if (res.statusCode != 200) {
         debugPrint(
             '[WindowsGoogleAuth] refresh failed (${res.statusCode}): ${res.body}');
-        _currentUser = null;
-        await _clearPersistedFile();
-        return null;
+        // Auth rejection (expired/revoked refresh token) — clear local state.
+        if (res.statusCode == 400 ||
+            res.statusCode == 401 ||
+            res.statusCode == 403) {
+          _currentUser = null;
+          await _clearPersistedFile();
+          return null;
+        }
+        // Non-auth HTTP failure (5xx, 429, etc.) — leave credentials intact
+        // and surface as a recoverable network/service error.
+        throw SocketException(
+          'Google token refresh failed with HTTP ${res.statusCode}',
+        );
       }
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final accessToken = data['access_token'] as String?;
@@ -318,6 +338,8 @@ class WindowsGoogleAuth implements GoogleAuth {
       creds._expiry = DateTime.now().add(Duration(seconds: expiresIn));
       await _persist();
       return creds;
+    } on SocketException {
+      rethrow;
     } catch (e) {
       debugPrint('[WindowsGoogleAuth] refresh error: $e');
       return null;
@@ -366,7 +388,6 @@ class WindowsGoogleAuth implements GoogleAuth {
   }
 
   Future<void> _hydrateFromDisk() async {
-    _hydrated = true;
     try {
       final file = await _persistedFile();
       if (!await file.exists()) return;

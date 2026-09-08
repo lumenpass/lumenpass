@@ -13,9 +13,11 @@ export 'src/models/kdbx_group.dart';
 
 export 'src/repository/kdbx_repository.dart';
 
+export 'src/services/isolate_argon2.dart';
 export 'src/services/password_generator_service.dart';
 export 'src/services/totp_service.dart';
 export 'src/services/vault_unlock_service.dart';
+export 'src/services/vault_write_scheduler.dart';
 
 export 'src/vault/vault_item_type.dart';
 export 'src/vault/vault_card_brand.dart';

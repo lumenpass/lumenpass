@@ -17,6 +17,7 @@ abstract final class AppSnackBar {
     Duration duration = _defaultDuration,
     IconData? icon,
     Color? backgroundColor,
+    VoidCallback? onTap,
   }) {
     final overlay =
         Navigator.maybeOf(context, rootNavigator: true)?.overlay ??
@@ -30,6 +31,7 @@ abstract final class AppSnackBar {
       duration: duration,
       icon: icon,
       backgroundColor: backgroundColor,
+      onTap: onTap,
     );
   }
 
@@ -40,6 +42,7 @@ abstract final class AppSnackBar {
     Duration duration = _defaultDuration,
     IconData? icon,
     Color? backgroundColor,
+    VoidCallback? onTap,
   }) {
     final media = MediaQuery.maybeOf(overlay.context);
     final viewInsetsBottom = media?.viewInsets.bottom ?? 0;
@@ -78,6 +81,12 @@ abstract final class AppSnackBar {
               accentColor: style.accentColor,
               icon: style.icon,
               onDismiss: dismiss,
+              onTap: onTap == null
+                  ? null
+                  : () {
+                      dismiss();
+                      onTap();
+                    },
             ),
           ),
         ),
@@ -151,8 +160,15 @@ abstract final class AppSnackBar {
     BuildContext context,
     String message, {
     Duration duration = _defaultDuration,
+    VoidCallback? onTap,
   }) =>
-      show(context, message, variant: SnackBarVariant.info, duration: duration);
+      show(
+        context,
+        message,
+        variant: SnackBarVariant.info,
+        duration: duration,
+        onTap: onTap,
+      );
 }
 
 class _ToastStyle {
@@ -221,6 +237,7 @@ class _ToastBanner extends StatelessWidget {
     required this.accentColor,
     required this.icon,
     required this.onDismiss,
+    this.onTap,
   });
 
   final String message;
@@ -228,9 +245,38 @@ class _ToastBanner extends StatelessWidget {
   final Color accentColor;
   final IconData icon;
   final VoidCallback onDismiss;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final body = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, color: accentColor, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            message,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              height: 1.24,
+            ),
+          ),
+        ),
+      ],
+    );
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: backgroundColor,
@@ -248,27 +294,14 @@ class _ToastBanner extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, color: accentColor, size: 20),
-            ),
-            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  height: 1.24,
-                ),
-              ),
+              child: onTap == null
+                  ? body
+                  : GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onTap,
+                      child: body,
+                    ),
             ),
             const SizedBox(width: 8),
             InkWell(

@@ -144,7 +144,7 @@ class _PasswordGeneratorSheetState extends State<_PasswordGeneratorSheet> {
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFF7FAFC),
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         boxShadow: [
           BoxShadow(
@@ -154,48 +154,115 @@ class _PasswordGeneratorSheetState extends State<_PasswordGeneratorSheet> {
           ),
         ],
       ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDCE6EC),
-                  borderRadius: BorderRadius.circular(999),
-                ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              border: Border(
+                bottom: BorderSide(color: Color(0xFFE1EAF0)),
               ),
             ),
-            const SizedBox(height: 14),
-            Row(
+            child: Stack(
               children: [
-                const Icon(Icons.shield_outlined, color: _ink, size: 22),
-                const SizedBox(width: 10),
-                Text(
-                  'Generate password',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: _text,
-                    fontWeight: FontWeight.w700,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDCE6EC),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 54),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE5EFF3),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(
+                                Icons.shield_outlined,
+                                color: _ink,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Generate password',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      color: _text,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close_rounded),
-                  color: _muted,
-                  tooltip: 'Close',
+                Positioned(
+                  top: 12,
+                  right: 16,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x180F172A),
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.white,
+                      shape: const CircleBorder(
+                        side: BorderSide(color: Color(0xFFD7E2E8)),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).pop(),
+                        customBorder: const CircleBorder(),
+                        child: const SizedBox(
+                          width: 38,
+                          height: 38,
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF5E7180),
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+          ),
+          Flexible(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 10, 20, 16 + bottom),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -358,8 +425,9 @@ class _PasswordGeneratorSheetState extends State<_PasswordGeneratorSheet> {
                 ],
               ),
             ),
-          ],
+          ),
         ),
+        ],
       ),
     );
   }

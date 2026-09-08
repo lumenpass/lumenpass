@@ -20,6 +20,7 @@ class KdbxEntry with _$KdbxEntry {
     String? otpAuthUrl,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? lastUsedAt,
     @Default(<String>[]) List<String> tags,
     @Default(<EntryField>[]) List<EntryField> fields,
 
@@ -66,6 +67,7 @@ class KdbxEntry with _$KdbxEntry {
       otpAuthUrl: otpAuthUrl,
       createdAt: source.times.creationTime.get(),
       updatedAt: source.times.lastModificationTime.get(),
+      lastUsedAt: source.times.lastAccessTime.get(),
       tags: tags,
       fields: source.stringEntries
           .where((entry) =>

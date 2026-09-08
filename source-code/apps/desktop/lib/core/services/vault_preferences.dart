@@ -9,6 +9,7 @@ const String vaultAutoLockMinutesKey = 'vault.autoLockMinutes';
 const String vaultClipboardClearSecondsKey = 'vault.clipboardClearSeconds';
 const String vaultAutoFetchItemIconKey = 'vault.autoFetchItemIcon';
 const String vaultDisabledAutofillDomainsKey = 'vault.disabledAutofillDomains';
+const String vaultHideCreditCardNumberKey = 'vault.hideCreditCardNumber';
 
 final vaultDomainSettingProvider = StateProvider<String>((ref) => 'default');
 
@@ -19,6 +20,10 @@ final vaultAutoLockMinutesProvider = StateProvider<int?>((ref) => 30);
 final vaultClipboardClearSecondsProvider = StateProvider<int?>((ref) => 60);
 
 final vaultAutoFetchItemIconProvider = StateProvider<bool>((ref) => true);
+
+/// When true, credit card numbers are masked in view-only surfaces, showing
+/// only the first 4 and last 3 digits. Defaults to enabled.
+final vaultHideCreditCardNumberProvider = StateProvider<bool>((ref) => true);
 
 final vaultDisabledAutofillDomainsProvider =
     StateProvider<List<DisabledAutofillDomain>>((ref) => const []);
@@ -53,6 +58,12 @@ Future<void> loadVaultPreferences(ProviderContainer container) async {
   if (iconStr != null) {
     container.read(vaultAutoFetchItemIconProvider.notifier).state =
         iconStr == 'true';
+  }
+
+  final hideCardStr = await storage.read(key: vaultHideCreditCardNumberKey);
+  if (hideCardStr != null) {
+    container.read(vaultHideCreditCardNumberProvider.notifier).state =
+        hideCardStr == 'true';
   }
 
   final disabledDomains =

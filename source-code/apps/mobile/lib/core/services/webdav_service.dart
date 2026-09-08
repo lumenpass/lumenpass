@@ -594,11 +594,18 @@ class WebDavService {
     var raw = cfg.host.trim();
     final hasScheme = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*://').hasMatch(raw);
     if (!hasScheme) {
-      // Default to https unless a plaintext port is clearly requested.
-      final scheme = cfg.port == 80 ? 'http' : 'https';
+      // Always default to HTTPS. Users who genuinely need plaintext HTTP
+      // can embed the scheme in cfg.host (e.g. http://192.168.1.x).
+      const scheme = 'https';
       raw = '$scheme://$raw';
     }
     final parsed = Uri.parse(raw);
+    if (parsed.scheme == 'http') {
+      debugPrint(
+        '[WebDAV] SECURITY WARNING: '
+        '${cfg.username}@$raw uses HTTP — credentials are not encrypted in transit.',
+      );
+    }
     return parsed.replace(port: cfg.port, path: parsed.path);
   }
 

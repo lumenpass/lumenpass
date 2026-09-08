@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kdbx/kdbx.dart' as native;
+import 'package:lumenpass_core/lumenpass_core.dart' show IsolateArgon2;
 
 import '../models/kdbx_database.dart';
 import '../services/local_storage_service.dart';
@@ -19,7 +20,7 @@ final passwordGeneratorServiceProvider = Provider<PasswordGeneratorService>(
 
 final kdbxRepositoryProvider = Provider<KdbxRepository>(
   (ref) => KdbxRepositoryImpl(
-    format: native.KdbxFormat(),
+    format: native.KdbxFormat(const IsolateArgon2()),
     totpService: ref.watch(totpServiceProvider),
   ),
 );

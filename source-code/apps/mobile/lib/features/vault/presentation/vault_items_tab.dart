@@ -1,238 +1,642 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lumenpass_core/lumenpass_core.dart';
 
-import '../../../core/ui/app_loading_overlay.dart';
 import '../application/vault_entries_providers.dart';
 import '../application/vault_items_list_providers.dart';
+import 'vault_all_items_screen.dart';
 import 'vault_category_filter_dropdown.dart';
-import 'vault_create_item.dart';
-import 'vault_entry_context_menu.dart';
-import 'vault_entry_list_tile.dart';
-import 'vault_item_details_modal.dart';
-import 'vault_search_floating_toolbar.dart';
+import 'vault_create_item_models.dart';
 
-const _listBorder = kVaultListRowBorder;
-const _headerIcon = Color(0xFF536987);
+const _pageBackground = Color(0xFFF4F9FA);
+const _sectionTitle = Color(0xFF163640);
+const _sectionSubtitle = Color(0xFF6B858D);
+const _cardBorder = Color(0xFFE3EAF0);
+const _cardSurface = Colors.white;
+const _countText = Color(0xFF56717A);
+const _chipFill = Color(0xFFE8F3F5);
+const _chipText = Color(0xFF24505A);
+const _floatingHeaderContentTopPadding = 92.0;
+const _contentBottomPadding = 176.0;
+const _maxVisibleTags = 24;
+const String _kCategoryIconNotesPrefix = 'lumenpass-category-icon:';
 
-/// Outer inset so list rows line up with the 20px home top bar (tile adds 12px).
-const _itemsListHorizontalInset = 8.0;
+/// Tag summaries are derived from the visible entries. Computing them in a
+/// provider (rather than inline in `build`) caches the O(entries x tags)
+/// aggregation so it only re-runs when the entries list actually changes, not
+/// on every unrelated rebuild of the tab.
+final _vaultTagSummariesProvider = Provider<List<_TagSummary>>((ref) {
+  final entries = ref.watch(vaultVisibleEntriesProvider);
+  return _buildTagSummaries(entries);
+});
 
-/// Matches [VaultEntryListTile] horizontal padding so the column header lines up.
-const _itemsListCellPaddingH = 12.0;
+/// Item-type counts, memoized for the same reason as [_vaultTagSummariesProvider].
+final _vaultItemTypeSummariesProvider = Provider<List<_ItemTypeSummary>>((
+  ref,
+) {
+  final entries = ref.watch(vaultVisibleEntriesProvider);
+  return _buildItemTypeSummaries(entries);
+});
 
-class VaultItemsTab extends ConsumerStatefulWidget {
+class VaultItemsTab extends ConsumerWidget {
   const VaultItemsTab({super.key});
 
   @override
-  ConsumerState<VaultItemsTab> createState() => _VaultItemsTabState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final entries = ref.watch(vaultVisibleEntriesProvider);
+    final categories = ref.watch(vaultSidebarCategoriesProvider);
+    final uncategorizedCount = ref.watch(vaultUncategorizedCountProvider);
+    final tagSummaries = ref.watch(_vaultTagSummariesProvider);
+    final itemTypes = ref.watch(_vaultItemTypeSummariesProvider);
+    final displayedTags = tagSummaries
+        .take(_maxVisibleTags)
+        .toList(growable: false);
+    final hiddenTagCount = tagSummaries.length - displayedTags.length;
+
+    return ColoredBox(
+      color: _pageBackground,
+      child: Stack(
+        children: [
+          RefreshIndicator(
+            color: const Color(0xFF2F67E3),
+            onRefresh: () => refreshVaultSnapshot(ref),
+            child: ListView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                _floatingHeaderContentTopPadding,
+                20,
+                MediaQuery.paddingOf(context).bottom + _contentBottomPadding,
+              ),
+              children: [
+                _PrimaryBrowseRow(
+                  title: 'All Items',
+                  count: entries.length,
+                  icon: Icons.inventory_2_outlined,
+                  iconColor: const Color(0xFF4B79E5),
+                  iconBackground: const Color(0xFFE4EDFF),
+                  onTap: () => openVaultAllItemsScreen(context),
+                ),
+                const SizedBox(height: 24),
+                _SectionHeader(
+                  title: 'All Categories',
+                  subtitle: 'Browse by vault category',
+                  trailing: _SectionCircleButton(
+                    semanticLabel: 'Add category',
+                    icon: Icons.add_rounded,
+                    onTap: () => openCreateCategoryDialog(context, ref),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _ItemsHubCard(
+                  child: categories.isEmpty && uncategorizedCount == 0
+                      ? const _EmptySectionState(
+                          title: 'No categories yet',
+                          message: 'Create a category to organize items here.',
+                        )
+                      : Column(
+                          children: [
+                            if (uncategorizedCount > 0)
+                              _BrowseListRow(
+                                title: 'Uncategorized',
+                                count: uncategorizedCount,
+                                leading: const _CategoryLeadingVisual(
+                                  categoryId: kCategoryFilterUncategorized,
+                                  notes: '',
+                                ),
+                                showDivider: categories.isNotEmpty,
+                                onTap: () => openVaultAllItemsScreen(
+                                  context,
+                                  title: 'Uncategorized',
+                                  uncategorizedOnly: true,
+                                ),
+                              ),
+                            for (var i = 0; i < categories.length; i++)
+                              _BrowseListRow(
+                                title: categories[i].name,
+                                count: categories[i].count,
+                                leading: _CategoryLeadingVisual(
+                                  categoryId: categories[i].uuid,
+                                  notes: categories[i].notes,
+                                ),
+                                showDivider: i < categories.length - 1,
+                                onTap: () => openVaultAllItemsScreen(
+                                  context,
+                                  title: categories[i].name,
+                                  categoryUuid: categories[i].uuid,
+                                ),
+                                onLongPress: () => showCategoryActionSheet(
+                                  context,
+                                  ref,
+                                  category: categories[i],
+                                ),
+                              ),
+                          ],
+                        ),
+                ),
+                const SizedBox(height: 24),
+                const _SectionHeader(
+                  title: 'Tags',
+                  subtitle: 'Jump into frequently used tags',
+                ),
+                const SizedBox(height: 10),
+                _ItemsHubCard(
+                  child: tagSummaries.isEmpty
+                      ? const _EmptySectionState(
+                          title: 'No tags yet',
+                          message:
+                              'Add tags to items and they will show up here.',
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: displayedTags
+                                    .map(
+                                      (tag) => _TagChip(
+                                        label: tag.label,
+                                        count: tag.count,
+                                        onTap: () => openVaultAllItemsScreen(
+                                          context,
+                                          title: '#${tag.label}',
+                                          tag: tag.label,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(growable: false),
+                              ),
+                              if (hiddenTagCount > 0) ...[
+                                const SizedBox(height: 14),
+                                Text(
+                                  '$hiddenTagCount more tags available',
+                                  style: const TextStyle(
+                                    color: _sectionSubtitle,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 24),
+                const _SectionHeader(
+                  title: 'Item Types',
+                  subtitle: 'Open items by template type',
+                ),
+                const SizedBox(height: 10),
+                _ItemsHubCard(
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < itemTypes.length; i++)
+                        _BrowseListRow(
+                          title: itemTypes[i].label,
+                          count: itemTypes[i].count,
+                          leading: _ItemTypeLeadingVisual(type: itemTypes[i]),
+                          showDivider: i < itemTypes.length - 1,
+                          onTap: () => openVaultAllItemsScreen(
+                            context,
+                            title: itemTypes[i].label,
+                            itemTypeId: itemTypes[i].id,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _VaultItemsTabState extends ConsumerState<VaultItemsTab> {
+List<_TagSummary> _buildTagSummaries(List<KdbxEntry> entries) {
+  final counts = <String, int>{};
+  for (final entry in entries) {
+    for (final raw in entry.tags) {
+      final tag = raw.trim();
+      if (tag.isEmpty) {
+        continue;
+      }
+      counts[tag] = (counts[tag] ?? 0) + 1;
+    }
+  }
+
+  final summaries = counts.entries
+      .map((entry) => _TagSummary(label: entry.key, count: entry.value))
+      .toList(growable: false);
+
+  summaries.sort((a, b) {
+    final byCount = b.count.compareTo(a.count);
+    if (byCount != 0) {
+      return byCount;
+    }
+    return a.label.toLowerCase().compareTo(b.label.toLowerCase());
+  });
+  return summaries;
+}
+
+List<_ItemTypeSummary> _buildItemTypeSummaries(List<KdbxEntry> entries) {
+  final counts = <String, int>{for (final type in kAllNewItemTypes) type.id: 0};
+
+  for (final entry in entries) {
+    switch (classifyVaultItemType(entry)) {
+      case VaultItemType.login:
+        counts['login'] = counts['login']! + 1;
+        break;
+      case VaultItemType.secureNote:
+        counts['secure-note'] = counts['secure-note']! + 1;
+        break;
+      case VaultItemType.creditCard:
+        counts['credit-card'] = counts['credit-card']! + 1;
+        break;
+      case VaultItemType.identity:
+        counts['identity'] = counts['identity']! + 1;
+        break;
+      case VaultItemType.sshKey:
+        counts['ssh-key'] = counts['ssh-key']! + 1;
+        break;
+      case VaultItemType.bankAccount:
+        counts['bank-account'] = counts['bank-account']! + 1;
+        break;
+      default:
+        break;
+    }
+  }
+
+  return kAllNewItemTypes
+      .map(
+        (type) => _ItemTypeSummary(
+          id: type.id,
+          label: type.label,
+          count: counts[type.id] ?? 0,
+          icon: type.icon ?? Icons.label_outline_rounded,
+          iconColor: type.iconColor,
+          imagePath: type.imagePath,
+        ),
+      )
+      .toList(growable: false);
+}
+
+class _PrimaryBrowseRow extends StatelessWidget {
+  const _PrimaryBrowseRow({
+    required this.title,
+    required this.count,
+    required this.icon,
+    required this.iconColor,
+    required this.iconBackground,
+    required this.onTap,
+  });
+
+  final String title;
+  final int count;
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBackground;
+  final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
-    final entries = ref.watch(vaultItemsSortedEntriesProvider);
-    final query = ref.watch(vaultSearchQueryProvider);
-    final selectedUuid = ref.watch(vaultItemsSelectedEntryUuidProvider);
-    final sortField = ref.watch(vaultItemsSortFieldProvider);
-    final sortDir = ref.watch(vaultItemsSortDirectionProvider);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _cardSurface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _cardBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12093C49),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            child: Row(
+              children: [
+                _SquareIconBadge(
+                  icon: icon,
+                  iconColor: iconColor,
+                  backgroundColor: iconBackground,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: _sectionTitle,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Text(
+                  '$count',
+                  style: const TextStyle(
+                    color: _countText,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFFC7D1D6),
+                  size: 28,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-    return Stack(
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        Row(
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 14),
-              child: VaultCategorySearchRow(),
-            ),
-            _ItemsListHeader(
-              sortField: sortField,
-              sortDirection: sortDir,
-              onSortTitle: () => _toggleSort(ref, VaultItemsSortField.title),
-              onSortLastEdited: () =>
-                  _toggleSort(ref, VaultItemsSortField.lastEdited),
-              onRefresh: () => withGlobalLoading(
-                context,
-                () => refreshVaultSnapshot(
-                  ref,
-                  reloadDelay: const Duration(seconds: 1),
-                ),
-                loadingMessage: 'Refreshing vault…',
-                successMessage: 'Vault refreshed',
-                leadIn: Duration.zero,
-              ),
-            ),
-            if (query.trim().isNotEmpty)
-              _SearchResultBanner(
-                query: query.trim(),
-                count: entries.length,
-                onClear: () {
-                  ref.read(vaultSearchUiStateProvider.notifier).clear();
-                },
-              ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  _itemsListHorizontalInset,
-                  0,
-                  _itemsListHorizontalInset,
-                  0,
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: _sectionTitle,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
                 ),
-                child: entries.isEmpty
-                    ? const _ItemsEmptyState()
-                    : _LazyVaultEntriesList(
-                        entries: entries,
-                        selectedUuid: selectedUuid,
-                        isSearching: query.trim().isNotEmpty,
-                        onTapEntry: (entry) async {
-                          final categories = ref.read(
-                            vaultSidebarCategoriesProvider,
-                          );
-                          String? categoryName;
-                          for (final c in categories) {
-                            if (c.uuid == entry.groupUuid) {
-                              categoryName = c.name;
-                              break;
-                            }
-                          }
-                          ref
-                              .read(
-                                vaultItemsSelectedEntryUuidProvider.notifier,
-                              )
-                              .state = entry
-                              .uuid;
-                          await showItemDetailsModal(
-                            context,
-                            entry: entry,
-                            categoryName: categoryName,
-                          );
-                        },
-                        onLongPressEntry: (entry) =>
-                            _showContextMenu(context, ref, entry),
-                      ),
               ),
             ),
+            if (trailing != null) ...[const SizedBox(width: 12), trailing!],
           ],
         ),
-        Positioned(
-          left: 20,
-          right: 20,
-          bottom: 12,
-          child: VaultSearchFloatingToolbar(
-            hintText: 'Search items',
-            onAdd: () => showAddNewItemOverlay(context),
-            addSemanticLabel: 'Add item',
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            color: _sectionSubtitle,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
     );
   }
+}
 
-  void _showContextMenu(BuildContext context, WidgetRef ref, KdbxEntry entry) {
-    ref.read(vaultItemsSelectedEntryUuidProvider.notifier).state = entry.uuid;
-    showVaultEntryContextMenuDialog(
-      context,
-      entry: entry,
-      onItemSaved: (uuid) {
-        ref.read(vaultItemsSelectedEntryUuidProvider.notifier).state = uuid;
-      },
+class _SectionCircleButton extends StatelessWidget {
+  const _SectionCircleButton({
+    required this.semanticLabel,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String semanticLabel;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(24);
+
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.28),
+              blurRadius: 18,
+              spreadRadius: -5,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: Material(
+            color: Colors.transparent,
+            child: Ink(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF202020),
+                    Color(0xF20B0B0B),
+                    Color(0xFF050505),
+                  ],
+                  stops: [0, 0.48, 1],
+                ),
+              ),
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: radius,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: radius,
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.14),
+                              Colors.white.withValues(alpha: 0.02),
+                              Colors.black.withValues(alpha: 0.22),
+                            ],
+                            stops: const [0, 0.46, 1],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Icon(icon, size: 23, color: Colors.white),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
-void _toggleSort(WidgetRef ref, VaultItemsSortField field) {
-  final cur = ref.read(vaultItemsSortFieldProvider);
-  final dir = ref.read(vaultItemsSortDirectionProvider);
-  if (cur == field) {
-    ref
-        .read(vaultItemsSortDirectionProvider.notifier)
-        .state = dir == VaultItemsSortDirection.ascending
-        ? VaultItemsSortDirection.descending
-        : VaultItemsSortDirection.ascending;
-  } else {
-    ref.read(vaultItemsSortFieldProvider.notifier).state = field;
-    ref
-        .read(vaultItemsSortDirectionProvider.notifier)
-        .state = field == VaultItemsSortField.title
-        ? VaultItemsSortDirection.ascending
-        : VaultItemsSortDirection.descending;
-  }
-}
+class _ItemsHubCard extends StatelessWidget {
+  const _ItemsHubCard({required this.child});
 
-class _ItemsListHeader extends ConsumerWidget {
-  const _ItemsListHeader({
-    required this.sortField,
-    required this.sortDirection,
-    required this.onSortTitle,
-    required this.onSortLastEdited,
-    required this.onRefresh,
-  });
-
-  final VaultItemsSortField sortField;
-  final VaultItemsSortDirection sortDirection;
-  final VoidCallback onSortTitle;
-  final VoidCallback onSortLastEdited;
-  final Future<void> Function() onRefresh;
+  final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Watch the provider directly so the spinner reacts immediately,
-    // independent of the parent widget's rebuild cycle.
-    final isRefreshing = ref.watch(vaultItemsIsRefreshingProvider);
-
-    return Container(
-      height: 40,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFFFFFFF), Color(0xFFEBF0F7)],
-        ),
-        border: Border(
-          top: BorderSide(color: Color(0xFFFFFFFF)),
-          bottom: BorderSide(color: Color(0xFFB8C5D6), width: 1.5),
-        ),
-        boxShadow: [
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _cardSurface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _cardBorder),
+        boxShadow: const [
           BoxShadow(
-            color: Color(0x18000000),
-            offset: Offset(0, 2),
-            blurRadius: 4,
+            color: Color(0x10093C49),
+            blurRadius: 18,
+            offset: Offset(0, 8),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: _itemsListHorizontalInset,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: _itemsListCellPaddingH,
+      child: child,
+    );
+  }
+}
+
+class _BrowseListRow extends StatelessWidget {
+  const _BrowseListRow({
+    required this.title,
+    required this.count,
+    required this.leading,
+    required this.showDivider,
+    required this.onTap,
+    this.onLongPress,
+  });
+
+  final String title;
+  final int count;
+  final Widget leading;
+  final bool showDivider;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: showDivider ? _cardBorder : Colors.transparent,
+              ),
+            ),
           ),
           child: Row(
             children: [
-              _HeaderSortChip(
-                label: 'Title',
-                active: sortField == VaultItemsSortField.title,
-                ascending: sortDirection == VaultItemsSortDirection.ascending,
-                onTap: onSortTitle,
+              leading,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: _sectionTitle,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-              const Spacer(),
-              _HeaderSortChip(
-                label: 'Last Edited',
-                active: sortField == VaultItemsSortField.lastEdited,
-                ascending: sortDirection == VaultItemsSortDirection.ascending,
-                onTap: onSortLastEdited,
+              Text(
+                '$count',
+                style: const TextStyle(
+                  color: _countText,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFFC7D1D6),
+                size: 26,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TagChip extends StatelessWidget {
+  const _TagChip({
+    required this.label,
+    required this.count,
+    required this.onTap,
+  });
+
+  final String label;
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: _chipFill,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFD3E7EA)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '#$label',
+                style: const TextStyle(
+                  color: _chipText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(width: 8),
-              InkWell(
-                onTap: isRefreshing ? null : () => onRefresh(),
-                borderRadius: BorderRadius.circular(999),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 4, 0, 4),
-                  child: _RefreshSpinnerIcon(isRefreshing: isRefreshing),
+              Text(
+                '$count',
+                style: const TextStyle(
+                  color: _sectionSubtitle,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -243,157 +647,35 @@ class _ItemsListHeader extends ConsumerWidget {
   }
 }
 
-class _RefreshSpinnerIcon extends StatefulWidget {
-  const _RefreshSpinnerIcon({required this.isRefreshing});
+class _EmptySectionState extends StatelessWidget {
+  const _EmptySectionState({required this.title, required this.message});
 
-  final bool isRefreshing;
-
-  @override
-  State<_RefreshSpinnerIcon> createState() => _RefreshSpinnerIconState();
-}
-
-class _RefreshSpinnerIconState extends State<_RefreshSpinnerIcon>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.isRefreshing) {
-      _controller.repeat();
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _RefreshSpinnerIcon oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isRefreshing && !oldWidget.isRefreshing) {
-      _controller.repeat();
-    } else if (!widget.isRefreshing && oldWidget.isRefreshing) {
-      _controller
-        ..stop()
-        ..animateTo(
-          1.0,
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-        ).whenComplete(_controller.reset);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  final String title;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    return RotationTransition(
-      turns: _controller,
-      child: Icon(
-        Icons.refresh_rounded,
-        size: 18,
-        color: widget.isRefreshing ? const Color(0xFF0A67FF) : _headerIcon,
-      ),
-    );
-  }
-}
-
-class _HeaderSortChip extends StatelessWidget {
-  const _HeaderSortChip({
-    required this.label,
-    required this.active,
-    required this.ascending,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool active;
-  final bool ascending;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-            if (active) ...[
-              const SizedBox(width: 3),
-              Icon(
-                ascending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 12,
-                color: _headerIcon,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchResultBanner extends StatelessWidget {
-  const _SearchResultBanner({
-    required this.query,
-    required this.count,
-    required this.onClear,
-  });
-
-  final String query;
-  final int count;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF6F3FF),
-        border: Border(bottom: BorderSide(color: _listBorder)),
-      ),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              '$count results for "$query"',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF3A4457),
-              ),
+          Text(
+            title,
+            style: const TextStyle(
+              color: _sectionTitle,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(width: 10),
-          InkWell(
-            onTap: onClear,
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              width: 26,
-              height: 26,
-              decoration: const BoxDecoration(
-                color: Color(0xFF7C8598),
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: const Icon(Icons.close, size: 14, color: Colors.white),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            style: const TextStyle(
+              color: _sectionSubtitle,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
             ),
           ),
         ],
@@ -402,186 +684,247 @@ class _SearchResultBanner extends StatelessWidget {
   }
 }
 
-/// Stateful wrapper around the items `ListView` that paginates the source
-/// entries so only a limited window is rendered initially. Mirrors the
-/// desktop `_ListPane` behaviour: first paint shows [_initialVisibleCount]
-/// rows; when the user scrolls near the tail the window grows by
-/// [_loadMoreBatch]. Search results bypass the window entirely so every
-/// match is rendered.
-class _LazyVaultEntriesList extends StatefulWidget {
-  const _LazyVaultEntriesList({
-    required this.entries,
-    required this.selectedUuid,
-    required this.isSearching,
-    required this.onTapEntry,
-    required this.onLongPressEntry,
+class _SquareIconBadge extends StatelessWidget {
+  const _SquareIconBadge({
+    required this.icon,
+    required this.iconColor,
+    required this.backgroundColor,
   });
 
-  final List<KdbxEntry> entries;
-  final String? selectedUuid;
-  final bool isSearching;
-  final Future<void> Function(KdbxEntry entry) onTapEntry;
-  final void Function(KdbxEntry entry) onLongPressEntry;
-
-  @override
-  State<_LazyVaultEntriesList> createState() => _LazyVaultEntriesListState();
-}
-
-class _LazyVaultEntriesListState extends State<_LazyVaultEntriesList> {
-  static const int _initialVisibleCount = 30;
-  static const int _loadMoreBatch = 30;
-  static const double _loadMoreThreshold = 200;
-
-  late final ScrollController _scrollController;
-  int _visibleCount = _initialVisibleCount;
-
-  int get _effectiveItemCount {
-    if (widget.isSearching) {
-      return widget.entries.length;
-    }
-    return math.min(_visibleCount, widget.entries.length);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_maybeLoadMore);
-  }
-
-  @override
-  void dispose() {
-    _scrollController.removeListener(_maybeLoadMore);
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didUpdateWidget(covariant _LazyVaultEntriesList oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final searchChanged = widget.isSearching != oldWidget.isSearching;
-    final entriesChanged =
-        !identical(widget.entries, oldWidget.entries) ||
-        widget.entries.length != oldWidget.entries.length;
-    if (searchChanged || entriesChanged) {
-      _visibleCount = _initialVisibleCount;
-      // Jump back to top after a scope/search change so the user isn't
-      // stranded at an offset that no longer has content mounted.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_scrollController.hasClients) return;
-        if (_scrollController.position.pixels > 0) {
-          _scrollController.jumpTo(0);
-        }
-      });
-    }
-  }
-
-  void _maybeLoadMore() {
-    if (widget.isSearching || !_scrollController.hasClients) {
-      return;
-    }
-    if (_visibleCount >= widget.entries.length) {
-      return;
-    }
-    final position = _scrollController.position;
-    if (position.maxScrollExtent <= 0) {
-      return;
-    }
-    if (position.pixels >= position.maxScrollExtent - _loadMoreThreshold) {
-      setState(() {
-        _visibleCount = math.min(
-          widget.entries.length,
-          _visibleCount + _loadMoreBatch,
-        );
-      });
-    }
-  }
+  final IconData icon;
+  final Color iconColor;
+  final Color backgroundColor;
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: EdgeInsets.zero,
-      itemCount: _effectiveItemCount,
-      // Rows are a fixed height (see [VaultEntryListTile]). Giving the
-      // viewport an itemExtent lets it skip the per-row layout pass entirely
-      // and keeps scrolling at 60 fps even for large vaults.
-      itemExtent: kVaultListAttributeRowHeight,
-      // The tiles already wrap their contents in a [RepaintBoundary], so the
-      // viewport's automatic one is redundant. Removing it trims a layer per
-      // row.
-      addRepaintBoundaries: false,
-      addAutomaticKeepAlives: false,
-      itemBuilder: (context, index) {
-        final entry = widget.entries[index];
-        return VaultEntryListTile(
-          key: ValueKey(entry.uuid),
-          entry: entry,
-          selected: entry.uuid == widget.selectedUuid,
-          showAttributeLines: true,
-          onTap: () => widget.onTapEntry(entry),
-          onLongPress: () => widget.onLongPressEntry(entry),
-        );
-      },
-    );
-  }
-}
-
-class _ItemsEmptyState extends StatelessWidget {
-  const _ItemsEmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEEF4FF),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: const Color(0xFFC7D6F6)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x120A67FF),
-                    blurRadius: 16,
-                    offset: Offset(0, 6),
-                  ),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.inbox_outlined,
-                size: 24,
-                color: Color(0xFF2E5ECC),
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Nothing here yet',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF3A4A5E),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              'Try another search or pull to refresh.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                height: 1.5,
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ],
-        ),
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
       ),
+      alignment: Alignment.center,
+      child: Icon(icon, color: iconColor, size: 22),
     );
   }
+}
+
+class _ItemTypeLeadingVisual extends StatelessWidget {
+  const _ItemTypeLeadingVisual({required this.type});
+
+  final _ItemTypeSummary type;
+
+  @override
+  Widget build(BuildContext context) {
+    if (type.imagePath != null && type.imagePath!.isNotEmpty) {
+      return Image.asset(
+        type.imagePath!,
+        width: 34,
+        height: 34,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => _SquareIconBadge(
+          icon: type.icon,
+          iconColor: type.iconColor,
+          backgroundColor: type.iconColor.withValues(alpha: 0.14),
+        ),
+      );
+    }
+
+    return _SquareIconBadge(
+      icon: type.icon,
+      iconColor: type.iconColor,
+      backgroundColor: type.iconColor.withValues(alpha: 0.14),
+    );
+  }
+}
+
+class _CategoryLeadingVisual extends StatelessWidget {
+  const _CategoryLeadingVisual({required this.categoryId, required this.notes});
+
+  final String categoryId;
+  final String notes;
+
+  @override
+  Widget build(BuildContext context) {
+    if (categoryId == kCategoryFilterUncategorized) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset(
+          'assets/images/categories/383.png',
+          width: 34,
+          height: 34,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const _SquareIconBadge(
+            icon: Icons.folder_open_outlined,
+            iconColor: Color(0xFF5A78C5),
+            backgroundColor: Color(0xFFE8EEF9),
+          ),
+        ),
+      );
+    }
+
+    final decoded = _decodeCategoryVisualPayload(notes);
+    if (decoded == null) {
+      return const _SquareIconBadge(
+        icon: Icons.folder_outlined,
+        iconColor: Color(0xFF5A78C5),
+        backgroundColor: Color(0xFFE8EEF9),
+      );
+    }
+
+    if (decoded.presetId.startsWith('img:')) {
+      final id = decoded.presetId.substring(4).trim();
+      if (id.isNotEmpty) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.asset(
+            'assets/images/categories/$id.png',
+            width: 34,
+            height: 34,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => const _SquareIconBadge(
+              icon: Icons.folder_outlined,
+              iconColor: Color(0xFF5A78C5),
+              backgroundColor: Color(0xFFE8EEF9),
+            ),
+          ),
+        );
+      }
+    }
+
+    final colors = _categoryColorForId(decoded.colorId);
+    return _SquareIconBadge(
+      icon: _iconForCategoryPresetId(decoded.presetId),
+      iconColor: colors.iconColor,
+      backgroundColor: colors.fillColor,
+    );
+  }
+}
+
+({String presetId, String colorId})? _decodeCategoryVisualPayload(
+  String? notes,
+) {
+  final raw = notes?.trim() ?? '';
+  if (!raw.startsWith(_kCategoryIconNotesPrefix)) {
+    return null;
+  }
+
+  final payload = raw.substring(_kCategoryIconNotesPrefix.length);
+  final parts = payload.split('|');
+  if (parts.length != 2 || parts.any((part) => part.trim().isEmpty)) {
+    return null;
+  }
+  return (presetId: parts[0], colorId: parts[1]);
+}
+
+({Color fillColor, Color iconColor}) _categoryColorForId(String colorId) {
+  switch (colorId) {
+    case 'blue':
+      return (
+        fillColor: const Color(0xFFE1EDFF),
+        iconColor: const Color(0xFF2B7FFF),
+      );
+    case 'purple':
+      return (
+        fillColor: const Color(0xFFEEDDFB),
+        iconColor: const Color(0xFF8D57B0),
+      );
+    case 'teal':
+      return (
+        fillColor: const Color(0xFFD8F3F4),
+        iconColor: const Color(0xFF1D9AAF),
+      );
+    case 'gold':
+      return (
+        fillColor: const Color(0xFFFFE7B8),
+        iconColor: const Color(0xFFDB8A11),
+      );
+    case 'pink':
+      return (
+        fillColor: const Color(0xFFF9D6E8),
+        iconColor: const Color(0xFFE0539A),
+      );
+    default:
+      return (
+        fillColor: const Color(0xFFE8EEF9),
+        iconColor: const Color(0xFF5A78C5),
+      );
+  }
+}
+
+IconData _iconForCategoryPresetId(String id) {
+  switch (id) {
+    case 'plus':
+      return Icons.add;
+    case 'home':
+      return Icons.home_outlined;
+    case 'school':
+      return Icons.school_outlined;
+    case 'camping':
+      return Icons.cabin;
+    case 'shop':
+      return Icons.storefront_outlined;
+    case 'briefcase':
+      return Icons.work_outline;
+    case 'scale':
+      return Icons.balance;
+    case 'tools':
+      return Icons.build_outlined;
+    case 'pen':
+      return Icons.edit_outlined;
+    case 'notes':
+      return Icons.note_outlined;
+    case 'terminal':
+      return Icons.terminal;
+    case 'cards':
+      return Icons.style_rounded;
+    case 'key':
+      return Icons.key_outlined;
+    case 'crown':
+      return Icons.emoji_events_outlined;
+    case 'basket':
+      return Icons.shopping_bag_outlined;
+    case 'building':
+      return Icons.account_balance;
+    case 'settings':
+      return Icons.settings_outlined;
+    case 'chat':
+      return Icons.chat_bubble_outline;
+    case 'quote':
+      return Icons.format_quote_outlined;
+    case 'gift':
+      return Icons.card_giftcard_outlined;
+    case 'heart':
+      return Icons.favorite_border_rounded;
+    case 'star':
+      return Icons.star_border_rounded;
+    default:
+      return Icons.folder_outlined;
+  }
+}
+
+class _TagSummary {
+  const _TagSummary({required this.label, required this.count});
+
+  final String label;
+  final int count;
+}
+
+class _ItemTypeSummary {
+  const _ItemTypeSummary({
+    required this.id,
+    required this.label,
+    required this.count,
+    required this.icon,
+    required this.iconColor,
+    this.imagePath,
+  });
+
+  final String id;
+  final String label;
+  final int count;
+  final IconData icon;
+  final Color iconColor;
+  final String? imagePath;
 }

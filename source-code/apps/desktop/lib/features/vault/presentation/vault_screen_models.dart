@@ -93,8 +93,10 @@ class _EntryDetailFieldData {
     this.labelColor,
     bool isSecret = false,
     bool showStrength = false,
+    bool isCardNumber = false,
   })  : _isSecret = isSecret,
-        _showStrength = showStrength;
+        _showStrength = showStrength,
+        _isCardNumber = isCardNumber;
 
   final String label;
   final String value;
@@ -103,9 +105,11 @@ class _EntryDetailFieldData {
   final Color? labelColor;
   final bool? _isSecret;
   final bool? _showStrength;
+  final bool? _isCardNumber;
 
   bool get isSecret => _isSecret ?? false;
   bool get showStrength => _showStrength ?? false;
+  bool get isCardNumber => _isCardNumber ?? false;
 }
 
 class _MockEntry {
@@ -183,7 +187,7 @@ class _MockEntry {
       _detailFields ?? const <_EntryDetailFieldData>[];
 
   DateTime get lastTouchedAt =>
-      _latestTimestamp(updatedAt, createdAt) ??
+      _lastEditedTimestamp(updatedAt, createdAt) ??
       DateTime.fromMillisecondsSinceEpoch(0);
 
   _MockEntry copyWith({
@@ -505,6 +509,21 @@ String _maskedCreditCardLast4(String rawNumber) {
   return 'xxx$last4';
 }
 
+/// Masks the middle digits of a credit card number for view-only display,
+/// keeping the first 4 and last 3 digits visible. Non-digit characters
+/// (spaces, dashes) are stripped before masking. Numbers too short to have a
+/// hidden middle section (<= 7 digits) are returned unchanged.
+String _maskCreditCardNumberForDisplay(String rawNumber) {
+  final digits = rawNumber.replaceAll(RegExp(r'[^0-9]'), '');
+  if (digits.length <= 7) {
+    return rawNumber;
+  }
+  final first4 = digits.substring(0, 4);
+  final last3 = digits.substring(digits.length - 3);
+  final masked = '\u2022' * (digits.length - 7);
+  return '$first4$masked$last3';
+}
+
 String _sshSubtitlePreview(KdbxEntry entry) {
   String? findFieldValue(
     List<String> matches, {
@@ -618,14 +637,16 @@ String _compactWebsite(String rawUrl) {
 }
 
 // Per-entry cache for the (relatively expensive) KDBX→_MockEntry projection.
-// Invalidated automatically when the entry's `updatedAt` changes, so saves
-// that bump the timestamp (the normal path for edits) cause a recompute.
+// Invalidated automatically when visible entry data changes. Normal edits bump
+// `updatedAt`; hidden favicon-cache writes intentionally preserve `updatedAt`,
+// so the favicon payload is part of this lightweight cache key too.
 // Deleted entries leak at most one cache slot per uuid until
 // `_clearMockEntryCache()` is called on vault teardown.
 class _MockEntryCacheItem {
-  _MockEntryCacheItem(this.updatedAt, this.mock);
+  _MockEntryCacheItem(this.updatedAt, this.faviconPngBase64, this.mock);
 
   final DateTime? updatedAt;
+  final String? faviconPngBase64;
   final _MockEntry mock;
 }
 
@@ -638,11 +659,17 @@ void _clearMockEntryCache() {
 
 _MockEntry _mockEntryFromKdbx(KdbxEntry entry) {
   final cached = _mockEntryCache[entry.uuid];
-  if (cached != null && cached.updatedAt == entry.updatedAt) {
+  if (cached != null &&
+      cached.updatedAt == entry.updatedAt &&
+      cached.faviconPngBase64 == entry.faviconPngBase64) {
     return cached.mock;
   }
   final mock = _computeMockEntryFromKdbx(entry);
-  _mockEntryCache[entry.uuid] = _MockEntryCacheItem(entry.updatedAt, mock);
+  _mockEntryCache[entry.uuid] = _MockEntryCacheItem(
+    entry.updatedAt,
+    entry.faviconPngBase64,
+    mock,
+  );
   return mock;
 }
 
@@ -656,7 +683,7 @@ _MockEntry _computeMockEntryFromKdbx(KdbxEntry entry) {
 
   final subtitle = _entrySubtitleForList(entry, itemType);
 
-  final updatedAt = _latestTimestamp(entry.updatedAt, entry.createdAt);
+  final updatedAt = _lastEditedTimestamp(entry.updatedAt, entry.createdAt);
   final String dateLabel;
   if (updatedAt == null) {
     dateLabel = '';
@@ -801,14 +828,16 @@ _CardBrand? _detectCardBrand(String rawNumber) {
   return null;
 }
 
-DateTime? _latestTimestamp(DateTime? a, DateTime? b) {
-  if (a == null) {
-    return b;
-  }
-  if (b == null) {
-    return a;
-  }
-  return a.isAfter(b) ? a : b;
+/// Resolves the timestamp used for the "Last Edited" list column and sort
+/// order. This is the genuine last-modification time ([updatedAt]); creation
+/// time is only a fallback for entries that have never recorded a
+/// modification. It is deliberately NOT `max(updatedAt, createdAt)`: a
+/// creation timestamp that happens to be newer than the modification
+/// timestamp (e.g. after the "Created Date Fix" tool, a KDBX merge, or a
+/// restore that rewrites creation time) must not make an untouched entry
+/// masquerade as recently edited.
+DateTime? _lastEditedTimestamp(DateTime? updatedAt, DateTime? createdAt) {
+  return updatedAt ?? createdAt;
 }
 
 List<_EntryDetailFieldData> _buildDetailFields(
@@ -851,6 +880,7 @@ List<_EntryDetailFieldData> _buildDetailFields(
     String? sourceKey,
     bool isSecret = false,
     bool showStrength = false,
+    bool isCardNumber = false,
   }) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
@@ -878,6 +908,7 @@ List<_EntryDetailFieldData> _buildDetailFields(
         labelColor: visual.labelColor,
         isSecret: effectiveIsSecret,
         showStrength: showStrength,
+        isCardNumber: isCardNumber,
       ),
     );
   }
@@ -887,6 +918,7 @@ List<_EntryDetailFieldData> _buildDetailFields(
     required List<String> matches,
     bool isSecret = false,
     bool showStrength = false,
+    bool isCardNumber = false,
     String Function(String)? valueTransformer,
   }) {
     for (var index = 0; index < fields.length; index++) {
@@ -915,8 +947,9 @@ List<_EntryDetailFieldData> _buildDetailFields(
             ? valueTransformer(field.value)
             : field.value,
         sourceKey: field.key,
-        isSecret: isSecret || field.isProtected,
+        isSecret: isCardNumber ? false : (isSecret || field.isProtected),
         showStrength: showStrength,
+        isCardNumber: isCardNumber,
       );
       return;
     }
@@ -988,6 +1021,7 @@ List<_EntryDetailFieldData> _buildDetailFields(
           'cc number',
           'pan',
         ],
+        isCardNumber: true,
       );
       addMappedField(
         label: 'Expiry Date',
@@ -1809,7 +1843,6 @@ String creditCardStorageKeyForLabel(String label) {
   }
 }
 
-
 String bankStorageKeyForLabel(String label) {
   switch (label.trim().toLowerCase()) {
     case 'bank name':
@@ -1986,7 +2019,6 @@ String identityStorageKeyForLabel(String label) {
       return label.trim();
   }
 }
-
 
 EntryField? sshPrivateKeyFieldFromKdbx(KdbxEntry? kdbx) {
   if (kdbx == null) return null;

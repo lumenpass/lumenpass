@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../../../core/services/backup_service.dart';
-import '../../../core/services/subscription_gate_service.dart';
+
 import '../../../core/services/webdav_service.dart';
 import '../../../presentation/theme/app_theme.dart';
 
@@ -142,13 +142,6 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
         _connectionVerified = true;
         _testMessage = 'Connection successful. Choose a path with Browse.';
       });
-    } on CloudAccessDeniedException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _testOk = false;
-        _connectionVerified = false;
-        _testMessage = e.message;
-      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -191,13 +184,6 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
       if (!mounted) return;
       Navigator.of(context)
           .pop(BackupService.instance.currentWebDavAccount ?? 'Connected');
-    } on CloudAccessDeniedException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _testOk = false;
-        _testMessage = e.message;
-        _busy = false;
-      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -597,9 +583,8 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
           ),
           const SizedBox(width: 8),
           ElevatedButton(
-            onPressed: (_busy || !_connectionVerified || !_hasPath)
-                ? null
-                : _connect,
+            onPressed:
+                (_busy || !_connectionVerified || !_hasPath) ? null : _connect,
             style: ElevatedButton.styleFrom(
               backgroundColor: _kBlue,
               foregroundColor: Colors.white,
@@ -658,8 +643,8 @@ class _BrowseButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
           minimumSize: const Size(0, 44),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          textStyle: _uText(12, const Color(0xFF374151),
-              fontWeight: FontWeight.w600),
+          textStyle:
+              _uText(12, const Color(0xFF374151), fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -693,8 +678,7 @@ class _WebDavFolderPickerDialogState extends State<_WebDavFolderPickerDialog> {
   bool _showNewFolder = false;
   bool _creatingFolder = false;
 
-  String get _currentPath =>
-      _breadcrumb.isEmpty ? '/' : _breadcrumb.last.id;
+  String get _currentPath => _breadcrumb.isEmpty ? '/' : _breadcrumb.last.id;
 
   @override
   void initState() {
@@ -826,7 +810,9 @@ class _WebDavFolderPickerDialogState extends State<_WebDavFolderPickerDialog> {
           ],
           Expanded(
             child: Text(
-              _breadcrumb.isEmpty ? 'Select WebDAV Folder' : _breadcrumb.last.name,
+              _breadcrumb.isEmpty
+                  ? 'Select WebDAV Folder'
+                  : _breadcrumb.last.name,
               style: _uText(13, _kTitle, fontWeight: FontWeight.w700),
               overflow: TextOverflow.ellipsis,
             ),
@@ -943,8 +929,8 @@ class _WebDavFolderPickerDialogState extends State<_WebDavFolderPickerDialog> {
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: _kBlue, width: 1.4),
                 ),
-                prefixIcon:
-                    const Icon(TablerIcons.folder_plus, size: 16, color: _kIcon),
+                prefixIcon: const Icon(TablerIcons.folder_plus,
+                    size: 16, color: _kIcon),
                 prefixIconConstraints:
                     const BoxConstraints(minWidth: 40, minHeight: 38),
               ),
@@ -972,7 +958,8 @@ class _WebDavFolderPickerDialogState extends State<_WebDavFolderPickerDialog> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
+                textStyle:
+                    _uText(12, Colors.white, fontWeight: FontWeight.w600),
               ),
             ),
           ),

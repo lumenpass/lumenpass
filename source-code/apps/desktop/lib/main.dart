@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -12,9 +11,12 @@ import 'core/services/browser_extension_provider.dart';
 import 'core/services/browser_extension_service.dart';
 import 'core/services/backup_service.dart';
 import 'core/services/cloud_sync_service.dart';
+import 'core/services/pinned_http_client.dart';
+import 'core/services/removed_account_data_cleanup.dart';
 import 'core/services/ssh_agent_service.dart';
 import 'core/services/tray_service.dart';
-import 'features/account/application/account_providers.dart';
+import 'core/repository/kdbx_repository_provider.dart';
+
 import 'features/cloud/presentation/cloud_services_screen.dart';
 import 'features/unlock/presentation/unlock_screen.dart';
 import 'features/vault/presentation/vault_screen.dart';
@@ -22,19 +24,51 @@ import 'presentation/theme/app_theme.dart';
 
 final _container = ProviderContainer();
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  // On Linux the GTK embedder cannot launch a custom Dart entrypoint, so the
+  // isolated Quick Search engine runs this same `main()` with a sentinel
+  // argument instead (see QuickSearchPanel in linux/runner/). Detect it as
+  // early as possible and delegate to the dedicated entrypoint before any of
+  // the main-app services (tray, cloud sync, backup) boot.
+  if (args.contains('--quick-search-panel')) {
+    return quickSearchMain();
+  }
+  HttpOverrides.global = PinningHttpOverrides();
   if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
     sqfliteFfiInit();
   }
+  await cleanupRemovedDesktopAccountData(
+    _container.read(localStorageProvider),
+  );
   if (Platform.isMacOS || Platform.isWindows) {
     await TrayService.instance.init(_container);
   }
   await loadAppearancePreferences(_container);
   await loadVaultPreferences(_container);
   await loadGeneralPreferences(_container);
+  initCloudSyncService(_container);
+  await BackupService.instance.init(_container);
   runApp(UncontrolledProviderScope(
       container: _container, child: const LumenPassApp()));
+}
+
+/// Entry point for the **isolated Quick Search window** (Option A).
+///
+/// This runs in a *second* Flutter engine hosted by a borderless native
+/// panel (see `QuickSearchPanel` in `macos/Runner/MainFlutterWindow.swift`).
+/// It has its own Dart isolate and therefore no access to the main app's
+/// decrypted vault — the entry list is pushed in as JSON over the
+/// `lumenpass/quick_search` method channel and rebuilt locally. See
+/// [QuickSearchWindow] for the full contract.
+///
+/// Kept intentionally minimal: no tray, no cloud sync, no backup service —
+/// just the search UI.
+@pragma('vm:entry-point')
+Future<void> quickSearchMain() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = PinningHttpOverrides();
+  runApp(const QuickSearchWindow());
 }
 
 /// Root application shell with the shared Riverpod scope and theme.
@@ -55,9 +89,6 @@ class _LumenPassAppState extends ConsumerState<LumenPassApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Attach cloud sync storage before the extension bridge can persist saves,
-      // otherwise [CloudSyncService.isDirty] may read false and skip uploads.
-      initCloudSyncService(_container);
       final svc = ref.read(browserExtensionServiceProvider);
       _extensionService = svc;
       svc.start();
@@ -71,13 +102,6 @@ class _LumenPassAppState extends ConsumerState<LumenPassApp>
       if (Platform.isLinux) {
         SshAgentService.instance.init(_container);
       }
-      BackupService.instance.init(_container);
-      // Restore the cached auth session and refresh `/me` in the background.
-      // Failures are non-fatal — the controller falls back to the cached
-      // profile so the user stays signed-in while offline.
-      unawaited(
-        _container.read(accountControllerProvider.notifier).hydrate(),
-      );
     });
   }
 

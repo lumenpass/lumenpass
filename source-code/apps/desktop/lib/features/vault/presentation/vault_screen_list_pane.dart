@@ -915,157 +915,152 @@ class _ListRowState extends State<_ListRow> {
       fontWeight: FontWeight.w400,
     );
 
-    return Theme(
-      data: Theme.of(context).copyWith(
-        hoverColor: const Color(0xFFEAF1FC),
-        highlightColor: const Color(0x144D79C7),
-        splashColor: Colors.transparent,
-        splashFactory: NoSplash.splashFactory,
-      ),
-      child: Builder(
-        builder: (menuThemeContext) {
-          return MouseRegion(
-            onEnter: (_) => setState(() => _hovered = true),
-            onExit: (_) => setState(() => _hovered = false),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onSecondaryTapDown: (details) {
-                _showContextMenuAt(
-                  details.globalPosition,
-                  menuContext: menuThemeContext,
-                  hasWebsite: hasWebsite,
-                  hasTotp: hasTotp,
-                );
-              },
-              child: AnimatedScale(
-                scale: _hovered && !widget.selected ? 1.012 : 1,
-                duration: const Duration(milliseconds: 140),
-                curve: Curves.easeOutCubic,
-                child: InkWell(
-                  onTap: widget.onTap,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 140),
-                    curve: Curves.easeOut,
-                    height: _ListPaneState._rowHeight,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: widget.selected
-                          ? const Color(0xFFDCE8FF)
-                          : (_hovered ? const Color(0xFFE8EFF9) : Colors.white),
-                      border: const Border(
-                        bottom: BorderSide(color: _VaultColors.borderPane),
-                      ),
-                    ),
-                    child: Row(
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onSecondaryTapDown: (details) {
+          _showContextMenuAt(
+            details.globalPosition,
+            menuContext: context,
+            hasWebsite: hasWebsite,
+            hasTotp: hasTotp,
+          );
+        },
+        child: AnimatedScale(
+          scale: _hovered && !widget.selected ? 1.012 : 1,
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
+          child: InkWell(
+            onTap: widget.onTap,
+            // Ink colors are set directly on the widget instead of cloning
+            // the whole ThemeData per row (via Theme.of(context).copyWith),
+            // which was needless allocation on the scroll hot path.
+            hoverColor: const Color(0xFFEAF1FC),
+            highlightColor: const Color(0x144D79C7),
+            splashColor: Colors.transparent,
+            splashFactory: NoSplash.splashFactory,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              curve: Curves.easeOut,
+              height: _ListPaneState._rowHeight,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: widget.selected
+                    ? const Color(0xFFDCE8FF)
+                    : (_hovered ? const Color(0xFFE8EFF9) : Colors.white),
+                border: const Border(
+                  bottom: BorderSide(color: _VaultColors.borderPane),
+                ),
+              ),
+              child: Row(
+                children: <Widget>[
+                  if (widget.entry.socialProvider.isNotEmpty)
+                    _SocialIconTile(
+                        provider: widget.entry.socialProvider, size: 28)
+                  else
+                    _FaviconTile(entry: widget.entry, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        if (widget.entry.socialProvider.isNotEmpty)
-                          _SocialIconTile(
-                              provider: widget.entry.socialProvider, size: 28)
-                        else
-                          _FaviconTile(entry: widget.entry, size: 28),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  Flexible(
-                                    child: Text(
-                                      widget.entry.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: _text(
-                                        12,
-                                        const Color(0xFF2C3B56),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  if (widget.entry.hasPasskeyChip) ...<Widget>[
-                                    const SizedBox(width: 6),
-                                    Image.asset(
-                                      'assets/images/passkey_icon.png',
-                                      width: 18,
-                                      height: 18,
-                                    ),
-                                  ],
-                                  if (widget.entry.totpAuthUrl
-                                      .isNotEmpty) ...<Widget>[
-                                    const SizedBox(width: 6),
-                                    Image.asset(
-                                      'assets/images/totp_icon.png',
-                                      width: 18,
-                                      height: 18,
-                                    ),
-                                  ],
-                                ],
+                        Row(
+                          children: <Widget>[
+                            Flexible(
+                              child: Text(
+                                widget.entry.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: _text(
+                                  12,
+                                  const Color(0xFF2C3B56),
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                              const SizedBox(height: 2),
-                              _showsAccountInlineIcon
-                                  ? _buildInlineValueLine(
-                                      icon: TablerIcons.user,
-                                      text: widget.entry.subtitle,
-                                      style: subtitleStyle,
-                                    )
-                                  : Text(
-                                      widget.entry.subtitle,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: subtitleStyle,
-                                    ),
-                              if (website.isNotEmpty) ...<Widget>[
-                                const SizedBox(height: 1),
-                                _buildInlineValueLine(
-                                  icon: TablerIcons.link,
-                                  text: website,
-                                  style: websiteStyle,
-                                ),
-                              ],
+                            ),
+                            if (widget.entry.hasPasskeyChip) ...<Widget>[
+                              const SizedBox(width: 6),
+                              Image.asset(
+                                'assets/images/passkey_icon.png',
+                                width: 18,
+                                height: 18,
+                              ),
                             ],
-                          ),
+                            if (widget
+                                .entry.totpAuthUrl.isNotEmpty) ...<Widget>[
+                              const SizedBox(width: 6),
+                              Image.asset(
+                                'assets/images/totp_icon.png',
+                                width: 18,
+                                height: 18,
+                              ),
+                            ],
+                          ],
                         ),
-                        if (widget.auditEntry != null) ...<Widget>[
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: <Widget>[
-                              if (widget.auditEntry!.hasDuplicated)
-                                _AuditBadge(
-                                  label: 'Duplicated',
-                                  color: const Color(0xFFDC2626),
-                                ),
-                              if (widget.auditEntry!.hasWeak)
-                                _AuditBadge(
-                                  label: 'Weak',
-                                  color: const Color(0xFFF59E0B),
-                                ),
-                              if (widget.auditEntry!.hasStale)
-                                _AuditBadge(
-                                  label: 'Too old',
-                                  color: const Color(0xFF6B7280),
-                                ),
-                            ],
+                        const SizedBox(height: 2),
+                        _showsAccountInlineIcon
+                            ? _buildInlineValueLine(
+                                icon: TablerIcons.user,
+                                text: widget.entry.subtitle,
+                                style: subtitleStyle,
+                              )
+                            : Text(
+                                widget.entry.subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: subtitleStyle,
+                              ),
+                        if (website.isNotEmpty) ...<Widget>[
+                          const SizedBox(height: 1),
+                          _buildInlineValueLine(
+                            icon: TablerIcons.link,
+                            text: website,
+                            style: websiteStyle,
                           ),
-                          const SizedBox(width: 10),
                         ],
-                        Text(
-                          widget.entry.dateLabel,
-                          style: _text(
-                            11,
-                            const Color(0xFF74839A),
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
                       ],
                     ),
                   ),
-                ),
+                  if (widget.auditEntry != null) ...<Widget>[
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: <Widget>[
+                        if (widget.auditEntry!.hasDuplicated)
+                          _AuditBadge(
+                            label: 'Duplicated',
+                            color: const Color(0xFFDC2626),
+                          ),
+                        if (widget.auditEntry!.hasWeak)
+                          _AuditBadge(
+                            label: 'Weak',
+                            color: const Color(0xFFF59E0B),
+                          ),
+                        if (widget.auditEntry!.hasStale)
+                          _AuditBadge(
+                            label: 'Too old',
+                            color: const Color(0xFF6B7280),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Text(
+                    widget.entry.dateLabel,
+                    style: _text(
+                      11,
+                      const Color(0xFF74839A),
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
               ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -1540,8 +1535,7 @@ class _DuplicateGroupCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFEE2E2),
                   borderRadius: BorderRadius.circular(999),
@@ -1556,315 +1550,6 @@ class _DuplicateGroupCard extends StatelessWidget {
               const Icon(TablerIcons.chevron_right,
                   size: 16, color: Color(0xFF9CA3AF)),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Premium-gate variant of the password audit landing screen. Shown when
-/// a free or signed-out user navigates into Password Audits. Rendered as
-/// inline content (no popup / modal overlay) so it sits in the same
-/// visual rhythm as the real Security Checkup page.
-class _PasswordAuditPremiumGate extends StatelessWidget {
-  const _PasswordAuditPremiumGate({
-    required this.isLoggedIn,
-    required this.onUpgrade,
-    required this.onSignIn,
-  });
-
-  final bool isLoggedIn;
-  final VoidCallback onUpgrade;
-  final VoidCallback onSignIn;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        color: const Color(0xFFF9FAFB),
-        child: Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            // Decorative low-opacity preview of the real Security Checkup
-            // page tucked behind the bottom-right corner and rotated about
-            // 45° clockwise so it reads like a "mirror reflection" sitting
-            // behind the upsell content rather than a popup overlay.
-            Positioned(
-              right: -260,
-              bottom: -200,
-              child: IgnorePointer(
-                child: Opacity(
-                  opacity: 0.18,
-                  child: Transform.rotate(
-                    angle: 45 * math.pi / 180,
-                    alignment: Alignment.bottomRight,
-                    child: Image.asset(
-                      'assets/images/password_audit_preview.png',
-                      width: 900,
-                      fit: BoxFit.contain,
-                      alignment: Alignment.bottomRight,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    const Icon(TablerIcons.shield_check,
-                        size: 32, color: Color(0xFF374151)),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Security Checkup',
-                      style: _text(32, const Color(0xFF111827),
-                          fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEF3C7),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0xFFFFD58A)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          const Icon(TablerIcons.crown,
-                              size: 12, color: Color(0xFFB7791F)),
-                          const SizedBox(width: 4),
-                          Text(
-                            'PREMIUM',
-                            style: _text(10, const Color(0xFF92400E),
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.6),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 760),
-                  child: Text(
-                    isLoggedIn
-                        ? 'Password Audit is a Premium feature. Upgrade to scan your vault for duplicate, weak, and stale credentials.'
-                        : 'Password Audit is a Premium feature. Sign in with your Premium account, or upgrade to start scanning your vault for duplicate, weak, and stale credentials.',
-                    style: _text(14, const Color(0xFF4B5563), height: 1.5),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  child: Row(
-                    children: <Widget>[
-                      _PasswordAuditPremiumPrimaryButton(
-                        label: isLoggedIn ? 'Upgrade to Premium' : 'See plans',
-                        onTap: onUpgrade,
-                      ),
-                      if (!isLoggedIn) ...<Widget>[
-                        const SizedBox(width: 10),
-                        _PasswordAuditPremiumSecondaryButton(
-                          label: 'Sign in',
-                          onTap: onSignIn,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 36),
-                Text(
-                  'What you\'ll unlock',
-                  style: _text(16, const Color(0xFF111827),
-                      fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 16),
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 24,
-                  crossAxisSpacing: 24,
-                  childAspectRatio: 1.8,
-                  children: const <Widget>[
-                    _PasswordAuditPremiumCard(
-                      title: 'Duplicate items',
-                      description:
-                          'Items where the title, username/email and password all match. Review the matching groups so you can merge or remove the extras.',
-                      icon: TablerIcons.copy,
-                      iconColor: Color(0xFFFCA5A5),
-                    ),
-                    _PasswordAuditPremiumCard(
-                      title: 'Weak passwords',
-                      description:
-                          'Weak passwords are easier to guess. Generate strong passwords to keep your accounts safe.',
-                      icon: TablerIcons.lock_off,
-                      iconColor: Color(0xFFFED7AA),
-                    ),
-                    _PasswordAuditPremiumCard(
-                      title: 'Too old updated',
-                      description:
-                          'Passwords that haven\'t been changed in a long time might be at risk. Consider rotating them.',
-                      icon: TablerIcons.clock_off,
-                      iconColor: Color(0xFFD1D5DB),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Locked-state preview card matching the geometry of [_AuditReportCard]
-/// but with a lock indicator instead of a count, and no tap target.
-class _PasswordAuditPremiumCard extends StatelessWidget {
-  const _PasswordAuditPremiumCard({
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.iconColor,
-  });
-
-  final String title;
-  final String description;
-  final IconData icon;
-  final Color iconColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const Icon(TablerIcons.lock,
-                        size: 12, color: Color(0xFF6B7280)),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Locked',
-                      style: _text(10, const Color(0xFF6B7280),
-                          fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(icon, size: 32, color: iconColor),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(title,
-              style: _text(14, const Color(0xFF111827),
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          Expanded(
-            child: Text(
-              description,
-              style: _text(12, const Color(0xFF6B7280), height: 1.4),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PasswordAuditPremiumPrimaryButton extends StatelessWidget {
-  const _PasswordAuditPremiumPrimaryButton({
-    required this.label,
-    required this.onTap,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFB7791F),
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const Icon(TablerIcons.crown, size: 16, color: Colors.white),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: _text(13, Colors.white,
-                    fontWeight: FontWeight.w700, letterSpacing: 0.2),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PasswordAuditPremiumSecondaryButton extends StatelessWidget {
-  const _PasswordAuditPremiumSecondaryButton({
-    required this.label,
-    required this.onTap,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFD1D5DB)),
-          ),
-          child: Text(
-            label,
-            style: _text(13, const Color(0xFF111827),
-                fontWeight: FontWeight.w700),
           ),
         ),
       ),

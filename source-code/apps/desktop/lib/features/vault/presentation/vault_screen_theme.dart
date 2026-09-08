@@ -5,7 +5,7 @@ class _VaultColors {
   static const Color sidebar = Color(0xFFF2F5FA);
   static const Color title = Color(0xFF22314A);
   static const Color headerLabel = Color(0xFF73839D);
-  static const Color sidebarLabel = Color(0xFF7A899F);
+
   static const Color icon = Color(0xFF8A97AC);
   static const Color borderSoft = Color(0xFFE1E7F0);
   static const Color borderPane = Color(0xFFE8EDF5);

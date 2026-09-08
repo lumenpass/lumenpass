@@ -179,6 +179,18 @@ abstract final class AppTheme {
           color: colorScheme.onSurfaceVariant,
         ),
       ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A2E),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        textStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontFamily: fontFamily,
+        ),
+        waitDuration: const Duration(milliseconds: 400),
+      ),
     );
   }
 

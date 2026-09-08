@@ -361,7 +361,6 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
     }
 
     setState(() => _isSaving = true);
-    await _delayBeforeSavingOperation();
     try {
       final repository = ref.read(kdbxRepositoryProvider);
       await repository.updateEntry(
@@ -370,11 +369,7 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
         notes: _notesController.text.trim(),
         tags: List<String>.unmodifiable(_tags),
       );
-      final database = await saveAndSyncDatabase(
-          repository, ref.read(databaseRegistryProvider));
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultEntriesProvider);
-      ref.invalidate(vaultSidebarTagsProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onItemSaved(edit.uuid);
       widget.onShowToast('Identity saved');
       if (!mounted) return;
@@ -465,7 +460,6 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
     }
 
     setState(() => _isSaving = true);
-    await _delayBeforeSavingOperation();
     try {
       final repository = ref.read(kdbxRepositoryProvider);
       final createdEntry = await repository.createEntry(
@@ -474,12 +468,7 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
         notes: _notesController.text.trim(),
         tags: List<String>.unmodifiable(_tags),
       );
-      final database = await saveAndSyncDatabase(
-          repository, ref.read(databaseRegistryProvider));
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultEntriesProvider);
-      ref.invalidate(vaultSidebarTagsProvider);
-      ref.invalidate(vaultSidebarCategoriesProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onItemSaved(createdEntry.uuid);
       widget.onShowToast('Identity saved');
       if (!mounted) return;

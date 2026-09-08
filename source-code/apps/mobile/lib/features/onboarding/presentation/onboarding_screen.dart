@@ -125,9 +125,7 @@ class _BottomBar extends StatelessWidget {
               ),
             ),
           ] else ...[
-            _BottomHint(
-              isLast ? l.onboardingReadyHint : l.onboardingSwipeHint,
-            ),
+            _BottomHint(isLast ? l.onboardingReadyHint : l.onboardingSwipeHint),
             const SizedBox(height: 18),
             _PrimaryCta(label: buttonLabel, onPressed: buttonAction),
           ],
@@ -176,7 +174,7 @@ class _IntroOne extends StatelessWidget {
                         _StepPill('01 / 03'),
                         Spacer(),
                         _CardSnippet(
-                          title: 'Save once. Sign in anywhere.',
+                          title: 'Save once. Unlock anywhere.',
                           body:
                               'Your passwords, cards, and notes stay in one encrypted vault you unlock.',
                           icon: Icons.password_rounded,
@@ -284,7 +282,7 @@ class _IntroTwo extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'LumenPass fills logins instantly, so you move faster without lowering security.',
+                  'LumenPass fills saved credentials instantly, so you move faster without lowering security.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: _introCopy,
                     fontSize: 16,

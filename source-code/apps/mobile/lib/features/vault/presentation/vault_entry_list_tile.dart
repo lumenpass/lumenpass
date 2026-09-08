@@ -27,6 +27,8 @@ class VaultEntryListTile extends StatelessWidget {
     this.selected = false,
     this.showBottomBorder = true,
     this.showAttributeLines = false,
+    this.dateLabelOverride,
+    this.titleFontSize = 13,
   });
 
   final KdbxEntry entry;
@@ -35,6 +37,8 @@ class VaultEntryListTile extends StatelessWidget {
   final bool selected;
   final bool showBottomBorder;
   final bool showAttributeLines;
+  final String? dateLabelOverride;
+  final double titleFontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +49,7 @@ class VaultEntryListTile extends StatelessWidget {
       updatedAt: entry.updatedAt,
       createdAt: entry.createdAt,
     );
+    final effectiveDateLabel = dateLabelOverride ?? dateLabel;
     final passkey = entryHasPasskeyChip(entry);
     final hasTotp = entry.otpAuthUrl != null && entry.otpAuthUrl!.isNotEmpty;
     final website = entry.url?.trim() ?? '';
@@ -99,8 +104,8 @@ class VaultEntryListTile extends StatelessWidget {
                               entry.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 13,
+                              style: TextStyle(
+                                fontSize: titleFontSize,
                                 fontWeight: FontWeight.w700,
                                 color: kVaultListRowTitle,
                               ),
@@ -156,7 +161,7 @@ class VaultEntryListTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      dateLabel,
+                      effectiveDateLabel,
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,

@@ -7,6 +7,7 @@ import 'package:lumenpass_core/lumenpass_core.dart';
 
 import '../../../core/services/favicon_persistence_service.dart';
 import '../../../core/services/vault_preferences.dart';
+import 'vault_create_item_shared.dart';
 
 /// List avatar aligned with desktop `_FaviconTile` (favicon, card brand, type badges).
 ///
@@ -122,15 +123,36 @@ class _VaultEntryAvatarState extends ConsumerState<VaultEntryAvatar> {
 
   @override
   Widget build(BuildContext context) {
-    final itemType =
-        widget.itemType ?? classifyVaultItemType(widget.entry);
+    final itemType = widget.itemType ?? classifyVaultItemType(widget.entry);
     final colors = vaultListTileArgbForEntry(widget.entry);
     final bg = Color(colors.backgroundArgb);
     final fg = Color(colors.foregroundArgb);
+    final itemIconAssetPath = vaultItemIconAssetPath(
+      vaultEntryItemIconPresetId(widget.entry),
+    );
+
+    if (itemIconAssetPath != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: Image.asset(
+          itemIconAssetPath,
+          width: widget.size,
+          height: widget.size,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _InitialsTile(
+            size: widget.size,
+            background: bg,
+            foreground: fg,
+            initials: vaultEntryListInitials(widget.entry),
+          ),
+        ),
+      );
+    }
 
     if (itemType == VaultItemType.creditCard) {
-      final brand =
-          detectVaultCardBrand(extractCreditCardNumberFromEntry(widget.entry));
+      final brand = detectVaultCardBrand(
+        extractCreditCardNumberFromEntry(widget.entry),
+      );
       if (brand != null) {
         return _CardBrandBadge(brand: brand, size: widget.size);
       }
@@ -193,8 +215,7 @@ class _VaultEntryAvatarState extends ConsumerState<VaultEntryAvatar> {
       final autoFetchIcon = ref.watch(vaultAutoFetchItemIconProvider);
 
       final hasBeenAttempted = fetchResultForUrl != null;
-      final wasFetchSuccessful =
-          hasBeenAttempted && fetchResultForUrl == true;
+      final wasFetchSuccessful = hasBeenAttempted && fetchResultForUrl == true;
 
       // Mirror of desktop behavior:
       //   • previously fetched successfully this session → keep showing

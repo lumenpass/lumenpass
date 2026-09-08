@@ -53,13 +53,17 @@ class MacOSGoogleAuth implements GoogleAuth {
   ///   http://127.0.0.1:17824/callback
   ///   http://localhost:17824/callback
   static const int _redirectPort = 17824;
-  static const String _redirectUri =
-      'http://127.0.0.1:$_redirectPort/callback';
+  static const String _redirectUri = 'http://127.0.0.1:$_redirectPort/callback';
 
   static const _persistedFileName = 'macos_google_auth.json';
 
   _MacOSGoogleCredentials? _currentUser;
-  bool _hydrated = false;
+
+  /// Shared future that serializes first-time disk hydration. Concurrent
+  /// [signInSilently] callers (e.g. parallel vault health probes) must all
+  /// await this same future so none of them observe `_currentUser == null`
+  /// mid-hydrate and incorrectly report "not signed in".
+  Future<void>? _hydrateFuture;
 
   @override
   GoogleCredentials? get currentUser => _currentUser;
@@ -251,17 +255,23 @@ class MacOSGoogleAuth implements GoogleAuth {
 
   @override
   Future<GoogleCredentials?> signInSilently() async {
-    if (!_hydrated) {
-      await _hydrateFromDisk();
-    }
+    await _ensureHydrated();
     final current = _currentUser;
     if (current == null) return null;
     if (DateTime.now()
         .isBefore(current._expiry.subtract(const Duration(minutes: 1)))) {
       return current;
     }
-    final refreshed = await _refreshAccessToken(current);
-    return refreshed;
+    // Transient network failures during refresh must NOT be treated as
+    // "not signed in" — rethrow so the health probe can classify them as a
+    // network error rather than a credential wipe.
+    return _refreshAccessToken(current);
+  }
+
+  /// Ensures persisted credentials have been loaded from disk exactly once.
+  /// Concurrent callers share the same in-flight future.
+  Future<void> _ensureHydrated() {
+    return _hydrateFuture ??= _hydrateFromDisk();
   }
 
   @override
@@ -299,35 +309,41 @@ class MacOSGoogleAuth implements GoogleAuth {
     if (clientSecret != null && clientSecret!.isNotEmpty) {
       body['client_secret'] = clientSecret!;
     }
-    try {
-      final res = await http.post(
-        Uri.parse(_tokenEndpoint),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: body,
+    final res = await http.post(
+      Uri.parse(_tokenEndpoint),
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body,
+    );
+    if (res.statusCode != 200) {
+      debugPrint(
+          '[MacOSGoogleAuth] refresh failed (${res.statusCode}): ${res.body}');
+      // Auth rejection (expired/revoked refresh token) — clear local state.
+      // Network-layer failures never reach here; they throw and leave state intact.
+      if (res.statusCode == 400 ||
+          res.statusCode == 401 ||
+          res.statusCode == 403) {
+        _currentUser = null;
+        await _clearPersistedFile();
+        return null;
+      }
+      // Non-auth HTTP failure (5xx, 429, etc.) — leave credentials intact and
+      // surface as a recoverable network/service error.
+      throw SocketException(
+        'Google token refresh failed with HTTP ${res.statusCode}',
       );
-      if (res.statusCode != 200) {
-        debugPrint(
-            '[MacOSGoogleAuth] refresh failed (${res.statusCode}): ${res.body}');
-        _currentUser = null;
-        await _clearPersistedFile();
-        return null;
-      }
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      final accessToken = data['access_token'] as String?;
-      final expiresIn = (data['expires_in'] as num?)?.toInt() ?? 3600;
-      if (accessToken == null) {
-        _currentUser = null;
-        await _clearPersistedFile();
-        return null;
-      }
-      creds._accessToken = accessToken;
-      creds._expiry = DateTime.now().add(Duration(seconds: expiresIn));
-      await _persist();
-      return creds;
-    } catch (e) {
-      debugPrint('[MacOSGoogleAuth] refresh error: $e');
+    }
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final accessToken = data['access_token'] as String?;
+    final expiresIn = (data['expires_in'] as num?)?.toInt() ?? 3600;
+    if (accessToken == null) {
+      _currentUser = null;
+      await _clearPersistedFile();
       return null;
     }
+    creds._accessToken = accessToken;
+    creds._expiry = DateTime.now().add(Duration(seconds: expiresIn));
+    await _persist();
+    return creds;
   }
 
   Future<String> _fetchEmail(String accessToken) async {
@@ -372,7 +388,6 @@ class MacOSGoogleAuth implements GoogleAuth {
   }
 
   Future<void> _hydrateFromDisk() async {
-    _hydrated = true;
     try {
       final file = await _persistedFile();
       if (!await file.exists()) return;

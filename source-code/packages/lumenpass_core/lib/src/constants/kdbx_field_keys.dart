@@ -21,6 +21,10 @@ abstract final class AppKdbxFieldKeys {
   /// future render. Kept tiny so it doesn't bloat the DB.
   static const String faviconFailedSentinel = 'FAIL';
 
+  /// Hidden custom field that stores the selected mobile item icon preset id.
+  /// The value matches the category-image picker format, e.g. `img:42`.
+  static const String itemIconPresetId = '__lp_item_icon_preset';
+
   /// Browser extension / desktop passkey custom fields (KeePassXC-style).
   static const String passkeyCredentialId = 'KPEX_PASSKEY_CREDENTIAL_ID';
   static const String passkeyPrivateKeyPem = 'KPEX_PASSKEY_PRIVATE_KEY_PEM';

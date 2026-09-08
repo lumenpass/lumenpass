@@ -6,9 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:lumenpass_core/lumenpass_core.dart';
 
-import '../../features/unlock/application/database_registry.dart';
-import '../repository/database_save_sync.dart';
+import '../../features/vault/application/vault_items_list_providers.dart';
 import '../repository/providers.dart';
+import '../repository/vault_write_scheduler_provider.dart';
 
 /// Fetches website favicons on demand, stores the PNG bytes in a hidden
 /// custom field on the owning entry, and coalesces the resulting
@@ -130,8 +130,13 @@ class FaviconPersistenceService {
     final repo = ref.read(kdbxRepositoryProvider);
     if (!repo.hasOpenDatabase) return;
     try {
-      final registry = ref.read(databaseRegistryProvider);
-      await saveAndSyncDatabase(repo, registry);
+      // Favicon caching is a low-priority, app-driven write: publish the
+      // snapshot so cached icons render everywhere, then let the write
+      // scheduler coalesce the actual encrypt-and-write in the background.
+      final database = repo.currentDatabase;
+      if (database == null) return;
+      publishVaultSnapshotFromRef(ref, database);
+      ref.read(vaultWriteSchedulerProvider).markDirtyDebounced();
     } catch (error) {
       debugPrint('[FaviconPersist] save failed: $error');
       _dirty = true;

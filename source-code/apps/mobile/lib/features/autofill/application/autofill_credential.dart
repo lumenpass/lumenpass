@@ -1,9 +1,15 @@
+import 'dart:convert';
+import 'dart:ui';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
+import 'package:flutter/services.dart';
 import 'package:lumenpass_core/lumenpass_core.dart';
 
 /// Projection of a vault entry that the OS-level AutoFill providers
 /// (iOS Credential Provider extension, Android AutofillService) need to
-/// answer fill requests. Only login-style entries are eligible.
+/// answer fill requests. Every vault entry is projected so the AutoFill
+/// picker can search the full vault, not just login items.
 class AutoFillCredential {
   const AutoFillCredential({
     required this.id,
@@ -12,6 +18,7 @@ class AutoFillCredential {
     required this.password,
     required this.url,
     this.otpAuthUrl,
+    this.iconPngBase64,
     this.faviconUrl,
     required this.avatarInitials,
     required this.avatarBackgroundArgb,
@@ -29,6 +36,12 @@ class AutoFillCredential {
   final String password;
   final String url;
   final String? otpAuthUrl;
+
+  /// Exact bitmap the mobile app uses for this row, when one exists.
+  ///
+  /// This lets the native AutoFill picker mirror the vault list instead of
+  /// trying to reconstruct the icon from a weaker fallback model.
+  final String? iconPngBase64;
 
   /// Google favicon helper URL (same logic as [VaultEntryAvatar] / desktop).
   final String? faviconUrl;
@@ -52,6 +65,8 @@ class AutoFillCredential {
     'password': password,
     'url': url,
     if (otpAuthUrl != null && otpAuthUrl!.isNotEmpty) 'otpAuthUrl': otpAuthUrl,
+    if (iconPngBase64 != null && iconPngBase64!.isNotEmpty)
+      'iconPngBase64': iconPngBase64,
     if (faviconUrl != null && faviconUrl!.isNotEmpty) 'faviconUrl': faviconUrl,
     'avatarInitials': avatarInitials,
     'avatarBackgroundArgb': avatarBackgroundArgb,
@@ -68,15 +83,18 @@ class AutoFillCredential {
       'passkeyUserHandleB64url': passkeyUserHandleB64url,
   };
 
+  static final Map<String, Future<String?>> _iconAssetCache =
+      <String, Future<String?>>{};
+
   /// Attempts to project a [KdbxEntry] into an AutoFill credential.
   ///
-  /// Returns `null` when the entry is not a login item or does not carry
-  /// enough information to be filled (no username AND no password, or no
-  /// URL/title we can advertise to the OS).
-  static AutoFillCredential? fromEntry(KdbxEntry entry) {
-    final type = classifyVaultItemType(entry);
-    if (type != VaultItemType.login) return null;
-
+  /// Every vault item is projected so the AutoFill picker can search the
+  /// full vault. Returns `null` only when the entry carries nothing we can
+  /// advertise to the OS (no title AND no URL).
+  static Future<AutoFillCredential?> fromEntry(
+    KdbxEntry entry, {
+    bool includeRenderedIconPayload = false,
+  }) async {
     final password =
         entry.fieldByKey(AppKdbxFieldKeys.password)?.value.trim() ?? '';
     final username = (entry.username ?? '').trim();
@@ -150,12 +168,19 @@ class AutoFillCredential {
       }
     }
 
-    if (password.isEmpty && username.isEmpty && !canAssertPasskey) {
+    if (password.isEmpty &&
+        username.isEmpty &&
+        url.isEmpty &&
+        title.isEmpty &&
+        !canAssertPasskey) {
       return null;
     }
     if (title.isEmpty && url.isEmpty) return null;
 
     final colors = vaultListTileArgbForEntry(entry);
+    final iconPngBase64 = includeRenderedIconPayload
+        ? await _resolveRenderedIconPngBase64(entry)
+        : null;
 
     return AutoFillCredential(
       id: entry.uuid,
@@ -164,7 +189,13 @@ class AutoFillCredential {
       password: password,
       url: url,
       otpAuthUrl: entry.otpAuthUrl,
-      faviconUrl: url.isNotEmpty ? faviconUrlForWebsite(url) : null,
+      iconPngBase64: iconPngBase64,
+      // When we ship a rendered bitmap, the native picker must not fetch
+      // Google's favicon helper — that returns a generic globe for localhost
+      // and sandbox hosts while the vault list shows initials instead.
+      faviconUrl: includeRenderedIconPayload || url.isEmpty
+          ? null
+          : faviconUrlForWebsite(url),
       avatarInitials: vaultEntryListInitials(entry),
       avatarBackgroundArgb: colors.backgroundArgb,
       avatarForegroundArgb: colors.foregroundArgb,
@@ -176,5 +207,132 @@ class AutoFillCredential {
       passkeyRpId: passkeyRp.isNotEmpty ? passkeyRp : null,
       passkeyUserHandleB64url: passkeyUh.isNotEmpty ? passkeyUh : null,
     );
+  }
+
+  static Future<String?> _resolveRenderedIconPngBase64(KdbxEntry entry) async {
+    final itemIconAssetPath = _vaultItemIconAssetPath(
+      _vaultEntryItemIconPresetId(entry),
+    );
+    if (itemIconAssetPath != null) {
+      return _iconAssetCache.putIfAbsent(
+        itemIconAssetPath,
+        () => _loadAssetIconBase64(itemIconAssetPath),
+      );
+    }
+
+    final cachedFaviconPayload = entry.faviconPngBase64;
+    if (cachedFaviconPayload != null &&
+        cachedFaviconPayload.isNotEmpty &&
+        cachedFaviconPayload != AppKdbxFieldKeys.faviconFailedSentinel) {
+      return cachedFaviconPayload;
+    }
+
+    final colors = vaultListTileArgbForEntry(entry);
+    return _initialsIconCache.putIfAbsent(
+      '${vaultEntryListInitials(entry)}|'
+      '${colors.backgroundArgb}|'
+      '${colors.foregroundArgb}',
+      () => _renderInitialsPngBase64(
+        initials: vaultEntryListInitials(entry),
+        backgroundArgb: colors.backgroundArgb,
+        foregroundArgb: colors.foregroundArgb,
+      ),
+    );
+  }
+
+  static final Map<String, Future<String?>> _initialsIconCache =
+      <String, Future<String?>>{};
+
+  static Future<String?> _renderInitialsPngBase64({
+    required String initials,
+    required int backgroundArgb,
+    required int foregroundArgb,
+    int size = 64,
+  }) async {
+    try {
+      final recorder = PictureRecorder();
+      final canvas = Canvas(recorder);
+      final bgColor = Color(backgroundArgb);
+      final fgColor = Color(foregroundArgb);
+      final radius = size * 0.19;
+      final text = initials.length > 2 ? initials.substring(0, 2) : initials;
+
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, 0, size.toDouble(), size.toDouble()),
+          Radius.circular(radius),
+        ),
+        Paint()..color = bgColor,
+      );
+
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            color: fgColor,
+            fontSize: size * 0.36,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: size.toDouble());
+      textPainter.paint(
+        canvas,
+        Offset(
+          (size - textPainter.width) / 2,
+          (size - textPainter.height) / 2,
+        ),
+      );
+
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(size, size);
+      try {
+        final pngData = await image.toByteData(format: ImageByteFormat.png);
+        if (pngData == null) return null;
+        return base64Encode(pngData.buffer.asUint8List());
+      } finally {
+        image.dispose();
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<String?> _loadAssetIconBase64(String assetPath) async {
+    try {
+      final data = await rootBundle.load(assetPath);
+      final codec = await instantiateImageCodec(
+        data.buffer.asUint8List(),
+        targetWidth: 64,
+        targetHeight: 64,
+      );
+      final frame = await codec.getNextFrame();
+      try {
+        final pngData = await frame.image.toByteData(
+          format: ImageByteFormat.png,
+        );
+        if (pngData == null) return null;
+        return base64Encode(pngData.buffer.asUint8List());
+      } finally {
+        frame.image.dispose();
+        codec.dispose();
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String? _vaultEntryItemIconPresetId(KdbxEntry entry) {
+    final raw = entry.fieldByKey(AppKdbxFieldKeys.itemIconPresetId)?.value;
+    final normalized = raw?.trim() ?? '';
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  static String? _vaultItemIconAssetPath(String? presetId) {
+    final raw = presetId?.trim() ?? '';
+    if (!raw.startsWith('img:')) return null;
+    final imageId = raw.substring(4).trim();
+    if (imageId.isEmpty) return null;
+    return 'assets/images/categories/$imageId.png';
   }
 }

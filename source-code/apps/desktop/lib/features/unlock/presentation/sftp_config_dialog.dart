@@ -6,7 +6,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/services/backup_service.dart';
 import '../../../core/services/bookmark_service.dart';
 import '../../../core/services/sftp_service.dart';
-import '../../../core/services/subscription_gate_service.dart';
+
 import '../../../presentation/theme/app_theme.dart';
 
 const Color _kCanvas = Color(0xFFF6F8FB);
@@ -172,13 +172,6 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
         _connectionVerified = true;
         _testMessage = 'Connection successful. Choose a path with Browse.';
       });
-    } on CloudAccessDeniedException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _testOk = false;
-        _connectionVerified = false;
-        _testMessage = e.message;
-      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -219,13 +212,6 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
       if (!mounted) return;
       Navigator.of(context)
           .pop(BackupService.instance.currentSftpAccount ?? 'Connected');
-    } on CloudAccessDeniedException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _testOk = false;
-        _testMessage = e.message;
-        _busy = false;
-      });
     } catch (e) {
       if (!mounted) return;
       setState(() {

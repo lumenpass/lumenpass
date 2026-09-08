@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/database_record.dart';
 import '../../../core/services/backup_service.dart';
-import '../../../core/services/s3_service.dart';
+
 import '../../../presentation/theme/app_theme.dart';
 import '../../unlock/application/database_registry.dart';
 import 'cloud_service_provider.dart';
@@ -86,6 +86,65 @@ Future<bool> confirmCloudDisconnect(BuildContext context) async {
 /// local bookmarks/references are removed. Vaults from other providers and
 /// local vaults are left untouched.
 ///
+/// Shows the standardized confirmation dialog for removing every local vault
+/// reference tied to [providerLabel], without disconnecting the provider
+/// session or deleting any remote files.
+Future<bool> confirmUnlinkCloudDatabases(
+  BuildContext context, {
+  required String providerLabel,
+}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    barrierDismissible: true,
+    builder: (ctx) => Theme(
+      data: AppTheme.light(),
+      child: AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(
+          'Unlink all $providerLabel vaults?',
+          style: _t(16, _kTitle, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Every vault linked through $providerLabel will be removed from this '
+          'app (local references only). The actual vault files remain on '
+          '$providerLabel and will not be deleted.',
+          style: _t(13, _kLabel, height: 1.45),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel', style: _t(13, _kLabel)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: _kWarnText,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Unlink Databases'),
+          ),
+        ],
+      ),
+    ),
+  );
+  return confirmed ?? false;
+}
+
+/// Removes every local vault reference scoped to [storageType].
+///
+/// Unlike [performCloudDisconnect], this does not sign out or clear the saved
+/// provider credentials — it only drops the in-app registry entries /
+/// bookmarks for that provider.
+Future<List<DatabaseRecord>> unlinkCloudDatabasesByStorageType(
+  WidgetRef ref,
+  String storageType,
+) {
+  return ref
+      .read(databaseRegistryProvider.notifier)
+      .removeByStorageType(storageType);
+}
+
 /// Returns the vault records that were removed so the caller can reconcile any
 /// local selection state.
 Future<List<DatabaseRecord>> performCloudDisconnect(
@@ -106,12 +165,12 @@ Future<List<DatabaseRecord>> performCloudDisconnect(
     case CloudServiceProvider.webdav:
       await BackupService.instance.disconnectWebDav();
       break;
-      case CloudServiceProvider.sftp:
-        await BackupService.instance.disconnectSftp();
-        break;
-      case CloudServiceProvider.s3:
-        await BackupService.instance.disconnectS3();
-        break;
+    case CloudServiceProvider.sftp:
+      await BackupService.instance.disconnectSftp();
+      break;
+    case CloudServiceProvider.s3:
+      await BackupService.instance.disconnectS3();
+      break;
   }
 
   // Stage 3: remove local vault references scoped to this provider only.

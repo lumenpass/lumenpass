@@ -5,6 +5,7 @@
 
 import browser from "webextension-polyfill";
 import type { CategoryItem, EntryItem, EntryDetail, PasskeyMatchItem, DisabledAutofillDomain } from "../lib/api";
+import { touchItem } from "../lib/api";
 import {
   seedColour,
   initials,
@@ -43,8 +44,11 @@ const POPUP_GAP = 4;
 const POPUP_VIEWPORT_MARGIN = 12;
 const POPUP_LIST_MAX_HEIGHT = 320;
 const ALL_ITEMS_SEARCH_DEBOUNCE_MS = 500;
+const AUTOFILL_RECONCILE_DELAY_MS = 120;
 const PROACTIVE_LOGIN_RETRY_DEBOUNCE_MS = 450;
 const PROACTIVE_LOGIN_RETRY_MIN_INTERVAL_MS = 2500;
+const AUTOFILL_UI_POINTER_GRACE_MS = 500;
+const AUTOFILL_SURFACE_BLUR_DELAY_MS = 200;
 const EMAIL_LIKE_IDENTIFIER_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /**
  * Last password value injected by LumenPass autofill for each field.
@@ -119,6 +123,22 @@ let autoSubmitEnabled = false;
 let disabledAutofillDomains: DisabledAutofillDomain[] = [];
 const dismissedFields = new Set<FillableField>();
 const autofilledFields = new Set<FillableField>();
+/**
+ * Entry id most recently autofilled by us on this page session. Used to update
+ * the item's "last used" timestamp only once the login form is actually
+ * submitted (see reportSubmitAutofillUsed / captureLoginForSave), rather than
+ * at fill time.
+ */
+let lastAutofilledEntryId: string | null = null;
+/** Dedupe guard so a single submission (form submit + button click) reports once. */
+let lastSubmitReportEntryId: string | null = null;
+let lastSubmitReportAt = 0;
+const SUBMIT_REPORT_DEDUPE_MS = 1500;
+let autofillReconcileTimer: number | null = null;
+let autofillReconcileFrame: number | null = null;
+let floatingPositionFrame: number | null = null;
+let lastAutofillUiPointerDownAt = 0;
+let lastAutofillUiPointerDownField: FillableField | null = null;
 
 const DISABLE_AUTOFILL_OPTIONS: Array<{ label: string; durationMs: number | null }> = [
   { label: "1 hour", durationMs: 60 * 60 * 1000 },
@@ -212,6 +232,20 @@ function lpEscapeHtml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function highlightMatch(text: string | null | undefined, query: string): string {
+  const safeText = text ?? "";
+  const safeQuery = query ?? "";
+  if (!safeQuery) return lpEscapeHtml(safeText);
+  const escaped = safeQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(escaped, "i");
+  const match = re.exec(safeText);
+  if (!match) return lpEscapeHtml(safeText);
+  const before = safeText.slice(0, match.index);
+  const matched = safeText.slice(match.index, match.index + match[0].length);
+  const after = safeText.slice(match.index + match[0].length);
+  return `${lpEscapeHtml(before)}<strong style="background:rgba(250, 204, 21, 0.35);font-weight:700;padding:0 2px;border-radius:2px;">${lpEscapeHtml(matched)}</strong>${lpEscapeHtml(after)}`;
 }
 
 function showItemAvatarFallback(img: HTMLImageElement): void {
@@ -348,6 +382,14 @@ function applyDisabledAutofillDomains(domains: DisabledAutofillDomain[]): void {
     fieldIcons.forEach((_, field) => hideIconForField(field));
   }
   reconcileAutofillFieldIcons();
+}
+
+async function reportEntryAutofillUsed(entryId: string): Promise<void> {
+  try {
+    await touchItem(entryId);
+  } catch (error) {
+    console.warn("[LumenPass] Failed to update last used timestamp", error);
+  }
 }
 
 function isVisible(el: HTMLElement): boolean {
@@ -1431,6 +1473,7 @@ function createIconForField(field: FillableField): HTMLDivElement {
   div.addEventListener("mousedown", (e) => {
     e.stopPropagation();
     e.preventDefault();
+    rememberAutofillUiPointerDown(field);
     const popupVisible = popupEl?.style.display === "block" && activeAutofillField === field;
     if (popupVisible) {
       hidePopup();
@@ -1445,7 +1488,6 @@ function createIconForField(field: FillableField): HTMLDivElement {
       if (desktopConnected && desktopVaultOpen) {
         void openCreditCardSavePrompt(field);
       } else {
-        activeAutofillField = field;
         activeFieldKind = detectFieldKind(field);
         showPopup(field);
       }
@@ -1459,10 +1501,16 @@ function createIconForField(field: FillableField): HTMLDivElement {
 }
 
 function positionIconEl(field: FillableField, icon: HTMLDivElement): void {
+  if (!field.isConnected) {
+    removeIconForField(field);
+    return;
+  }
+
   const rect = field.getBoundingClientRect();
 
   if (rect.width === 0 && rect.height === 0) {
-    requestAnimationFrame(() => positionIconEl(field, icon));
+    icon.style.opacity = "0";
+    icon.style.pointerEvents = "none";
     return;
   }
 
@@ -1477,7 +1525,21 @@ function positionIconEl(field: FillableField, icon: HTMLDivElement): void {
 
 function updateAllIconPositions(): void {
   reconcileAutofillFieldIcons();
+  positionFloatingSurfaces();
+}
+
+function positionFloatingSurfaces(): void {
   fieldIcons.forEach((icon, field) => positionIconEl(field, icon));
+  if (popupEl?.style.display === "block" && activeAutofillField) positionPopup(activeAutofillField);
+  if (suggestEl) positionSuggestPopup();
+}
+
+function scheduleFloatingSurfacePositionUpdate(): void {
+  if (floatingPositionFrame !== null) return;
+  floatingPositionFrame = requestAnimationFrame(() => {
+    floatingPositionFrame = null;
+    positionFloatingSurfaces();
+  });
 }
 
 function removeIconForField(field: FillableField): void {
@@ -1581,6 +1643,97 @@ function reconcileAutofillFieldIcons(): void {
 
 // ─── Inline popup ─────────────────────────────────────────────────────────────
 
+function rememberAutofillUiPointerDown(field: FillableField | null = activeAutofillField): void {
+  lastAutofillUiPointerDownAt = Date.now();
+  lastAutofillUiPointerDownField = field;
+}
+
+function hadRecentAutofillUiPointerDownForField(field: FillableField): boolean {
+  return lastAutofillUiPointerDownField === field
+    && Date.now() - lastAutofillUiPointerDownAt <= AUTOFILL_UI_POINTER_GRACE_MS;
+}
+
+function elementContainsNode(element: HTMLElement | null | undefined, node: Node | null | undefined): boolean {
+  return !!element && !!node && (element === node || element.contains(node));
+}
+
+function eventPathIncludesNode(path: readonly EventTarget[], node: Node | null | undefined): boolean {
+  if (!node) return false;
+  return path.some((target) => target === node || (target instanceof Node && node.contains(target)));
+}
+
+function isNodeInsideInlineAutofillUi(node: Node | null | undefined, field?: FillableField): boolean {
+  if (elementContainsNode(popupEl, node)) return true;
+
+  if (field) {
+    return elementContainsNode(fieldIcons.get(field), node);
+  }
+
+  for (const icon of fieldIcons.values()) {
+    if (elementContainsNode(icon, node)) return true;
+  }
+  return false;
+}
+
+function isNodeInsideSuggestPopup(node: Node | null | undefined): boolean {
+  return elementContainsNode(suggestEl, node);
+}
+
+function isFocusInsideInlineAutofillUiForField(field: FillableField, relatedTarget: EventTarget | null = null): boolean {
+  if (relatedTarget instanceof Node && isNodeInsideInlineAutofillUi(relatedTarget, field)) return true;
+
+  const active = document.activeElement;
+  if (active instanceof Node && isNodeInsideInlineAutofillUi(active, field)) return true;
+
+  const shadowActive = lpShadowRoot?.activeElement;
+  if (shadowActive instanceof Node && isNodeInsideInlineAutofillUi(shadowActive, field)) return true;
+
+  return hadRecentAutofillUiPointerDownForField(field);
+}
+
+function eventPathIncludesInlineAutofillUi(path: readonly EventTarget[], field?: FillableField): boolean {
+  if (eventPathIncludesNode(path, popupEl)) return true;
+
+  if (field) {
+    return eventPathIncludesNode(path, fieldIcons.get(field));
+  }
+
+  for (const icon of fieldIcons.values()) {
+    if (eventPathIncludesNode(path, icon)) return true;
+  }
+  return false;
+}
+
+function isPopupVisibleForField(field: FillableField): boolean {
+  return !!popupEl && popupEl.style.display === "block" && activeAutofillField === field;
+}
+
+function cancelPendingEntrySearches(): void {
+  entriesSearchToken++;
+  if (fetchController) {
+    fetchController.abort();
+    fetchController = null;
+  }
+}
+
+function closeActiveAutofillPopup(dismissed = false): void {
+  const closingField = activeAutofillField;
+  hidePopup(dismissed);
+  dismissSocialFloatingSuggestion();
+  cancelPendingEntrySearches();
+  entries = [];
+  socialEntries = [];
+  selectedIndex = 0;
+  if (closingField && activeAutofillField === closingField) {
+    activeAutofillField = null;
+  }
+}
+
+function closeActiveAutofillPopupForField(field: FillableField, dismissed = false): void {
+  if (activeAutofillField !== field) return;
+  closeActiveAutofillPopup(dismissed);
+}
+
 function createPopup(): HTMLDivElement {
   ensureOverlayStyles();
   const div = document.createElement("div");
@@ -1599,15 +1752,33 @@ function createPopup(): HTMLDivElement {
     color: ${isDark ? "#f3f4f6" : "#111827"};
     overflow: hidden;
   `;
+  div.addEventListener("mousedown", () => {
+    rememberAutofillUiPointerDown();
+  }, true);
+  div.addEventListener("focusout", (event) => {
+    const field = activeAutofillField;
+    if (!field) return;
+    window.setTimeout(() => {
+      if (activeAutofillField !== field || focusedFields.has(field)) return;
+      if (isFocusInsideInlineAutofillUiForField(field, (event as FocusEvent).relatedTarget)) return;
+      closeActiveAutofillPopupForField(field);
+    }, AUTOFILL_SURFACE_BLUR_DELAY_MS);
+  });
   return div;
 }
 
 function positionPopup(field: FillableField): void {
   if (!popupEl) return;
+  if (activeAutofillField !== field) return;
+  if (!field.isConnected) {
+    closeActiveAutofillPopupForField(field);
+    return;
+  }
+
   const rect = field.getBoundingClientRect();
 
   if (rect.width === 0 && rect.height === 0) {
-    requestAnimationFrame(() => positionPopup(field));
+    closeActiveAutofillPopupForField(field);
     return;
   }
 
@@ -1691,17 +1862,19 @@ function dedupeIdentifierEntries(items: EntryItem[], query = ""): EntryItem[] {
   });
 }
 
-function fillIdentifierHint(entry: EntryItem): void {
-  if (!(activeAutofillField instanceof HTMLInputElement)) return;
-  if (!entry.username.trim()) return;
+function fillIdentifierHint(entry: EntryItem): boolean {
+  if (!(activeAutofillField instanceof HTMLInputElement)) return false;
+  if (!entry.username.trim()) return false;
   suppressPopupOpen = true;
-  if (simulateFill(activeAutofillField, entry.username)) {
+  const filled = simulateFill(activeAutofillField, entry.username);
+  if (filled) {
     autofilledFields.add(activeAutofillField);
   }
   hidePopup();
   window.setTimeout(() => {
     suppressPopupOpen = false;
   }, 250);
+  return filled;
 }
 
 function selectPopupEntry(entry: EntryItem): void {
@@ -1767,7 +1940,11 @@ function renderIdentifierPopupEntries(): void {
       e.preventDefault();
       const idx = parseInt((el as HTMLElement).dataset.identifierIndex ?? "0", 10);
       const entry = entries[idx];
-      if (entry) fillIdentifierHint(entry);
+      if (entry && fillIdentifierHint(entry)) {
+        // Report on submit rather than fill: this is typically the first step
+        // of a login flow (identifier now, password + submit next).
+        lastAutofilledEntryId = entry.id;
+      }
     });
   });
 }
@@ -1970,16 +2147,16 @@ function renderPopupEntries(options?: { focusSearch?: boolean; selectionStart?: 
           >
             ${avatarHtml}
             <div style="flex:1;min-width:0;">
-              <div style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${entry.title}</div>
-              <div style="font-size:11px;color:${isDark ? "#9ca3af" : "#6b7280"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subtitleText}</div>
-            </div>
-            <button
-              type="button"
-              data-view-index="${idx}"
+                          <div style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${highlightMatch(entry.title, popupSearchQuery)}</div>
+                          <div style="font-size:11px;color:${isDark ? "#9ca3af" : "#6b7280"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${highlightMatch(subtitleText, popupSearchQuery)}</div>
+                        </div>
+                        <button
+                          type="button"
+                          data-view-index="${idx}"
               aria-label="View ${lpEscapeHtml(entry.title)} details"
               title="View details"
-              style="width:32px;height:28px;flex-shrink:0;border:none;border-radius:8px;background:#444ce7;color:white;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;box-shadow:0 1px 4px rgba(68,76,231,0.22);"
-            >${itemDetailEyeSvg()}</button>
+              style="${inlineViewButtonStyle()}"
+            >${inlineViewEyeSvg()}</button>
           </div>`;
         })
         .join("");
@@ -2121,16 +2298,16 @@ function renderPopupEntries(options?: { focusSearch?: boolean; selectionStart?: 
           >
             ${avatarHtml}
             <div style="flex:1;min-width:0;">
-              <div style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${entry.title}</div>
-              <div style="font-size:11px;color:${isDark ? "#9ca3af" : "#6b7280"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subtitleText}</div>
-            </div>
-            <button
-              type="button"
-              data-all-view-index="${idx}"
+                          <div style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${highlightMatch(entry.title, popupAllQuery)}</div>
+                          <div style="font-size:11px;color:${isDark ? "#9ca3af" : "#6b7280"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${highlightMatch(subtitleText, popupAllQuery)}</div>
+                        </div>
+                        <button
+                          type="button"
+                          data-all-view-index="${idx}"
               aria-label="View ${lpEscapeHtml(entry.title)} details"
               title="View details"
-              style="width:32px;height:28px;flex-shrink:0;border:none;border-radius:8px;background:#444ce7;color:white;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;box-shadow:0 1px 4px rgba(68,76,231,0.22);"
-            >${itemDetailEyeSvg()}</button>
+              style="${inlineViewButtonStyle()}"
+            >${inlineViewEyeSvg()}</button>
           </div>`;
         })
         .join("");
@@ -2268,6 +2445,14 @@ function renderPopupEntries(options?: { focusSearch?: boolean; selectionStart?: 
 }
 
 function showPopup(field: FillableField): void {
+  if (activeAutofillField && activeAutofillField !== field) {
+    const previousField = activeAutofillField;
+    closeActiveAutofillPopup();
+    if (!focusedFields.has(previousField)) hideIconForField(previousField);
+  }
+  activeAutofillField = field;
+  if (suggestEl && activeSuggestField !== field) hideSuggestPopup();
+
   if (!popupEl) {
     popupEl = createPopup();
     lpAppend(popupEl);
@@ -2277,7 +2462,7 @@ function showPopup(field: FillableField): void {
     && (!(field instanceof HTMLInputElement) || !field.value.trim())
     && !identifierHintAllowsEmptyQuery
   ) {
-    hidePopup();
+    closeActiveAutofillPopupForField(field);
     return;
   }
   popupTab = "suggestions";
@@ -2320,6 +2505,23 @@ function hidePopup(dismissed = false): void {
   if (activeAutofillField && !focusedFields.has(activeAutofillField)) {
     hideIconForField(activeAutofillField);
   }
+}
+
+function handleAutofillFieldBlur(field: FillableField, relatedTarget: EventTarget | null): void {
+  focusedFields.delete(field);
+  // Delay hiding so clicking LumenPass UI (icon or popup controls) can run first.
+  window.setTimeout(() => {
+    const keepInlineUiOpen = isFocusInsideInlineAutofillUiForField(field, relatedTarget);
+    if (activeAutofillField === field && !focusedFields.has(field) && !keepInlineUiOpen) {
+      closeActiveAutofillPopupForField(field);
+    }
+
+    // If the popup remains open for this field because the user moved into the
+    // popup/icon, keep the icon visible. Otherwise hide the icon after blur.
+    if (!isPopupVisibleForField(field) && !focusedFields.has(field)) {
+      hideIconForField(field);
+    }
+  }, AUTOFILL_SURFACE_BLUR_DELAY_MS);
 }
 
 async function disableAutofillForCurrentDomain(durationMs: number | null): Promise<void> {
@@ -2709,6 +2911,14 @@ function itemDetailCopySvg(): string {
 
 function itemDetailCheckSvg(): string {
   return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+}
+
+function inlineViewButtonStyle(): string {
+  return "width:22px;height:20px;flex-shrink:0;border:none;border-radius:6px;background:#444ce7;color:#ffffff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;box-shadow:0 1px 3px rgba(68,76,231,0.20);";
+}
+
+function inlineViewEyeSvg(): string {
+  return `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>`;
 }
 
 function itemDetailEyeSvg(hidden = false): string {
@@ -3382,7 +3592,7 @@ async function fillPostalAddressFields(
   }
 }
 
-async function fillCreditCardEntry(entry: EntryItem): Promise<void> {
+async function fillCreditCardEntry(entry: EntryItem): Promise<boolean> {
   hidePopup();
   suppressPopupOpen = true;
 
@@ -3536,9 +3746,10 @@ async function fillCreditCardEntry(entry: EntryItem): Promise<void> {
   });
 
   window.setTimeout(() => { suppressPopupOpen = false; }, 250);
+  return usedFields.size > 0;
 }
 
-async function fillIdentityEntry(entry: EntryItem): Promise<void> {
+async function fillIdentityEntry(entry: EntryItem): Promise<boolean> {
   hidePopup();
   suppressPopupOpen = true;
 
@@ -3638,16 +3849,20 @@ async function fillIdentityEntry(entry: EntryItem): Promise<void> {
   });
 
   window.setTimeout(() => { suppressPopupOpen = false; }, 250);
+  return usedFields.size > 0;
 }
 
-async function fillEntry(entry: EntryItem): Promise<void> {
+async function fillEntry(entry: EntryItem): Promise<boolean> {
   if (entry.kind === "credit-card") {
-    await fillCreditCardEntry(entry);
-    return;
+    const filled = await fillCreditCardEntry(entry);
+    if (filled) {
+      void reportEntryAutofillUsed(entry.id);
+    }
+    return filled;
   }
   if (entry.kind === "identity") {
-    await fillIdentityEntry(entry);
-    return;
+    const filled = await fillIdentityEntry(entry);
+    return filled;
   }
 
   const initialAnchorField = getCurrentAutofillAnchor();
@@ -3663,32 +3878,33 @@ async function fillEntry(entry: EntryItem): Promise<void> {
 
   if (!(anchorField instanceof HTMLInputElement)) {
     suppressPopupOpen = false;
-    return;
+    return false;
   }
 
   const passwordField = getPreferredPasswordField(anchorField);
-  if (passwordField && fullEntry.password) {
-    if (simulateFill(passwordField, fullEntry.password)) {
-      const trimmedPw = fullEntry.password.trim();
-      if (trimmedPw) {
-        lastExtensionAutofillPasswordByField.set(passwordField, trimmedPw);
-      }
-      autofilledFields.add(passwordField);
+  const passwordFilled = !!(passwordField && fullEntry.password && simulateFill(passwordField, fullEntry.password));
+  if (passwordFilled) {
+    const trimmedPw = fullEntry.password!.trim();
+    if (trimmedPw) {
+      lastExtensionAutofillPasswordByField.set(passwordField, trimmedPw);
     }
+    autofilledFields.add(passwordField);
   }
 
   const usernameField = getPreferredUsernameField(anchorField);
-  if (usernameField && fullEntry.username) {
-    simulateFill(usernameField, fullEntry.username);
+  const usernameFilled = !!(usernameField && fullEntry.username && simulateFill(usernameField, fullEntry.username));
+  if (usernameFilled) {
     autofilledFields.add(usernameField);
   }
 
-  // TOTP
+  let totpFilled = false;
   if (fullEntry.totp) {
     const totpField = getTotpInputField();
     if (totpField) {
-      simulateFill(totpField, fullEntry.totp);
-      autofilledFields.add(totpField);
+      totpFilled = simulateFill(totpField, fullEntry.totp);
+      if (totpFilled) {
+        autofilledFields.add(totpField);
+      }
     }
   }
 
@@ -3704,6 +3920,14 @@ async function fillEntry(entry: EntryItem): Promise<void> {
   window.setTimeout(() => {
     suppressPopupOpen = false;
   }, 250);
+  const filled = passwordFilled || usernameFilled || totpFilled;
+  if (filled) {
+    // Defer the "last used" update until the login form is submitted. If
+    // auto-submit is enabled, the click above will drive the submit-detection
+    // handlers, which report via captureLoginForSave.
+    lastAutofilledEntryId = entry.id;
+  }
+  return filled;
 }
 
 function dispatchFillEvents(el: HTMLElement, value: string): void {
@@ -3892,10 +4116,14 @@ async function openSuggestionsForField(field: FillableField, refresh = true, all
   if (suppressPopupOpen) return;
   if (isAutofillDisabledForCurrentDomain()) return;
   if (field instanceof HTMLInputElement && isSignupPasswordField(field)) return;
+  if (activeAutofillField && activeAutofillField !== field) {
+    closeActiveAutofillPopup();
+  }
   activeAutofillField = field;
   activeFieldKind = detectFieldKind(field);
+  if (suggestEl && activeSuggestField !== field) hideSuggestPopup();
   if (activeFieldKind === "card" && shouldSuppressCardAutofillPopup(field)) {
-    hidePopup();
+    closeActiveAutofillPopupForField(field);
     return;
   }
   identifierHintAllowsEmptyQuery = activeFieldKind === "identifier" && allowEmptyIdentifier;
@@ -3906,7 +4134,7 @@ async function openSuggestionsForField(field: FillableField, refresh = true, all
     && (!(field instanceof HTMLInputElement) || !field.value.trim())
     && !identifierHintAllowsEmptyQuery
   ) {
-    hidePopup();
+    closeActiveAutofillPopupForField(field);
     return;
   }
   proactiveLoginPromptShown = false;
@@ -3923,6 +4151,8 @@ async function openSuggestionsForField(field: FillableField, refresh = true, all
 
   if (refresh) {
     await fetchEntriesForPage();
+    if (activeAutofillField !== field || !field.isConnected) return;
+    if (!focusedFields.has(field) && !isFocusInsideInlineAutofillUiForField(field)) return;
   }
 
   showPopup(field);
@@ -3940,7 +4170,7 @@ function scheduleIdentifierHintSearch(field: HTMLInputElement): void {
   if (!field.value.trim()) {
     identifierHintAllowsEmptyQuery = false;
     entries = [];
-    if (activeAutofillField === field) hidePopup();
+    if (activeAutofillField === field) closeActiveAutofillPopupForField(field);
     return;
   }
 
@@ -3961,8 +4191,14 @@ function attachToAutofillField(field: FillableField): void {
     focusedFields.add(field);
     refreshIconForField(field);
     showIconForField(field);
-    if (isPasswordSuggestionField) return;
     if (suppressPopupOpen) return;
+    if (activeAutofillField && activeAutofillField !== field) {
+      closeActiveAutofillPopup();
+    }
+    if (isPasswordSuggestionField) {
+      closeActiveAutofillPopup();
+      return;
+    }
     if (!hasUserInteracted) return;
     if (dismissedFields.has(field)) return;
     if (fieldKind === "identifier" && field instanceof HTMLInputElement && !field.value.trim()) return;
@@ -3972,17 +4208,8 @@ function attachToAutofillField(field: FillableField): void {
     await openSuggestionsForField(field);
   });
 
-  field.addEventListener("blur", () => {
-    focusedFields.delete(field);
-    // Delay hiding so clicking the icon (which briefly blurs the field)
-    // doesn't cause the icon to vanish before the click registers.
-    window.setTimeout(() => {
-      // If the popup is still open for this field, keep the icon visible.
-      const popupVisible = popupEl && popupEl.style.display === "block" && activeAutofillField === field;
-      if (!popupVisible && !focusedFields.has(field)) {
-        hideIconForField(field);
-      }
-    }, 200);
+  field.addEventListener("blur", (event) => {
+    handleAutofillFieldBlur(field, (event as FocusEvent).relatedTarget);
   });
 
   field.addEventListener("mousedown", () => {
@@ -4017,9 +4244,22 @@ function attachToAutofillField(field: FillableField): void {
       return;
     }
     if (field instanceof HTMLInputElement && isCredentialHintField(field)) {
-      scheduleIdentifierHintSearch(field);
-    }
-  });
+          scheduleIdentifierHintSearch(field);
+          return;
+        }
+        // Mirror native-field typing into the popup's shared search query so the
+        // dropdown filters in real time. Skip password fields.
+        if (!(field instanceof HTMLInputElement && field.type === "password")) {
+          const nextQuery = field.value ?? "";
+          if (nextQuery !== popupSearchQuery) {
+            popupSearchQuery = nextQuery;
+            if (popupEl && popupEl.style.display === "block" && activeAutofillField === field) {
+                          renderPopupEntries();
+                          positionPopup(field);
+                        }
+          }
+        }
+      });
 
   field.addEventListener("change", () => {
     refreshIconForField(field);
@@ -6646,110 +6886,6 @@ async function showFillOtpPrompt(targetField: HTMLInputElement | null): Promise<
   searchEl?.focus();
 }
 
-function showLoginAutofillPrompt(
-  loginEntries: EntryItem[],
-  onSelect: (entry: EntryItem) => void,
-  onCancel: () => void,
-): void {
-  dismissLoginAutofillPrompt();
-
-  const closePrompt = (rememberDismissal = false): void => {
-    if (rememberDismissal) {
-      markProactiveLoginPromptDismissedForCurrentPage();
-    }
-    dismissLoginAutofillPrompt();
-    onCancel();
-  };
-
-  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const bg = isDark ? "#1f2937" : "#ffffff";
-  const text = isDark ? "#f3f4f6" : "#111827";
-  const sub = isDark ? "#9ca3af" : "#6b7280";
-  const border = isDark ? "#374151" : "#e5e7eb";
-  const rowBorder = isDark ? "#2d2d3d" : "#f3f4f6";
-  const hoverBg = isDark ? "#2a2a3d" : "#f5f5f7";
-
-  ensureOverlayStyles();
-
-  const lockSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#444ce7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
-  const domain = extractDomain(window.location.href);
-
-  const el = document.createElement("div");
-  el.style.cssText = `position:fixed;z-index:2147483647;top:72px;right:24px;width:340px;max-width:calc(100vw - 48px);background:${bg};border:1px solid ${border};border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,0.12);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;overflow:hidden;animation:lp-slide-up 0.18s ease-out;`;
-  el.innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid ${rowBorder};">
-      <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;flex-shrink:0;">${lockSvg}</span>
-      <span style="font-size:13px;font-weight:600;color:${text};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Fill with LumenPass — ${domain}">Fill with LumenPass</span>
-      <button id="lp-login-disable-autofill" type="button" style="all:unset;box-sizing:border-box;padding:5px 8px;border-radius:7px;cursor:pointer;color:${isDark ? "#fca5a5" : "#b42318"};font-size:11px;font-weight:700;white-space:nowrap;">Disable</button>
-      <button id="lp-login-close" aria-label="Close" style="all:unset;box-sizing:border-box;width:22px;height:22px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:${sub};"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-    </div>
-    <div data-disable-autofill-options data-open="false" style="display:none;gap:2px;margin:8px 12px 0;padding:4px;border:1px solid ${border};border-radius:10px;background:${isDark ? "#111827" : "#ffffff"};"></div>
-    <div style="padding:8px 12px;border-bottom:1px solid ${rowBorder};">
-      <input
-        id="lp-login-search"
-        type="text"
-        placeholder="Search items"
-        style="width:100%;padding:7px 10px;border:1px solid ${isDark ? "#374151" : "#e5e7eb"};border-radius:8px;background:${isDark ? "#111827" : "#f8fafc"};color:${text};font-size:12px;outline:none;box-sizing:border-box;"
-      />
-    </div>
-    <div id="lp-login-list" class="lp-scroll" style="max-height:min(360px, calc(100vh - 180px));"></div>
-  `;
-
-  lpAppend(el);
-  loginAutofillPromptEl = el as HTMLDivElement;
-
-  const listEl = el.querySelector<HTMLDivElement>("#lp-login-list");
-  const searchEl = el.querySelector<HTMLInputElement>("#lp-login-search");
-
-  const renderRows = (query: string): void => {
-    if (!listEl) return;
-    const filteredEntries = filterEntryItems(loginEntries, query);
-    listEl.innerHTML = filteredEntries.map((entry, index) => {
-      const avatarHtml = itemAvatarHtml({
-        title: entry.title,
-        favicon: entry.favicon,
-        size: 30,
-        radius: 8,
-        fontSize: 11,
-      });
-
-      return `<div data-login-idx="${index}" style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid ${rowBorder};transition:background 0.1s;">
-        ${avatarHtml}
-        <div style="flex:1;min-width:0;">
-          <p style="font-size:13px;font-weight:600;color:${text};margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${entry.title}</p>
-          <p style="font-size:11px;color:${sub};margin:1px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${entry.username || "Fill saved credentials"}</p>
-        </div>
-        <span data-login-fill style="padding:4px 10px;border-radius:999px;background:${isDark ? "#312e81" : "#eef2ff"};color:#444ce7;font-size:11px;font-weight:600;flex-shrink:0;">Fill</span>
-      </div>`;
-    }).join("") || `<div style="padding:14px 12px;color:${sub};font-size:12px;text-align:center;">No matching items</div>`;
-
-    bindItemAvatarFallbacks(listEl);
-
-    listEl.querySelectorAll<HTMLElement>("[data-login-idx]").forEach((row) => {
-      row.addEventListener("mouseenter", () => { row.style.background = hoverBg; });
-      row.addEventListener("mouseleave", () => { row.style.background = ""; });
-      row.addEventListener("click", () => {
-        const index = parseInt(row.dataset.loginIdx ?? "0", 10);
-        dismissLoginAutofillPrompt();
-        onSelect(filteredEntries[index]);
-      });
-    });
-  };
-
-  renderRows("");
-  searchEl?.addEventListener("input", () => renderRows(searchEl.value));
-
-  el.querySelector("#lp-login-close")?.addEventListener("click", () => {
-    closePrompt(true);
-  });
-  el.querySelector("#lp-login-disable-autofill")?.addEventListener("click", (event) => {
-    event.stopPropagation();
-    renderDisableAutofillOptions(el, isDark, () => {
-      closePrompt(true);
-    });
-  });
-}
-
 function findUsernameValue(excludeField: HTMLInputElement): string {
   const visibleSelectors = [
     "input[type='email']",
@@ -6800,7 +6936,26 @@ function findUsernameValue(excludeField: HTMLInputElement): string {
   return "";
 }
 
+/**
+ * When a login is submitted, update the "last used" timestamp of the entry we
+ * autofilled for this page (if any). Deduped so the form's submit event and a
+ * submit button's click event don't both report the same submission.
+ */
+function reportSubmitAutofillUsed(): void {
+  const entryId = lastAutofilledEntryId;
+  if (!entryId) return;
+  const now = Date.now();
+  if (entryId === lastSubmitReportEntryId && now - lastSubmitReportAt < SUBMIT_REPORT_DEDUPE_MS) {
+    return;
+  }
+  lastSubmitReportEntryId = entryId;
+  lastSubmitReportAt = now;
+  void reportEntryAutofillUsed(entryId);
+}
+
 async function captureLoginForSave(passwordField: HTMLInputElement): Promise<void> {
+  reportSubmitAutofillUsed();
+
   const autofillSnapshot = lastExtensionAutofillPasswordByField.get(passwordField);
   const submittedTrimmed = passwordField.value.trim();
   if (autofillSnapshot !== undefined && submittedTrimmed === autofillSnapshot) {
@@ -6954,6 +7109,8 @@ async function assertPasskeyEntry(
   console.log("[LumenPass Passkey] PASSKEY_ASSERT response", assertRes);
   clearActivePasskeyRequest(request.requestId);
   if (assertRes?.ok && assertRes.data) {
+    // Passkey was used to authenticate — update its "last used" timestamp.
+    void reportEntryAutofillUsed(entry.id);
     window.postMessage({ [LP]: true, requestId: request.requestId, credential: assertRes.data }, "*");
   } else {
     console.warn("[LumenPass Passkey] assertion failed:", assertRes?.error);
@@ -7527,28 +7684,13 @@ async function checkForLoginsOnLoad(): Promise<void> {
       maybeShowSocialFloatingSuggestion();
     }
     if (!entries.length || passkeyPromptEl || isInlineAutofillPopupVisible()) return;
-    if (!autofillOnPageLoad && !shouldConsiderProactiveLoginPrompt()) return;
+    // Only autofill silently when the user has enabled autofill-on-page-load.
+    // The floating login picker panel has been removed; inline field autofill
+    // remains available via the field icon and anchored popup.
+    if (!autofillOnPageLoad) return;
 
-    if (autofillOnPageLoad) {
-      // Silently fill the top matching entry without showing a picker.
-      activeAutofillField = activeAutofillField ?? getPrimaryAutofillField();
-      await fillEntry(entries[0]);
-    } else {
-      // Show the proactive picker so the user can choose which entry to fill.
-      proactiveLoginPromptShown = true;
-      showLoginAutofillPrompt(
-        entries,
-        async (entry) => {
-          proactiveLoginPromptShown = false;
-          markProactiveLoginPromptDismissedForCurrentPage();
-          activeAutofillField = activeAutofillField ?? getPrimaryAutofillField();
-          await fillEntry(entry);
-        },
-        () => {
-          proactiveLoginPromptShown = false;
-        },
-      );
-    }
+    activeAutofillField = activeAutofillField ?? getPrimaryAutofillField();
+    await fillEntry(entries[0]);
   } catch {
     // Ignore if the extension is disconnected or the page is no longer valid.
   }
@@ -8148,6 +8290,9 @@ function renderSuggestPopup(): void {
 function showSuggestPopup(field: HTMLInputElement): void {
   if (suppressSuggestPopup) return;
   if (suggestEl && activeSuggestField === field) return;
+  if (activeAutofillField) {
+    closeActiveAutofillPopup();
+  }
   hideSuggestPopup();
   activeSuggestField = field;
   suggestExpanded = false;
@@ -8188,8 +8333,10 @@ function attachSuggestToPasswordField(field: HTMLInputElement): void {
     window.setTimeout(() => {
       if (_suggestClickInside) return;
       const active = document.activeElement;
+      const shadowActive = lpShadowRoot?.activeElement;
       if (active === field) return;
-      if (lpShadowHost && active === lpShadowHost) return;
+      if (active instanceof Node && isNodeInsideSuggestPopup(active)) return;
+      if (shadowActive instanceof Node && isNodeInsideSuggestPopup(shadowActive)) return;
       hideSuggestPopup();
     }, 220);
   });
@@ -8320,6 +8467,66 @@ async function refreshAutofillSettings(): Promise<void> {
   }
 }
 
+const AUTOFILL_RELEVANT_MUTATION_SELECTOR = [
+  "input",
+  "textarea",
+  "select",
+  "button",
+  "a",
+  "form",
+  "[role='button']",
+  "[data-email]",
+  "[data-user-email]",
+  "[data-hint_email]",
+  "[data-testid*='email']",
+  "[data-testid*='user']",
+  "[aria-label*='email']",
+  "[aria-label*='account']",
+  "[title*='@']",
+].join(",");
+
+function isLumenPassInjectedElement(element: Element): boolean {
+  return element.id === "lumenpass-shadow-host" || !!element.closest("#lumenpass-shadow-host");
+}
+
+function mutationNodeMayAffectAutofill(node: Node): boolean {
+  if (node.nodeType !== Node.ELEMENT_NODE) return false;
+  const element = node as Element;
+  if (isLumenPassInjectedElement(element)) return false;
+  return element.matches(AUTOFILL_RELEVANT_MUTATION_SELECTOR)
+    || !!element.querySelector(AUTOFILL_RELEVANT_MUTATION_SELECTOR);
+}
+
+function mutationMayAffectAutofill(record: MutationRecord): boolean {
+  if (record.target instanceof Element) {
+    if (isLumenPassInjectedElement(record.target)) return false;
+    if (record.target.matches(AUTOFILL_RELEVANT_MUTATION_SELECTOR)) return true;
+  }
+
+  return Array.from(record.addedNodes).some(mutationNodeMayAffectAutofill)
+    || Array.from(record.removedNodes).some(mutationNodeMayAffectAutofill);
+}
+
+function runAutofillReconcileTasks(): void {
+  reconcileAutofillFieldIcons();
+  attachSaveDetection();
+  reconcileSuggestPasswordFields();
+  attachSocialButtonListeners();
+  scheduleProactiveLoginPromptCheck();
+}
+
+function scheduleAutofillReconcile(): void {
+  if (autofillReconcileTimer !== null || autofillReconcileFrame !== null) return;
+
+  autofillReconcileTimer = window.setTimeout(() => {
+    autofillReconcileTimer = null;
+    autofillReconcileFrame = requestAnimationFrame(() => {
+      autofillReconcileFrame = null;
+      runAutofillReconcileTasks();
+    });
+  }, AUTOFILL_RECONCILE_DELAY_MS);
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 function init(): void {
@@ -8351,12 +8558,10 @@ function init(): void {
   attachSaveDetection();
 
   // Observe DOM for dynamically added login fields
-  const observer = new MutationObserver(() => {
-    reconcileAutofillFieldIcons();
-    attachSaveDetection();
-    reconcileSuggestPasswordFields();
-    attachSocialButtonListeners();
-    scheduleProactiveLoginPromptCheck();
+  const observer = new MutationObserver((records) => {
+    if (records.some(mutationMayAffectAutofill)) {
+      scheduleAutofillReconcile();
+    }
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
@@ -8373,24 +8578,24 @@ function init(): void {
   document.addEventListener("click", (e) => {
     const target = e.target as Node;
     const path = e.composedPath();
-    let clickedIcon = false;
-    fieldIcons.forEach((icon) => { if (path.includes(icon)) clickedIcon = true; });
-    const clickedAutofillField = Array.from(fieldIcons.keys()).some((field) => field === target);
-    if (clickedIcon || clickedAutofillField || (popupEl && path.includes(popupEl))) return;
-    hidePopup();
-    if (suggestEl && !_suggestClickInside && !path.includes(suggestEl) && target !== activeSuggestField) hideSuggestPopup();
+    const clickedAutofillField = Array.from(fieldIcons.keys()).some((field) => path.includes(field));
+    const clickedInlineUi = clickedAutofillField || eventPathIncludesInlineAutofillUi(path);
+    const clickedSuggestPopup = eventPathIncludesNode(path, suggestEl) || isNodeInsideSuggestPopup(target);
+
+    if (!clickedInlineUi) {
+      hidePopup();
+    }
+    if (suggestEl && !_suggestClickInside && !clickedSuggestPopup && target !== activeSuggestField) {
+      hideSuggestPopup();
+    }
   });
 
   // Reposition all icons + popup on scroll/resize
   window.addEventListener("scroll", () => {
-    updateAllIconPositions();
-    if (popupEl?.style.display === "block" && activeAutofillField) positionPopup(activeAutofillField);
-    if (suggestEl) positionSuggestPopup();
+    scheduleFloatingSurfacePositionUpdate();
   }, { passive: true });
   window.addEventListener("resize", () => {
-    updateAllIconPositions();
-    if (popupEl?.style.display === "block" && activeAutofillField) positionPopup(activeAutofillField);
-    if (suggestEl) positionSuggestPopup();
+    scheduleFloatingSurfacePositionUpdate();
   }, { passive: true });
 
   // Re-check vault status when the tab regains visibility / focus. This is

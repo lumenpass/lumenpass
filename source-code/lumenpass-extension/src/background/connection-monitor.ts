@@ -18,11 +18,17 @@ export interface MonitorOptions {
   ping: () => Promise<{ vaultOpen: boolean }>;
   /** Called whenever the resolved `(connected, vaultOpen)` tuple changes. */
   onStateChange: (state: VaultState) => void | Promise<void>;
-  /** Called every successful check (regardless of transition) — useful for
-   *  refreshing UI/icon state on every successful ping. */
+  /** Called every completed check (regardless of transition) — useful for
+   *  refreshing UI/icon state even when state is unchanged. */
   onSettled?: (state: VaultState) => void | Promise<void>;
   /** Delay before the second attempt when the first ping rejects. */
   retryDelayMs?: number;
+  /** Number of failed checks required before a previously healthy connection is
+   *  marked disconnected. A check already includes the retry above. */
+  minFailedChecksBeforeDisconnect?: number;
+  /** Optional elapsed-time grace window before a previously healthy connection
+   *  is marked disconnected. */
+  disconnectGraceMs?: number;
   /** Test seam — defaults to Date.now. */
   now?: () => number;
   /** Test seam — defaults to setTimeout-based wait. */
@@ -36,10 +42,14 @@ export class ConnectionMonitor {
   private state: VaultState = { connected: false, vaultOpen: false };
   private inFlight: Promise<void> | null = null;
   private lastCheckAt = 0;
+  private failedCheckStreak = 0;
+  private firstFailedCheckAt = 0;
 
   constructor(options: MonitorOptions) {
     this.opts = {
       retryDelayMs: 800,
+      minFailedChecksBeforeDisconnect: 2,
+      disconnectGraceMs: 0,
       now: () => Date.now(),
       wait: (ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
       ...options,
@@ -62,9 +72,11 @@ export class ConnectionMonitor {
       const prev = { ...this.state };
       try {
         const result = await this.pingWithRetry();
+        this.failedCheckStreak = 0;
+        this.firstFailedCheckAt = 0;
         this.state = { connected: true, vaultOpen: result.vaultOpen };
       } catch {
-        this.state = { connected: false, vaultOpen: false };
+        this.recordFailedCheck(prev);
       }
       this.lastCheckAt = this.opts.now();
       if (this.opts.onSettled) {
@@ -103,5 +115,30 @@ export class ConnectionMonitor {
         throw secondErr ?? firstErr;
       }
     }
+  }
+
+  private recordFailedCheck(prev: VaultState): void {
+    const now = this.opts.now();
+    this.failedCheckStreak += 1;
+    if (this.firstFailedCheckAt === 0) {
+      this.firstFailedCheckAt = now;
+    }
+
+    if (!prev.connected) {
+      this.state = { connected: false, vaultOpen: false };
+      return;
+    }
+
+    const hasEnoughFailures =
+      this.failedCheckStreak >= this.opts.minFailedChecksBeforeDisconnect;
+    const graceElapsed =
+      now - this.firstFailedCheckAt >= this.opts.disconnectGraceMs;
+
+    if (hasEnoughFailures && graceElapsed) {
+      this.state = { connected: false, vaultOpen: false };
+      return;
+    }
+
+    this.state = prev;
   }
 }

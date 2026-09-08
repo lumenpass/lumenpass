@@ -17,12 +17,14 @@ const Color _sidebarSelectedItemBackground = Color(0x335E8A9D);
 class _SidebarPane extends ConsumerWidget {
   const _SidebarPane({
     required this.onLockVault,
+    required this.onOpenImport,
     required this.onOpenAddCategoryModal,
     required this.onEditCategory,
     required this.onDeleteCategory,
   });
 
   final VoidCallback onLockVault;
+  final VoidCallback onOpenImport;
   final VoidCallback onOpenAddCategoryModal;
   final void Function(
           ({String uuid, String name, String notes, int count}) category)
@@ -111,6 +113,22 @@ class _SidebarPane extends ConsumerWidget {
                       padding: EdgeInsets.all(2),
                       child: Icon(
                         TablerIcons.switch_horizontal,
+                        size: 16,
+                        color: _sidebarTextSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                _AppTooltip(
+                  message: 'Import',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(4),
+                    onTap: onOpenImport,
+                    child: const Padding(
+                      padding: EdgeInsets.all(2),
+                      child: Icon(
+                        TablerIcons.file_import,
                         size: 16,
                         color: _sidebarTextSecondary,
                       ),
@@ -464,6 +482,13 @@ class _VaultSyncStatusRowState extends ConsumerState<_VaultSyncStatusRow>
   late final AnimationController _spin;
   Timer? _ticker;
 
+  /// Drives only the relative-time label. The per-second tick updates this
+  /// notifier so a [ValueListenableBuilder] scoped to the label rebuilds —
+  /// instead of calling `setState` and rebuilding the whole row every second.
+  final ValueNotifier<DateTime> _tick = ValueNotifier<DateTime>(
+    DateTime.now(),
+  );
+
   @override
   void initState() {
     super.initState();
@@ -471,9 +496,9 @@ class _VaultSyncStatusRowState extends ConsumerState<_VaultSyncStatusRow>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    // Re-render every second so the relative time label updates smoothly.
+    // Re-render the relative-time label every second so it stays fresh.
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
+      if (mounted) _tick.value = DateTime.now();
     });
   }
 
@@ -481,6 +506,7 @@ class _VaultSyncStatusRowState extends ConsumerState<_VaultSyncStatusRow>
   void dispose() {
     _ticker?.cancel();
     _ticker = null;
+    _tick.dispose();
     _spin.dispose();
     super.dispose();
   }
@@ -520,11 +546,6 @@ class _VaultSyncStatusRowState extends ConsumerState<_VaultSyncStatusRow>
     _syncSpinner(state);
 
     final disabled = state.isSyncing;
-    final label = state.isSyncing
-        ? 'Syncing…'
-        : (state.hasError
-            ? 'Sync failed — tap to retry'
-            : formatLastSync(state.lastSyncAt));
     final labelColor =
         state.hasError ? const Color(0xFFFCA5A5) : _sidebarTextSecondary;
 
@@ -533,16 +554,26 @@ class _VaultSyncStatusRowState extends ConsumerState<_VaultSyncStatusRow>
       child: Row(
         children: <Widget>[
           Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _text(
-                9,
-                labelColor,
-                fontWeight: FontWeight.w500,
-                height: 1.3,
-              ),
+            child: ValueListenableBuilder<DateTime>(
+              valueListenable: _tick,
+              builder: (context, now, _) {
+                final label = state.isSyncing
+                    ? 'Syncing…'
+                    : (state.hasError
+                        ? 'Sync failed — tap to retry'
+                        : formatLastSync(state.lastSyncAt, now: now));
+                return Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _text(
+                    9,
+                    labelColor,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(width: 6),
@@ -976,7 +1007,7 @@ class _SidebarSectionHeader extends StatelessWidget {
             child: Text(
               label.toUpperCase(),
               style: _text(
-                10,
+                9,
                 _sidebarTextSecondary,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.6,
@@ -1137,7 +1168,7 @@ class _SidebarCategoryItemState extends State<_SidebarCategoryItem> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: _text(
-                        hasBadge ? 13 : 12,
+                        hasBadge ? 12 : 11,
                         isSelected ? _sidebarSelectedText : _sidebarTextPrimary,
                         fontWeight:
                             isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -1355,7 +1386,7 @@ class _SidebarItemState extends State<_SidebarItem> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: _text(
-                          hasBadge ? 13 : 12,
+                          hasBadge ? 12 : 11,
                           widget.danger
                               ? const Color(0xFFD94A4A)
                               : isSelected
@@ -1478,7 +1509,7 @@ class _SwitchVaultModal extends ConsumerWidget {
                           isActive: isActive,
                           onSelect: () {
                             Navigator.of(context).pop();
-                            _performSwitchVault(context, ref, record);
+                            unawaited(_performSwitchVault(context, ref, record));
                           },
                         );
                       },
@@ -1491,10 +1522,15 @@ class _SwitchVaultModal extends ConsumerWidget {
   }
 }
 
-void _performSwitchVault(
-    BuildContext context, WidgetRef ref, DatabaseRecord record) {
+Future<void> _performSwitchVault(
+    BuildContext context, WidgetRef ref, DatabaseRecord record) async {
+  // Persist pending background writes before swapping vaults so nothing is
+  // discarded when the in-memory database is closed below.
+  await ref.read(vaultWriteSchedulerProvider).flushNow();
+  if (!context.mounted) return;
   BookmarkService.instance.stopAll();
   BackupService.instance.cancelForLockedVault();
+  ref.read(vaultWriteSchedulerProvider).reset();
   ref.read(kdbxRepositoryProvider).closeDatabase();
   ref.read(activeDatabaseProvider.notifier).state = null;
   ref.read(cachedMasterPasswordProvider.notifier).state = null;

@@ -10,8 +10,9 @@ import '../../features/unlock/application/database_registry.dart';
 import '../../features/home/application/home_vault_providers.dart';
 import '../../features/vault/application/vault_entries_providers.dart';
 import '../repository/providers.dart';
+import '../repository/vault_write_scheduler_provider.dart';
 import 'cloud_sync_service.dart';
-import 'cloud_database_service.dart';
+
 import 'cloud_vault_cache.dart';
 
 enum VaultSyncPhase { idle, syncing, success, error }
@@ -151,10 +152,6 @@ class VaultAutoSyncController extends StateNotifier<VaultSyncState>
           homeRecord.storageType == 'webdav' ||
           homeRecord.storageType == 'sftp' ||
           homeRecord.storageType == 's3') {
-        if (!CloudDatabaseService.instance
-            .isCloudProviderAccessible(homeRecord.storageType)) {
-          return null;
-        }
         return homeRecord;
       }
       return null;
@@ -173,10 +170,6 @@ class VaultAutoSyncController extends StateNotifier<VaultSyncState>
             record.storageType == 'webdav' ||
             record.storageType == 'sftp' ||
             record.storageType == 's3') {
-          if (!CloudDatabaseService.instance
-              .isCloudProviderAccessible(record.storageType)) {
-            return null;
-          }
           return record;
         }
         return null;
@@ -198,6 +191,12 @@ class VaultAutoSyncController extends StateNotifier<VaultSyncState>
     state = state.copyWith(phase: VaultSyncPhase.syncing, clearError: true);
 
     try {
+      // Flush pending background writes BEFORE capturing the mtime. This
+      // guarantees (a) no unflushed in-memory edit is discarded by a
+      // cloud-pull reopen below, and (b) our own background save doesn't bump
+      // the mtime mid-sync and trigger a false-positive reopen.
+      await _ref?.read(vaultWriteSchedulerProvider).flushNow();
+
       final localPath = await resolvedLocalDatabasePath(record);
       final localFile = File(localPath);
       DateTime? mtimeBefore;
@@ -246,9 +245,13 @@ class VaultAutoSyncController extends StateNotifier<VaultSyncState>
         databasePath: databasePath,
         password: password.isEmpty ? null : password,
       );
+      // The in-memory database was replaced wholesale; drop any pending-write
+      // state so a stale scheduled save never lands on the new snapshot.
+      ref.read(vaultWriteSchedulerProvider).reset();
       ref.read(activeDatabaseProvider.notifier).state = db;
       ref.invalidate(vaultVisibleEntriesProvider);
       ref.invalidate(homeRecentEntriesProvider);
+      ref.invalidate(homeRecentCreatedEntriesProvider);
       debugPrint('[AutoSync] reopened DB after cloud pull');
     } catch (e) {
       debugPrint('[AutoSync] reopen after cloud pull failed: $e');

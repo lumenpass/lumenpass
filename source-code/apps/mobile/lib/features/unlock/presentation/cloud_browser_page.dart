@@ -192,6 +192,13 @@ class _CloudBrowserPageState extends ConsumerState<CloudBrowserPage> {
         _selectedVault = null;
       });
     } catch (e) {
+      // Keep the Quick Access connection status consistent with reality: if an
+      // SFTP browse fails because the saved private key file is gone, the
+      // connection can never succeed, so drop the green "Connected" state.
+      if (widget.cloudType == CloudKind.sftp &&
+          !await CloudDatabaseService.instance.isSftpConnectionUsable()) {
+        CloudDatabaseService.instance.markSftpDisconnected();
+      }
       if (!mounted) return;
       setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');

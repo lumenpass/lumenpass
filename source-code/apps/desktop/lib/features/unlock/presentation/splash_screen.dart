@@ -94,6 +94,7 @@ class _PulseDot extends StatelessWidget {
         ),
       ),
     );
+
     final opacityAnim = Tween<double>(begin: 0.35, end: 1.0).animate(
       CurvedAnimation(
         parent: controller,

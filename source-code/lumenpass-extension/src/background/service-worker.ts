@@ -1227,6 +1227,11 @@ async function handleMessage(message: ExtMessage, sender?: browser.Runtime.Messa
       }
 
       case "GET_VAULT_STATUS": {
+        if (!connectionHealthy) {
+          await checkConnection();
+        } else {
+          await maybeCheckConnection(2000);
+        }
         return { ok: true, data: { connected: connectionHealthy, vaultOpen: vaultUnlocked } };
       }
 

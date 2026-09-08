@@ -7,10 +7,8 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:lumenpass_core/lumenpass_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/repository/database_save_sync.dart';
 import '../../../core/repository/providers.dart';
 import '../../../core/ui/app_snack_bar.dart';
-import '../../unlock/application/database_registry.dart';
 import '../application/vault_items_list_providers.dart';
 import '../../../features/settings/application/vault_security_provider.dart';
 import 'vault_create_item.dart';
@@ -46,7 +44,14 @@ class _ItemDetailsSheet extends ConsumerStatefulWidget {
 
 class _ItemDetailsSheetState extends ConsumerState<_ItemDetailsSheet> {
   Timer? _ticker;
-  DateTime _now = DateTime.now();
+
+  /// Drives only the TOTP row. The per-second tick updates this notifier so a
+  /// [ValueListenableBuilder] scoped to the OTP field rebuilds — instead of
+  /// calling `setState` and rebuilding the entire sheet every second while a
+  /// TOTP is visible.
+  final ValueNotifier<DateTime> _totpTime = ValueNotifier<DateTime>(
+    DateTime.now(),
+  );
   final Set<String> _revealedFieldKeys = <String>{};
   late KdbxEntry _entry;
 
@@ -55,6 +60,7 @@ class _ItemDetailsSheetState extends ConsumerState<_ItemDetailsSheet> {
     super.initState();
     _entry = widget.entry;
     _syncTotpTicker();
+    _recordLastUsed();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final hide = ref
           .read(vaultSecuritySettingsProvider)
@@ -76,9 +82,35 @@ class _ItemDetailsSheetState extends ConsumerState<_ItemDetailsSheet> {
     }
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
-        setState(() => _now = DateTime.now());
+        // Only the TOTP row listens to this notifier, so the per-second tick
+        // rebuilds that single leaf instead of the whole sheet.
+        _totpTime.value = DateTime.now();
       }
     });
+  }
+
+  /// Records that this entry was just viewed and persists the updated "last
+  /// used" timestamp so the default Last-Used sort reflects it. The snapshot
+  /// publishes immediately so lists re-sort at once; the disk write is
+  /// debounced in the background because a usage stamp is low-priority and
+  /// must never block (or even slow down) opening the details view.
+  void _recordLastUsed() {
+    final uuid = _entry.uuid;
+    if (uuid.isEmpty) {
+      return;
+    }
+    unawaited(() async {
+      try {
+        final repository = ref.read(kdbxRepositoryProvider);
+        if (!repository.hasOpenDatabase) {
+          return;
+        }
+        await repository.touchEntryLastUsedAt(uuid);
+        publishAndScheduleSave(ref, repository, immediate: false);
+      } catch (_) {
+        // Best-effort: never surface usage-tracking failures to the user.
+      }
+    }());
   }
 
   KdbxEntry? _findEntryByUuid(KdbxDatabase database, String uuid) {
@@ -121,12 +153,7 @@ class _ItemDetailsSheetState extends ConsumerState<_ItemDetailsSheet> {
         notes: _entry.notes,
         tags: List<String>.unmodifiable(_entry.tags),
       );
-      final database = await saveAndSyncDatabase(
-        repository,
-        ref.read(databaseRegistryProvider),
-      );
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      await refreshVaultSnapshot(ref);
+      final database = publishAndScheduleSave(ref, repository);
       final updated = _findEntryByUuid(database, _entry.uuid);
       if (updated != null && mounted) {
         setState(() => _entry = updated);
@@ -150,6 +177,7 @@ class _ItemDetailsSheetState extends ConsumerState<_ItemDetailsSheet> {
   @override
   void dispose() {
     _ticker?.cancel();
+    _totpTime.dispose();
     super.dispose();
   }
 
@@ -157,11 +185,26 @@ class _ItemDetailsSheetState extends ConsumerState<_ItemDetailsSheet> {
   Widget build(BuildContext context) {
     final entry = _entry;
     final itemType = classifyVaultItemType(entry);
-    final fields = _buildDesktopLikeFields(entry: entry, now: _now);
+    final hideCardNumber = ref.watch(
+      vaultSecuritySettingsProvider.select((s) => s.hideCreditCardNumber),
+    );
+    final category = (widget.categoryName ?? '').trim();
+    final fields = <_FieldVm>[
+      if (category.isNotEmpty)
+        const _FieldVm(
+          key: 'category',
+          label: 'Category',
+          value: '',
+          isSecret: false,
+          icon: TablerIcons.folder,
+          iconColor: Color(0xFF5D79C2),
+          labelColor: Color(0xFF5D79C2),
+        ).copyWith(value: category),
+      ..._buildDesktopLikeFields(entry: entry, now: DateTime.now()),
+    ];
     final title = entry.title.trim().isEmpty
         ? '(Untitled)'
         : entry.title.trim();
-    final subtitle = vaultEntryListSubtitle(entry, itemType);
     final hasPasskey = entryHasPasskeyChip(entry);
     final canScanOtp = itemType == VaultItemType.login;
     final website = (entry.url ?? '').trim();
@@ -179,71 +222,108 @@ class _ItemDetailsSheetState extends ConsumerState<_ItemDetailsSheet> {
           padding: EdgeInsets.only(top: safeTop + 60),
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFE7EBF0),
+              color: Colors.white,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
+                top: Radius.circular(16),
               ),
-              border: Border.all(color: const Color(0xFFC7D1DC)),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(
+                  color: Color(0x290A2F3D),
+                  blurRadius: 24,
+                  offset: Offset(0, -4),
+                ),
+              ],
             ),
             child: Column(
               children: [
-                const SizedBox(height: 8),
                 Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFC2CCD6),
-                    borderRadius: BorderRadius.circular(999),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                    border: Border(
+                      bottom: BorderSide(color: Color(0xFFE1EAF0)),
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 8, 8),
-                  child: Row(
+                  child: Stack(
                     children: [
-                      const Spacer(),
-                      _TopActionIcon(
-                        icon: TablerIcons.qrcode,
-                        enabled: canScanOtp,
-                        tooltip: 'Scan QR Code',
-                        onTap: _handleTotpAction,
-                      ),
-                      const SizedBox(width: 4),
-                      _TopActionIcon(
-                        icon: TablerIcons.pencil,
-                        tooltip: 'Edit item',
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          showEditItemModal(context, entry: entry);
-                        },
-                      ),
-                      const SizedBox(width: 4),
-                      _TopActionIcon(
-                        icon: TablerIcons.external_link,
-                        enabled: canOpenUrl,
-                        tooltip: 'Open URL',
-                        onTap: () async {
-                          var target = website;
-                          if (!target.startsWith('http://') &&
-                              !target.startsWith('https://')) {
-                            target = 'https://$target';
-                          }
-                          final uri = Uri.tryParse(target);
-                          if (uri == null) {
-                            _showCopyToast(context, 'Invalid URL');
-                            return;
-                          }
-                          await launchUrl(
-                            uri,
-                            mode: LaunchMode.externalApplication,
-                          );
-                        },
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: Color(0xFF556677),
-                          size: 30,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Center(
+                              child: Container(
+                                width: 38,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD2DCE2),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _TopActionIcon(
+                                      icon: TablerIcons.qrcode,
+                                      enabled: canScanOtp,
+                                      tooltip: 'Scan QR Code',
+                                      onTap: _handleTotpAction,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    _TopActionIcon(
+                                      icon: TablerIcons.pencil,
+                                      tooltip: 'Edit item',
+                                      onTap: () {
+                                        Navigator.of(context).pop();
+                                        showEditItemModal(
+                                          context,
+                                          entry: entry,
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(width: 6),
+                                    _TopActionIcon(
+                                      icon: TablerIcons.external_link,
+                                      enabled: canOpenUrl,
+                                      tooltip: 'Open URL',
+                                      onTap: () async {
+                                        var target = website;
+                                        if (!target.startsWith('http://') &&
+                                            !target.startsWith('https://')) {
+                                          target = 'https://$target';
+                                        }
+                                        final uri = Uri.tryParse(target);
+                                        if (uri == null) {
+                                          _showCopyToast(
+                                            context,
+                                            'Invalid URL',
+                                          );
+                                          return;
+                                        }
+                                        await launchUrl(
+                                          uri,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const Spacer(),
+                                _HeaderCloseButton(
+                                  onTap: () => Navigator.of(context).pop(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _EntryTitleCard(entry: entry, title: title),
+                          ],
                         ),
                       ),
                     ],
@@ -251,63 +331,85 @@ class _ItemDetailsSheetState extends ConsumerState<_ItemDetailsSheet> {
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 14),
+                    padding: const EdgeInsets.only(bottom: 14),
                     children: [
-                      _EntryTitleCard(
-                        entry: entry,
-                        title: title,
-                        subtitle: subtitle,
-                        categoryName: widget.categoryName,
-                        showSubtitle: !hasPasskey,
-                      ),
                       if (hasPasskey) ...[
-                        const SizedBox(height: 8),
-                        _PasskeyBanner(
-                          onRemove: () {
-                            AppSnackBar.info(
-                              context,
-                              'Passkey remove action will be wired next',
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: _PasskeyBanner(
+                            onRemove: () {
+                              AppSnackBar.info(
+                                context,
+                                'Passkey remove action will be wired next',
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      for (var i = 0; i < fields.length; i++)
+                        Builder(
+                          builder: (_) {
+                            final field = fields[i];
+                            final isRevealed = _revealedFieldKeys.contains(
+                              field.key,
+                            );
+                            final showBottomBorder = i < fields.length - 1;
+                            // The TOTP row ticks every second; scope the
+                            // rebuild to that single leaf via the notifier so
+                            // the rest of the sheet stays still.
+                            if (field.key == 'totp' &&
+                                field.otpAuthUrl != null) {
+                              return _LiveTotpFieldRow(
+                                time: _totpTime,
+                                otpAuthUrl: field.otpAuthUrl!,
+                                showBottomBorder: showBottomBorder,
+                                onCopy: () => _copyFieldValue(
+                                  context,
+                                  field: field,
+                                  ref: ref,
+                                ),
+                              );
+                            }
+                            return _DesktopLikeFieldRow(
+                              icon: field.icon,
+                              iconColor: field.iconColor,
+                              labelColor: field.labelColor,
+                              label: field.label,
+                              countdownSeconds: field.countdownSeconds,
+                              countdownPeriodSeconds:
+                                  field.countdownPeriodSeconds,
+                              value: field.isSecret && !isRevealed
+                                  ? '••••••••••••'
+                                  : (field.isCardNumber && hideCardNumber
+                                        ? maskCreditCardNumberForDisplay(
+                                            field.value,
+                                          )
+                                        : field.value),
+                              isSecret: field.isSecret,
+                              isRevealed: isRevealed,
+                              showBottomBorder: showBottomBorder,
+                              onToggleReveal: field.isSecret
+                                  ? () {
+                                      setState(() {
+                                        if (isRevealed) {
+                                          _revealedFieldKeys.remove(field.key);
+                                        } else {
+                                          _revealedFieldKeys.add(field.key);
+                                        }
+                                      });
+                                    }
+                                  : null,
+                              onCopy: () => _copyFieldValue(
+                                context,
+                                field: field,
+                                ref: ref,
+                              ),
                             );
                           },
                         ),
-                      ],
-                      const SizedBox(height: 8),
-                      for (final field in fields) ...[
-                        _DesktopLikeFieldRow(
-                          icon: field.icon,
-                          iconColor: field.iconColor,
-                          labelColor: field.labelColor,
-                          label: field.label,
-                          countdownSeconds: field.countdownSeconds,
-                          countdownPeriodSeconds: field.countdownPeriodSeconds,
-                          value:
-                              field.isSecret &&
-                                  !_revealedFieldKeys.contains(field.key)
-                              ? '••••••••••••'
-                              : field.value,
-                          isSecret: field.isSecret,
-                          onToggleReveal: field.isSecret
-                              ? () {
-                                  setState(() {
-                                    if (_revealedFieldKeys.contains(
-                                      field.key,
-                                    )) {
-                                      _revealedFieldKeys.remove(field.key);
-                                    } else {
-                                      _revealedFieldKeys.add(field.key);
-                                    }
-                                  });
-                                }
-                              : null,
-                          onCopy: () => _copyValue(
-                            context,
-                            value: field.value,
-                            label: field.label,
-                            ref: ref,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
+                      _EntryStatsSection(entry: entry),
                     ],
                   ),
                 ),
@@ -319,8 +421,8 @@ class _ItemDetailsSheetState extends ConsumerState<_ItemDetailsSheet> {
                     8 + (safeBottom * 0.35),
                   ),
                   decoration: const BoxDecoration(
-                    color: Color(0xFFE7EBF0),
-                    border: Border(top: BorderSide(color: Color(0xFFC7D1DC))),
+                    color: Colors.white,
+                    border: Border(top: BorderSide(color: Color(0xFFE1EAF0))),
                   ),
                   child: Row(
                     children: [
@@ -383,9 +485,7 @@ class _ItemDetailsSheetState extends ConsumerState<_ItemDetailsSheet> {
     try {
       final repo = ref.read(kdbxRepositoryProvider);
       await repo.deleteEntry(entry.uuid);
-      final registry = ref.read(databaseRegistryProvider);
-      await saveAndSyncDatabase(repo, registry);
-      await refreshVaultSnapshot(ref);
+      publishAndScheduleSave(ref, repo);
       if (!mounted) return;
       _showCopyToast(context, 'Item deleted');
       Navigator.of(context).pop();
@@ -397,109 +497,149 @@ class _ItemDetailsSheetState extends ConsumerState<_ItemDetailsSheet> {
 }
 
 class _EntryTitleCard extends StatelessWidget {
-  const _EntryTitleCard({
-    required this.entry,
-    required this.title,
-    required this.subtitle,
-    this.categoryName,
-    this.showSubtitle = true,
-  });
+  const _EntryTitleCard({required this.entry, required this.title});
 
   final KdbxEntry entry;
   final String title;
-  final String subtitle;
-  final String? categoryName;
-  final bool showSubtitle;
 
   @override
   Widget build(BuildContext context) {
-    final category = (categoryName ?? '').trim();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 2),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 2),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              VaultEntryAvatar(entry: entry, size: 42),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: VaultEntryAvatar(entry: entry, size: 42),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Color(0xFF1F2937),
-                    fontSize: 26,
+                    fontSize: 21,
                     fontWeight: FontWeight.w700,
-                    height: 1.05,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (category.isNotEmpty) ...[
-            Row(
-              children: [
-                const Icon(
-                  TablerIcons.folder,
-                  size: 20,
-                  color: Color(0xFF5D79C2),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Category',
-                  style: TextStyle(
-                    color: Color(0xFF6E7F99),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8EEF9),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: const Color(0xFFC9D8F2)),
-                    ),
-                    child: Text(
-                      category,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF3A5A9A),
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                    height: 1.08,
                   ),
                 ),
               ],
             ),
-          ],
-          if (showSubtitle) ...[
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF6B7280),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );
   }
+}
+
+class _EntryStatsSection extends StatelessWidget {
+  const _EntryStatsSection({required this.entry});
+
+  final KdbxEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final headingStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
+      color: const Color(0xFF7D8795),
+      fontSize: 11,
+      fontWeight: FontWeight.w800,
+      letterSpacing: 0.2,
+    );
+    final labelStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: const Color(0xFF7D8795),
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+    );
+    final valueStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: const Color(0xFF344150),
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+    );
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE1EAF0))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Stats', style: headingStyle),
+          const SizedBox(height: 10),
+          _EntryStatRow(
+            label: 'Created',
+            value: _formatEntryDetailTimestamp(context, entry.createdAt),
+            labelStyle: labelStyle,
+            valueStyle: valueStyle,
+          ),
+          const SizedBox(height: 8),
+          _EntryStatRow(
+            label: 'Updated',
+            value: _formatEntryDetailTimestamp(context, entry.updatedAt),
+            labelStyle: labelStyle,
+            valueStyle: valueStyle,
+          ),
+          const SizedBox(height: 8),
+          _EntryStatRow(
+            label: 'Last used',
+            value: _formatEntryDetailTimestamp(context, entry.lastUsedAt),
+            labelStyle: labelStyle,
+            valueStyle: valueStyle,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EntryStatRow extends StatelessWidget {
+  const _EntryStatRow({
+    required this.label,
+    required this.value,
+    required this.labelStyle,
+    required this.valueStyle,
+  });
+
+  final String label;
+  final String value;
+  final TextStyle? labelStyle;
+  final TextStyle? valueStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 72, child: Text(label, style: labelStyle)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(value, textAlign: TextAlign.right, style: valueStyle),
+        ),
+      ],
+    );
+  }
+}
+
+String _formatEntryDetailTimestamp(BuildContext context, DateTime? value) {
+  if (value == null) {
+    return '—';
+  }
+
+  final localizations = MaterialLocalizations.of(context);
+  final local = value.toLocal();
+  final date = localizations.formatCompactDate(local);
+  final time = localizations.formatTimeOfDay(
+    TimeOfDay.fromDateTime(local),
+    alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+  );
+  return '$date $time';
 }
 
 class _TopActionIcon extends StatelessWidget {
@@ -521,18 +661,73 @@ class _TopActionIcon extends StatelessWidget {
       opacity: enabled ? 1 : 0.4,
       child: Tooltip(
         message: tooltip,
-        child: InkWell(
-          onTap: enabled ? onTap : null,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF7F9FB),
-              border: Border.all(color: const Color(0xFFD0D8E2)),
-              borderRadius: BorderRadius.circular(10),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Color(0x140F172A),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Material(
+            color: const Color(0xFFF7F9FB),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Color(0xFFD0D8E2)),
             ),
-            child: Icon(icon, size: 18, color: const Color(0xFF5A677A)),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: enabled ? onTap : null,
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: Icon(icon, size: 19, color: const Color(0xFF5A677A)),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderCloseButton extends StatelessWidget {
+  const _HeaderCloseButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Color(0x180F172A),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(side: BorderSide(color: Color(0xFFD7E2E8))),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: const SizedBox(
+            width: 40,
+            height: 40,
+            child: Icon(
+              Icons.close_rounded,
+              color: Color(0xFF5E7180),
+              size: 22,
+            ),
           ),
         ),
       ),
@@ -628,6 +823,150 @@ class _PasskeyBanner extends StatelessWidget {
   }
 }
 
+/// A TOTP field row that rebuilds only itself when [_totpTime] ticks, keeping
+/// the rest of the details sheet static. Mirrors the layout of
+/// [_DesktopLikeFieldRow] but derives the code and countdown live.
+class _LiveTotpFieldRow extends StatelessWidget {
+  const _LiveTotpFieldRow({
+    required this.time,
+    required this.otpAuthUrl,
+    required this.showBottomBorder,
+    required this.onCopy,
+  });
+
+  final ValueNotifier<DateTime> time;
+  final String otpAuthUrl;
+  final bool showBottomBorder;
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<DateTime>(
+      valueListenable: time,
+      builder: (context, now, _) {
+        final code = _totpService.generateCode(otpAuthUrl, timestamp: now);
+        final countdownSeconds = _totpService.secondsRemaining(
+          otpAuthUrl,
+          timestamp: now,
+        );
+        final periodSeconds = _totpPeriodSeconds(otpAuthUrl);
+        final displayCode = code != null && code.trim().isNotEmpty
+            ? _formatTotp(code)
+            : '------';
+        final countdownAccent = _totpCountdownColor(countdownSeconds);
+        final countdownProgress = periodSeconds > 0
+            ? (countdownSeconds / periodSeconds).clamp(0.0, 1.0)
+            : null;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: showBottomBorder
+                ? const Border(bottom: BorderSide(color: Color(0xFFE1EAF0)))
+                : null,
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 10, 12, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.timelapse_rounded,
+                          size: 15,
+                          color: Color(0xFF3B82F6),
+                        ),
+                        const SizedBox(width: 6),
+                        const Expanded(
+                          child: Text(
+                            'OTP',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Color(0xFF3B82F6),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: countdownAccent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.timer_outlined,
+                                size: 12,
+                                color: countdownAccent,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${countdownSeconds.toString().padLeft(2, '0')}s',
+                                style: TextStyle(
+                                  color: countdownAccent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      displayCode,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: countdownAccent,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        height: 1.16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 4,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          value: countdownProgress,
+                          backgroundColor: const Color(0xFFE8EDF5),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            countdownAccent,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _FieldActionButton(
+                icon: Icons.copy_rounded,
+                tooltip: 'Copy OTP',
+                onPressed: onCopy,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _DesktopLikeFieldRow extends StatelessWidget {
   const _DesktopLikeFieldRow({
     required this.icon,
@@ -638,7 +977,9 @@ class _DesktopLikeFieldRow extends StatelessWidget {
     required this.countdownPeriodSeconds,
     required this.value,
     required this.isSecret,
+    required this.isRevealed,
     required this.onCopy,
+    required this.showBottomBorder,
     this.onToggleReveal,
   });
 
@@ -650,7 +991,9 @@ class _DesktopLikeFieldRow extends StatelessWidget {
   final int? countdownPeriodSeconds;
   final String value;
   final bool isSecret;
+  final bool isRevealed;
   final VoidCallback onCopy;
+  final bool showBottomBorder;
   final VoidCallback? onToggleReveal;
 
   @override
@@ -668,11 +1011,12 @@ class _DesktopLikeFieldRow extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F9FB),
-        border: Border.all(color: const Color(0xFFD0D8E2)),
-        borderRadius: BorderRadius.circular(10),
+        color: Colors.white,
+        border: showBottomBorder
+            ? const Border(bottom: BorderSide(color: Color(0xFFE1EAF0)))
+            : null,
       ),
-      padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+      padding: const EdgeInsets.fromLTRB(20, 10, 12, 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -728,7 +1072,7 @@ class _DesktopLikeFieldRow extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 3),
                 Text(
                   value,
                   maxLines: 2,
@@ -739,7 +1083,7 @@ class _DesktopLikeFieldRow extends StatelessWidget {
                         : const Color(0xFF1F2937),
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
-                    height: 1.22,
+                    height: 1.16,
                   ),
                 ),
                 if (hasCountdown) ...[
@@ -761,26 +1105,64 @@ class _DesktopLikeFieldRow extends StatelessWidget {
               ],
             ),
           ),
-          if (isSecret)
-            IconButton(
-              onPressed: onToggleReveal,
-              icon: const Icon(
-                Icons.remove_red_eye_outlined,
-                size: 19,
-                color: Color(0xFF637483),
+          const SizedBox(width: 12),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isSecret) ...[
+                _FieldActionButton(
+                  icon: isRevealed
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  tooltip: isRevealed ? 'Hide $label' : 'Show $label',
+                  onPressed: onToggleReveal,
+                ),
+                const SizedBox(width: 8),
+              ],
+              _FieldActionButton(
+                icon: Icons.copy_rounded,
+                tooltip: 'Copy $label',
+                onPressed: onCopy,
               ),
-              tooltip: 'Show/Hide',
-            ),
-          IconButton(
-            onPressed: onCopy,
-            icon: const Icon(
-              Icons.copy_rounded,
-              size: 19,
-              color: Color(0xFF637483),
-            ),
-            tooltip: 'Copy',
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FieldActionButton extends StatelessWidget {
+  const _FieldActionButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 44,
+      height: 44,
+      child: IconButton(
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        style: IconButton.styleFrom(
+          backgroundColor: const Color(0xFFF3F7FA),
+          foregroundColor: const Color(0xFF637483),
+          disabledBackgroundColor: const Color(0xFFE9EEF3),
+          disabledForegroundColor: const Color(0xFF9AA7B4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Color(0xFFE1EAF0)),
+          ),
+        ),
+        icon: Icon(icon, size: 19),
+        tooltip: tooltip,
       ),
     );
   }
@@ -832,6 +1214,8 @@ class _FieldVm {
     required this.labelColor,
     this.countdownSeconds,
     this.countdownPeriodSeconds,
+    this.otpAuthUrl,
+    this.isCardNumber = false,
   });
 
   final String key;
@@ -843,6 +1227,8 @@ class _FieldVm {
   final Color? labelColor;
   final int? countdownSeconds;
   final int? countdownPeriodSeconds;
+  final String? otpAuthUrl;
+  final bool isCardNumber;
 }
 
 List<_FieldVm> _buildDesktopLikeFields({
@@ -873,6 +1259,7 @@ List<_FieldVm> _buildDesktopLikeFields({
     required String value,
     String? sourceKey,
     bool isSecret = false,
+    bool isCardNumber = false,
   }) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return;
@@ -896,6 +1283,7 @@ List<_FieldVm> _buildDesktopLikeFields({
         icon: visual.icon,
         iconColor: visual.iconColor,
         labelColor: visual.labelColor,
+        isCardNumber: isCardNumber,
       ),
     );
   }
@@ -904,6 +1292,7 @@ List<_FieldVm> _buildDesktopLikeFields({
     required String label,
     required List<String> matches,
     bool isSecret = false,
+    bool isCardNumber = false,
     String Function(String)? valueTransformer,
   }) {
     for (var index = 0; index < sourceFields.length; index++) {
@@ -924,7 +1313,8 @@ List<_FieldVm> _buildDesktopLikeFields({
             ? valueTransformer(field.value)
             : field.value,
         sourceKey: field.key,
-        isSecret: isSecret || field.isProtected,
+        isSecret: isCardNumber ? false : (isSecret || field.isProtected),
+        isCardNumber: isCardNumber,
       );
       return;
     }
@@ -984,6 +1374,7 @@ List<_FieldVm> _buildDesktopLikeFields({
           'cc number',
           'pan',
         ],
+        isCardNumber: true,
       );
       addMappedField(
         label: 'Expiry Date',
@@ -1191,6 +1582,7 @@ List<_FieldVm> _buildDesktopLikeFields({
           value: _formatTotp(code),
           countdownSeconds: countdownSeconds,
           countdownPeriodSeconds: countdownPeriodSeconds,
+          otpAuthUrl: entry.otpAuthUrl,
         ),
       );
     }
@@ -1223,6 +1615,7 @@ extension on _FieldVm {
     String? value,
     int? countdownSeconds,
     int? countdownPeriodSeconds,
+    String? otpAuthUrl,
   }) {
     return _FieldVm(
       key: key,
@@ -1235,6 +1628,7 @@ extension on _FieldVm {
       countdownSeconds: countdownSeconds ?? this.countdownSeconds,
       countdownPeriodSeconds:
           countdownPeriodSeconds ?? this.countdownPeriodSeconds,
+      otpAuthUrl: otpAuthUrl ?? this.otpAuthUrl,
     );
   }
 }
@@ -1278,6 +1672,7 @@ bool _shouldHideFromDetailFields({required String label, String? sourceKey}) {
               combined.contains('username')));
 
   return normalizedLabel == 'otp' ||
+      normalizedSourceKey == AppKdbxFieldKeys.itemIconPresetId.toLowerCase() ||
       AppKdbxFieldKeys.isAttachmentMetaKey(sourceKey ?? '') ||
       normalizedLabel == 'totp' ||
       normalizedSourceKey == 'otp' ||
@@ -1441,6 +1836,50 @@ String _formatCardDateDesktop(String value) {
 }
 
 Timer? _clipboardClearTimer;
+
+Future<void> _copyFieldValue(
+  BuildContext context, {
+  required _FieldVm field,
+  required WidgetRef ref,
+}) async {
+  final otpAuthUrl = field.otpAuthUrl;
+  if (otpAuthUrl != null && otpAuthUrl.trim().isNotEmpty) {
+    await _copyTotpValue(context, otpAuthUrl: otpAuthUrl, ref: ref);
+    return;
+  }
+
+  await _copyValue(context, value: field.value, label: field.label, ref: ref);
+}
+
+Future<void> _copyTotpValue(
+  BuildContext context, {
+  required String otpAuthUrl,
+  required WidgetRef ref,
+}) async {
+  final secondsRemaining = _totpService.secondsRemaining(otpAuthUrl);
+  if (secondsRemaining <= 5) {
+    _showCopyToast(context, 'Refreshing OTP...');
+    await Future<void>.delayed(
+      Duration(seconds: secondsRemaining) + const Duration(milliseconds: 250),
+    );
+    if (!context.mounted) return;
+  }
+
+  final code = _totpService.generateCode(otpAuthUrl);
+  if (code == null || code.trim().isEmpty) {
+    if (context.mounted) {
+      _showCopyToast(context, 'Unable to copy OTP');
+    }
+    return;
+  }
+
+  await _copyValue(
+    context,
+    value: code.replaceAll(RegExp(r'\s+'), ''),
+    label: 'OTP',
+    ref: ref,
+  );
+}
 
 Future<void> _copyValue(
   BuildContext context, {

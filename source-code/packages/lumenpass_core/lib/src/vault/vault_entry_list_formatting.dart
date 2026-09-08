@@ -19,8 +19,8 @@ const List<String> kVaultListMonthAbbr = <String>[
 ];
 
 /// ARGB tile colors for initials / fallback avatars (matches desktop `_tilePalette`).
-const List<({int backgroundArgb, int foregroundArgb})> kVaultListTileArgbPalette =
-    <({int backgroundArgb, int foregroundArgb})>[
+const List<({int backgroundArgb, int foregroundArgb})>
+    kVaultListTileArgbPalette = <({int backgroundArgb, int foregroundArgb})>[
   (backgroundArgb: 0xFFE5D6A4, foregroundArgb: 0xFF6E6546),
   (backgroundArgb: 0xFFDDD7CC, foregroundArgb: 0xFF6A645A),
   (backgroundArgb: 0xFFD7EACF, foregroundArgb: 0xFF5F7855),
@@ -43,8 +43,10 @@ DateTime? latestEntryTimestamp(DateTime? a, DateTime? b) {
   return a.isAfter(b) ? a : b;
 }
 
-({int backgroundArgb, int foregroundArgb}) vaultListTileArgbForEntry(KdbxEntry entry) {
-  final colorIndex = entry.title.hashCode.abs() % kVaultListTileArgbPalette.length;
+({int backgroundArgb, int foregroundArgb}) vaultListTileArgbForEntry(
+    KdbxEntry entry) {
+  final colorIndex =
+      entry.title.hashCode.abs() % kVaultListTileArgbPalette.length;
   return kVaultListTileArgbPalette[colorIndex];
 }
 
@@ -138,6 +140,7 @@ String vaultEntryListSubtitle(KdbxEntry entry, VaultItemType itemType) {
     final key = field.key.trim();
     final normalizedKey = key.toLowerCase();
     if (normalizedStandardKeys.contains(normalizedKey) ||
+        key == AppKdbxFieldKeys.itemIconPresetId ||
         AppKdbxFieldKeys.isAttachmentMetaKey(key) ||
         field.isProtected ||
         AppKdbxFieldKeys.isProtectedKey(key)) {
@@ -155,7 +158,8 @@ String vaultEntryListSubtitle(KdbxEntry entry, VaultItemType itemType) {
 
 String creditCardSubtitlePreview(KdbxEntry entry) {
   final cardholder = extractCreditCardholder(entry);
-  final maskedLast4 = maskedCreditCardLast4(extractCreditCardNumberFromEntry(entry));
+  final maskedLast4 =
+      maskedCreditCardLast4(extractCreditCardNumberFromEntry(entry));
 
   if (cardholder.isNotEmpty && maskedLast4.isNotEmpty) {
     return truncateListPreview('$cardholder $maskedLast4', 56);
@@ -196,6 +200,23 @@ String maskedCreditCardLast4(String rawNumber) {
   final last4 =
       digits.length <= 4 ? digits : digits.substring(digits.length - 4);
   return 'xxx$last4';
+}
+
+/// Masks the middle digits of a credit card number for view-only display,
+/// keeping the first 4 and last 3 digits visible. Any non-digit characters
+/// (spaces, dashes) are stripped before masking. If the number is too short to
+/// have a hidden middle section it is returned unchanged.
+String maskCreditCardNumberForDisplay(String rawNumber) {
+  final digits = rawNumber.replaceAll(RegExp(r'[^0-9]'), '');
+  // Need at least first 4 + last 3 + 1 hidden digit to mask meaningfully.
+  if (digits.length <= 7) {
+    return rawNumber;
+  }
+  final first4 = digits.substring(0, 4);
+  final last3 = digits.substring(digits.length - 3);
+  final hiddenCount = digits.length - 7;
+  final masked = '\u2022' * hiddenCount;
+  return '$first4$masked$last3';
 }
 
 String sshSubtitlePreview(KdbxEntry entry) {
@@ -320,4 +341,36 @@ bool entryHasPasskeyChip(KdbxEntry entry) {
 bool entryHasTotp(KdbxEntry entry) {
   final u = entry.otpAuthUrl;
   return u != null && u.trim().isNotEmpty;
+}
+
+/// Sentinel used when an entry has no usable timestamp at all, so comparisons
+/// stay total and such entries sort to the bottom.
+final DateTime _kEpoch = DateTime.fromMillisecondsSinceEpoch(0);
+
+/// The timestamp that best represents when an entry was last *used*, falling
+/// back to last updated and then created. Mirrors the desktop vault ordering
+/// (`lastUsedAt ?? updatedAt ?? createdAt`).
+DateTime effectiveLastUsedAt(KdbxEntry entry) {
+  return entry.lastUsedAt ?? entry.updatedAt ?? entry.createdAt ?? _kEpoch;
+}
+
+/// The timestamp that best represents when an entry was last *updated*,
+/// falling back to created.
+DateTime effectiveLastUpdatedAt(KdbxEntry entry) {
+  return entry.updatedAt ?? entry.createdAt ?? _kEpoch;
+}
+
+/// Orders entries most-recently-used first. Primary key is Last Used,
+/// tiebroken by Last Updated, then title for a stable, total ordering.
+int compareVaultEntriesByLastUsed(KdbxEntry a, KdbxEntry b) {
+  final byUsed = effectiveLastUsedAt(b).compareTo(effectiveLastUsedAt(a));
+  if (byUsed != 0) {
+    return byUsed;
+  }
+  final byUpdated =
+      effectiveLastUpdatedAt(b).compareTo(effectiveLastUpdatedAt(a));
+  if (byUpdated != 0) {
+    return byUpdated;
+  }
+  return a.title.toLowerCase().compareTo(b.title.toLowerCase());
 }

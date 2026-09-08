@@ -6,10 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lumenpass_core/lumenpass_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/repository/database_save_sync.dart';
 import '../../../core/repository/providers.dart';
 import '../../../core/ui/app_snack_bar.dart';
-import '../../unlock/application/database_registry.dart';
 import '../application/vault_items_list_providers.dart';
 import 'vault_create_item.dart';
 
@@ -222,9 +220,7 @@ class VaultEntryContextMenu extends ConsumerWidget {
         attachments: const [],
       );
 
-      final registry = ref.read(databaseRegistryProvider);
-      await saveAndSyncDatabase(repo, registry);
-      await refreshVaultSnapshot(ref);
+      publishAndScheduleSave(ref, repo);
 
       if (!context.mounted) return;
       _showToast(context, 'Entry duplicated');
@@ -276,9 +272,7 @@ class VaultEntryContextMenu extends ConsumerWidget {
       try {
         final repo = ref.read(kdbxRepositoryProvider);
         await repo.deleteEntry(entry.uuid);
-        final registry = ref.read(databaseRegistryProvider);
-        await saveAndSyncDatabase(repo, registry);
-        await refreshVaultSnapshot(ref);
+        publishAndScheduleSave(ref, repo);
         onDeleteSuccess?.call();
       } catch (e) {
         debugPrint('Delete failed: $e');

@@ -21,6 +21,9 @@ _$KdbxEntryImpl _$$KdbxEntryImplFromJson(Map<String, dynamic> json) =>
       updatedAt: json['updatedAt'] == null
           ? null
           : DateTime.parse(json['updatedAt'] as String),
+      lastUsedAt: json['lastUsedAt'] == null
+          ? null
+          : DateTime.parse(json['lastUsedAt'] as String),
       tags:
           (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
               const <String>[],
@@ -42,6 +45,7 @@ Map<String, dynamic> _$$KdbxEntryImplToJson(_$KdbxEntryImpl instance) =>
       'otpAuthUrl': instance.otpAuthUrl,
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
+      'lastUsedAt': instance.lastUsedAt?.toIso8601String(),
       'tags': instance.tags,
       'fields': instance.fields,
       'faviconPngBase64': instance.faviconPngBase64,

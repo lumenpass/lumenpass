@@ -91,6 +91,24 @@ class DatabaseRegistryNotifier extends StateNotifier<List<DatabaseRecord>> {
     await _persist();
   }
 
+  /// Updates the absolute [databasePath] for the vault identified by [id].
+  /// Used to heal stored paths after the iOS app-container UUID rotates on
+  /// rebuild (the file is still on disk, but at a new absolute path).
+  Future<void> updateDatabasePath(String id, String databasePath) async {
+    var changed = false;
+    state = [
+      for (final r in state)
+        if (r.id == id && r.databasePath != databasePath)
+          (() {
+            changed = true;
+            return r.copyWith(databasePath: databasePath);
+          })()
+        else
+          r,
+    ];
+    if (changed) await _persist();
+  }
+
   /// Records the last time the vault identified by [id] was successfully
   /// opened. Used to sort vaults by recency on the picker screen.
   Future<void> setLastOpenedAt(String id) async {

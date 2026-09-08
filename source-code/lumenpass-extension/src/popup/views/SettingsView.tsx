@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import browser from "webextension-polyfill";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import type { ExtensionSettings } from "../../lib/storage";
 import type { ExtMessage, ExtResponse } from "../../lib/utils";
+import { formatVersionLabel } from "../../lib/version";
 
 interface Props {
   settings: ExtensionSettings | null;
@@ -14,14 +14,6 @@ type SettingsToggleKey = "autofillEnabled" | "autoSubmit" | "autofillOnPageLoad"
 type SettingsToggleState = Pick<ExtensionSettings, SettingsToggleKey>;
 type ToastState = { type: "success" | "error"; message: string } | null;
 
-function getExtensionVersion() {
-  try {
-    return browser.runtime.getManifest().version;
-  } catch {
-    return "unknown";
-  }
-}
-
 export default function SettingsView({ settings, onSaved, sendMessage }: Props) {
   const [autofillEnabled, setAutofillEnabled] = useState(settings?.autofillEnabled ?? true);
   const [autoSubmit, setAutoSubmit] = useState(settings?.autoSubmit ?? false);
@@ -29,7 +21,7 @@ export default function SettingsView({ settings, onSaved, sendMessage }: Props) 
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
   const toastTimerRef = useRef<number | null>(null);
-  const extensionVersion = getExtensionVersion();
+  const versionLabel = formatVersionLabel();
 
   useEffect(() => {
     if (settings) {
@@ -163,7 +155,7 @@ export default function SettingsView({ settings, onSaved, sendMessage }: Props) 
 
       {/* Version */}
       <p className="mt-2 text-xs text-center text-gray-300 dark:text-gray-700">
-        LumenPass Extension v{extensionVersion}
+        {versionLabel}
       </p>
 
       {toast && (

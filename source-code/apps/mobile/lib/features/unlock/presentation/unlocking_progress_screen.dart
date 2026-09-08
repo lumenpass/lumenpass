@@ -2,12 +2,13 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+
+import '../../../core/ui/floating_glass_search_bar.dart';
 
 const _kBackground = Color(0xFFF4F9FA);
-const _kSurface = Color(0xFFFFFFFF);
 const _kInk = Color(0xFF0A3B48);
 const _kMuted = Color(0xFF4A6670);
-const _kFaint = Color(0xFF7A93A0);
 const _kAccent = Color(0xFF0A67FF);
 const _kAccentSoft = Color(0xFFE4ECFA);
 
@@ -179,82 +180,157 @@ class _UnlockingProgressScreenState extends State<UnlockingProgressScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _kBackground,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final shortest = math.min(
-              constraints.maxWidth,
-              constraints.maxHeight,
-            );
-            final heroSize = shortest.isFinite
-                ? math.min(220.0, math.max(160.0, shortest * 0.48))
-                : 200.0;
-            final maxContentWidth = math.min(420.0, constraints.maxWidth);
-            return Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxContentWidth),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: FadeTransition(
-                    opacity: _entryFade,
-                    child: SlideTransition(
-                      position: _entrySlide,
-                      child: ScaleTransition(
-                        scale: _entryScale,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _Hero(
-                              size: heroSize,
-                              spin: _spinCtrl,
-                              breath: _breathCtrl,
-                              reduceMotion: _reduceMotion,
-                            ),
-                            SizedBox(height: heroSize * 0.22),
-                            const Text(
-                              'Unlocking your vault',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: _kInk,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.2,
-                                height: 1.2,
+      body: Stack(
+        children: [
+          const Positioned.fill(child: _Backdrop()),
+          Positioned.fill(
+            child: SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final shortest = math.min(
+                    constraints.maxWidth,
+                    constraints.maxHeight,
+                  );
+                  final heroSize = shortest.isFinite
+                      ? math.min(220.0, math.max(160.0, shortest * 0.48))
+                      : 200.0;
+                  final maxContentWidth = math.min(
+                    420.0,
+                    constraints.maxWidth,
+                  );
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxContentWidth),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: FadeTransition(
+                          opacity: _entryFade,
+                          child: SlideTransition(
+                            position: _entrySlide,
+                            child: ScaleTransition(
+                              scale: _entryScale,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _Hero(
+                                    size: heroSize,
+                                    spin: _spinCtrl,
+                                    breath: _breathCtrl,
+                                    reduceMotion: _reduceMotion,
+                                  ),
+                                  SizedBox(height: heroSize * 0.22),
+                                  const Text(
+                                    'Unlocking your vault',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: _kInk,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -0.2,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: Text(
+                                      widget.vaultName == null
+                                          ? 'Decrypting your secure data. This will take just a moment.'
+                                          : 'Decrypting “${widget.vaultName}”. This will take just a moment.',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: _kMuted,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  _PhaseLabel(text: _phases[_phaseIndex]),
+                                  const SizedBox(height: 16),
+                                  _ShimmerBar(
+                                    animation: _barCtrl,
+                                    reduceMotion: _reduceMotion,
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(
-                                widget.vaultName == null
-                                    ? 'Decrypting your secure data. This will take just a moment.'
-                                    : 'Decrypting “${widget.vaultName}”. This will take just a moment.',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: _kMuted,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 26),
-                            _PhaseLabel(text: _phases[_phaseIndex]),
-                            const SizedBox(height: 14),
-                            _ShimmerBar(
-                              animation: _barCtrl,
-                              reduceMotion: _reduceMotion,
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Backdrop ─────────────────────────────────────────────────────────────────
+
+class _Backdrop extends StatelessWidget {
+  const _Backdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Stack(
+        children: [
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [_kBackground, Color(0xFFEAF2FB)],
                 ),
               ),
-            );
-          },
+            ),
+          ),
+          Positioned(
+            top: -40,
+            left: -30,
+            child: _GlowBlob(
+              size: 320,
+              color: _kAccent.withValues(alpha: 0.08),
+            ),
+          ),
+          Positioned(
+            bottom: -60,
+            right: -40,
+            child: _GlowBlob(
+              size: 300,
+              color: _kInk.withValues(alpha: 0.05),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlowBlob extends StatelessWidget {
+  const _GlowBlob({required this.size, required this.color});
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color, color.withValues(alpha: 0.0)],
+          stops: const [0.0, 1.0],
         ),
       ),
     );
@@ -348,31 +424,30 @@ class _LockDisk extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
+    return GlassSurface(
       height: size,
-      decoration: BoxDecoration(
-        color: _kSurface,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: _kAccent.withValues(alpha: 0.18),
-            blurRadius: 32,
-            spreadRadius: 1,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: _kInk.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: EdgeInsets.all(size * 0.22),
-      child: Image.asset(
-        'assets/icons/lock_vault.png',
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
+      width: size,
+      borderRadius: size / 2,
+      tint: Colors.white.withValues(alpha: 0.42),
+      borderColor: Colors.white.withValues(alpha: 0.72),
+      blurSigma: 14,
+      highlightOpacity: 0.18,
+      quality: GlassQuality.premium,
+      thickness: 36,
+      chromaticAberration: 0.26,
+      lightIntensity: 0.5,
+      saturation: 1.24,
+      ambientStrength: 0.82,
+      shadowOpacity: 0.12,
+      shadowBlurRadius: 30,
+      shadowSpreadRadius: -10,
+      child: Padding(
+        padding: EdgeInsets.all(size * 0.24),
+        child: Image.asset(
+          'assets/icons/lock_vault.png',
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
+        ),
       ),
     );
   }
@@ -394,7 +469,7 @@ class _SweepArcPainter extends CustomPainter {
     final track = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
-      ..color = _kAccent.withValues(alpha: 0.10);
+      ..color = _kAccent.withValues(alpha: 0.08);
     canvas.drawCircle(center, radius, track);
 
     if (reduceMotion) {
@@ -472,29 +547,54 @@ class _PhaseLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 320),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, anim) => FadeTransition(
-        opacity: anim,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.18),
-            end: Offset.zero,
-          ).animate(anim),
-          child: child,
-        ),
-      ),
-      child: Text(
-        text,
-        key: ValueKey<String>(text),
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: _kFaint,
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.6,
+    return SizedBox(
+      height: 40,
+      child: Center(
+        child: GlassSurface(
+          height: 34,
+          borderRadius: 17,
+          tint: Colors.white.withValues(alpha: 0.4),
+          borderColor: Colors.white.withValues(alpha: 0.72),
+          blurSigma: 12,
+          highlightOpacity: 0.16,
+          quality: GlassQuality.premium,
+          thickness: 30,
+          chromaticAberration: 0.2,
+          lightIntensity: 0.5,
+          saturation: 1.2,
+          ambientStrength: 0.8,
+          shadowOpacity: 0.08,
+          shadowBlurRadius: 18,
+          shadowSpreadRadius: -9,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 320),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.12),
+                    end: Offset.zero,
+                  ).animate(anim),
+                  child: child,
+                ),
+              ),
+              child: Text(
+                text,
+                key: ValueKey<String>(text),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _kMuted,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -514,7 +614,7 @@ class _ShimmerBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return RepaintBoundary(
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(999),
         child: Container(
           width: 168,
           height: 4,

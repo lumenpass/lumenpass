@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lumenpass_core/lumenpass_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/repository/providers.dart';
@@ -145,10 +147,10 @@ Future<void> runAutoFillSync(ProviderContainer container) async {
       await bridge.clearCredentials();
       return;
     }
-    final credentials = db.entries
-        .map(AutoFillCredential.fromEntry)
-        .whereType<AutoFillCredential>()
-        .toList(growable: false);
+    final credentials = await _buildAutoFillCredentials(
+      db.entries,
+      includeRenderedIcons: Platform.isIOS,
+    );
     await bridge.syncCredentials(credentials);
   } on MissingPluginException {
     // ignore – native not wired in (tests, desktop)
@@ -172,10 +174,10 @@ final autoFillSyncControllerProvider = Provider<void>(
           await bridge.clearCredentials();
           return;
         }
-        final credentials = db.entries
-            .map(AutoFillCredential.fromEntry)
-            .whereType<AutoFillCredential>()
-            .toList(growable: false);
+        final credentials = await _buildAutoFillCredentials(
+          db.entries,
+          includeRenderedIcons: Platform.isIOS,
+        );
         await bridge.syncCredentials(credentials);
       } on MissingPluginException {
         // ignore – native not wired in (tests, desktop)
@@ -203,3 +205,18 @@ final keepAutoFillSyncAliveProvider = Provider<void>((ref) {
     fireImmediately: true,
   );
 });
+
+Future<List<AutoFillCredential>> _buildAutoFillCredentials(
+  Iterable<KdbxEntry> entries, {
+  required bool includeRenderedIcons,
+}) async {
+  final projected = await Future.wait(
+    entries.map(
+      (entry) => AutoFillCredential.fromEntry(
+        entry,
+        includeRenderedIconPayload: includeRenderedIcons,
+      ),
+    ),
+  );
+  return projected.whereType<AutoFillCredential>().toList(growable: false);
+}

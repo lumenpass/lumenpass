@@ -29,6 +29,7 @@ mixin _$KdbxEntry {
   String? get otpAuthUrl => throw _privateConstructorUsedError;
   DateTime? get createdAt => throw _privateConstructorUsedError;
   DateTime? get updatedAt => throw _privateConstructorUsedError;
+  DateTime? get lastUsedAt => throw _privateConstructorUsedError;
   List<String> get tags => throw _privateConstructorUsedError;
   List<EntryField> get fields => throw _privateConstructorUsedError;
 
@@ -64,6 +65,7 @@ abstract class $KdbxEntryCopyWith<$Res> {
       String? otpAuthUrl,
       DateTime? createdAt,
       DateTime? updatedAt,
+      DateTime? lastUsedAt,
       List<String> tags,
       List<EntryField> fields,
       String? faviconPngBase64});
@@ -93,6 +95,7 @@ class _$KdbxEntryCopyWithImpl<$Res, $Val extends KdbxEntry>
     Object? otpAuthUrl = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
+    Object? lastUsedAt = freezed,
     Object? tags = null,
     Object? fields = null,
     Object? faviconPngBase64 = freezed,
@@ -134,6 +137,10 @@ class _$KdbxEntryCopyWithImpl<$Res, $Val extends KdbxEntry>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      lastUsedAt: freezed == lastUsedAt
+          ? _value.lastUsedAt
+          : lastUsedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
       tags: null == tags
           ? _value.tags
           : tags // ignore: cast_nullable_to_non_nullable
@@ -168,6 +175,7 @@ abstract class _$$KdbxEntryImplCopyWith<$Res>
       String? otpAuthUrl,
       DateTime? createdAt,
       DateTime? updatedAt,
+      DateTime? lastUsedAt,
       List<String> tags,
       List<EntryField> fields,
       String? faviconPngBase64});
@@ -195,6 +203,7 @@ class __$$KdbxEntryImplCopyWithImpl<$Res>
     Object? otpAuthUrl = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
+    Object? lastUsedAt = freezed,
     Object? tags = null,
     Object? fields = null,
     Object? faviconPngBase64 = freezed,
@@ -236,6 +245,10 @@ class __$$KdbxEntryImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      lastUsedAt: freezed == lastUsedAt
+          ? _value.lastUsedAt
+          : lastUsedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
       tags: null == tags
           ? _value._tags
           : tags // ignore: cast_nullable_to_non_nullable
@@ -265,6 +278,7 @@ class _$KdbxEntryImpl extends _KdbxEntry {
       this.otpAuthUrl,
       this.createdAt,
       this.updatedAt,
+      this.lastUsedAt,
       final List<String> tags = const <String>[],
       final List<EntryField> fields = const <EntryField>[],
       this.faviconPngBase64})
@@ -293,6 +307,8 @@ class _$KdbxEntryImpl extends _KdbxEntry {
   final DateTime? createdAt;
   @override
   final DateTime? updatedAt;
+  @override
+  final DateTime? lastUsedAt;
   final List<String> _tags;
   @override
   @JsonKey()
@@ -321,7 +337,7 @@ class _$KdbxEntryImpl extends _KdbxEntry {
 
   @override
   String toString() {
-    return 'KdbxEntry(uuid: $uuid, groupUuid: $groupUuid, title: $title, username: $username, url: $url, notes: $notes, otpAuthUrl: $otpAuthUrl, createdAt: $createdAt, updatedAt: $updatedAt, tags: $tags, fields: $fields, faviconPngBase64: $faviconPngBase64)';
+    return 'KdbxEntry(uuid: $uuid, groupUuid: $groupUuid, title: $title, username: $username, url: $url, notes: $notes, otpAuthUrl: $otpAuthUrl, createdAt: $createdAt, updatedAt: $updatedAt, lastUsedAt: $lastUsedAt, tags: $tags, fields: $fields, faviconPngBase64: $faviconPngBase64)';
   }
 
   @override
@@ -343,6 +359,8 @@ class _$KdbxEntryImpl extends _KdbxEntry {
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
                 other.updatedAt == updatedAt) &&
+            (identical(other.lastUsedAt, lastUsedAt) ||
+                other.lastUsedAt == lastUsedAt) &&
             const DeepCollectionEquality().equals(other._tags, _tags) &&
             const DeepCollectionEquality().equals(other._fields, _fields) &&
             (identical(other.faviconPngBase64, faviconPngBase64) ||
@@ -362,6 +380,7 @@ class _$KdbxEntryImpl extends _KdbxEntry {
       otpAuthUrl,
       createdAt,
       updatedAt,
+      lastUsedAt,
       const DeepCollectionEquality().hash(_tags),
       const DeepCollectionEquality().hash(_fields),
       faviconPngBase64);
@@ -393,6 +412,7 @@ abstract class _KdbxEntry extends KdbxEntry {
       final String? otpAuthUrl,
       final DateTime? createdAt,
       final DateTime? updatedAt,
+      final DateTime? lastUsedAt,
       final List<String> tags,
       final List<EntryField> fields,
       final String? faviconPngBase64}) = _$KdbxEntryImpl;
@@ -419,6 +439,8 @@ abstract class _KdbxEntry extends KdbxEntry {
   DateTime? get createdAt;
   @override
   DateTime? get updatedAt;
+  @override
+  DateTime? get lastUsedAt;
   @override
   List<String> get tags;
   @override

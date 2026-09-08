@@ -57,6 +57,7 @@ class _QuickSearchOverlay extends StatefulWidget {
     this.onPreferredHeightChanged,
     this.initialSelectedUuid,
     this.initialShowGenerator = false,
+    this.hideCreditCardNumber = true,
     required this.shortcutDisplay,
   });
 
@@ -71,6 +72,7 @@ class _QuickSearchOverlay extends StatefulWidget {
   final ValueChanged<double>? onPreferredHeightChanged;
   final DateTime currentTime;
   final bool initialShowGenerator;
+  final bool hideCreditCardNumber;
   final String shortcutDisplay;
 
   @override
@@ -218,6 +220,34 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
       return;
     }
 
+    // Fast path: no artificial loading window means the ranking is effectively
+    // instant, so we never flip `_isSearching` (which would flash a spinner
+    // and block the text field for a sub-frame operation).
+    if (kVaultSearchLoadingFrame <= Duration.zero &&
+        kVaultSearchLoadingMinVisible <= Duration.zero) {
+      try {
+        final results = _computeResultsFor(loweredQuery);
+        if (!mounted || seq != _searchSeq) {
+          return;
+        }
+        setState(() {
+          _debouncedQuery = loweredQuery;
+          _visibleResults = results;
+          _isSearching = false;
+          _activeIndex = 0;
+        });
+      } catch (_) {
+        if (!mounted || seq != _searchSeq) {
+          return;
+        }
+        setState(() {
+          _isSearching = false;
+        });
+      }
+      _schedulePreferredHeightReport();
+      return;
+    }
+
     final stopwatch = Stopwatch()..start();
     setState(() {
       _isSearching = true;
@@ -350,11 +380,35 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
         _kStandaloneWindowHeightCompensation;
   }
 
+  /// Re-attaches keyboard focus to whichever node owns key handling for the
+  /// currently visible view. Leaving the search view unmounts the search
+  /// `TextField` (which held focus), so primary focus escapes upward to the
+  /// enclosing `FocusScope` — an *ancestor* of `_scopeFocusNode`, not a
+  /// descendant — and `_onKeyEvent` stops receiving Esc / arrow / Enter
+  /// events in the detail and generator views. Re-request focus on the search
+  /// field while the list is showing, otherwise on the scope node that carries
+  /// `onKeyEvent`. Guarded by `hasFocus` so we never steal focus mid-interaction
+  /// (e.g. on the 1s TOTP-driven rebuild, or while the user is on a control).
+  void _syncFocusForCurrentView() {
+    if (!mounted) {
+      return;
+    }
+    final wantsSearchInput = _detailEntry == null && !_showGenerator;
+    final target = wantsSearchInput ? _inputFocusNode : _scopeFocusNode;
+    if (!target.hasFocus) {
+      target.requestFocus();
+    }
+  }
+
   void _schedulePreferredHeightReport() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
       }
+      // Runs on every view transition (all transitions call this) as well as
+      // each rebuild, so it's the natural place to keep keyboard focus pinned
+      // to the active view's handler node.
+      _syncFocusForCurrentView();
       final callback = widget.onPreferredHeightChanged;
       if (callback == null) {
         return;
@@ -656,6 +710,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
           label: f.label,
           value: f.value,
           isSecret: f.isSecret,
+          isCardNumber: f.isCardNumber,
         ),
       );
     }
@@ -900,10 +955,11 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
       final valueColor = countdownSeconds != null && !isActive
           ? _totpCountdownColor(countdownSeconds)
           : null;
+      final maskCard = row.isCardNumber && widget.hideCreditCardNumber;
       fields.add(_buildDetailField(
         row.icon,
         row.label,
-        row.value,
+        maskCard ? _maskCreditCardNumberForDisplay(row.value) : row.value,
         isSecret: row.isSecret,
         isActive: isActive,
         isRevealed: isRevealed,
@@ -919,7 +975,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
               }
             : null,
         valueColor: valueColor,
-        copyValue: row.copyValue,
+        copyValue: row.copyValue ?? (maskCard ? row.value : null),
         countdownSeconds: countdownSeconds,
       ));
     }
@@ -1278,7 +1334,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
       margin: standalone
           ? EdgeInsets.zero
           : const EdgeInsets.symmetric(horizontal: 16),
-      alignment: (standalone && Platform.isMacOS) ? Alignment.topCenter : null,
+      alignment: standalone ? Alignment.topCenter : null,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xFFE7EBF0),
@@ -1331,8 +1387,9 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                       child: TextField(
                         focusNode: _inputFocusNode,
                         controller: _queryController,
-                        readOnly: _isSearching,
-                        showCursor: !_isSearching,
+                        // Live search runs in under a frame, so the field is
+                        // always editable — blocking keystrokes mid-type is
+                        // what made searching feel janky.
                         textAlignVertical: TextAlignVertical.center,
                         cursorColor: const Color(0xFF0F67D6),
                         cursorHeight: 16,
@@ -1614,19 +1671,11 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
               onTap: widget.onClose,
             ),
           ),
-        if (standalone && Platform.isMacOS)
+        if (standalone)
+          // Isolated borderless panel window (macOS/Windows/Linux): the
+          // overlay fills the whole window; the container's topCenter
+          // alignment keeps the panel pinned to the top.
           Positioned.fill(
-            child: Focus(
-              focusNode: _scopeFocusNode,
-              onKeyEvent: _onKeyEvent,
-              child: dismissiblePanel,
-            ),
-          )
-        else if (standalone)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
             child: Focus(
               focusNode: _scopeFocusNode,
               onKeyEvent: _onKeyEvent,
@@ -2259,6 +2308,7 @@ class _QuickSearchDetailRow {
     required this.label,
     required this.value,
     this.isSecret = false,
+    this.isCardNumber = false,
     this.copyValue,
     this.countdownSeconds,
   });
@@ -2267,6 +2317,7 @@ class _QuickSearchDetailRow {
   final String label;
   final String value;
   final bool isSecret;
+  final bool isCardNumber;
   final String? copyValue;
   final int? countdownSeconds;
 }

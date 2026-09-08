@@ -638,10 +638,7 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
           colorId: _selectedColorId,
         ),
       );
-      final database = await saveAndSyncDatabase(
-          repository, ref.read(databaseRegistryProvider));
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultSidebarCategoriesProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onShowToast('$name category created');
       await widget.onCategoryCreated(groupUuid);
     } catch (error) {
@@ -1028,10 +1025,7 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
           colorId: _selectedColorId,
         ),
       );
-      final database = await saveAndSyncDatabase(
-          repository, ref.read(databaseRegistryProvider));
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultSidebarCategoriesProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onShowToast('$name category updated');
       await widget.onCategoryUpdated(widget.category.uuid);
     } catch (error) {

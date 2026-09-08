@@ -23,7 +23,7 @@ class CloudSyncStatus {
   });
 
   const CloudSyncStatus.idle(String path)
-      : this(path: path, phase: CloudSyncPhase.idle);
+    : this(path: path, phase: CloudSyncPhase.idle);
 
   final String path;
   final CloudSyncPhase phase;
@@ -39,6 +39,7 @@ class CloudSyncService {
   static final CloudSyncService instance = CloudSyncService._();
 
   static const _dirtyKeyPrefix = 'cloud_sync_dirty_v1:';
+  static const _remoteModifiedKeyPrefix = 'cloud_sync_remote_modified_v1:';
   static const _logTag = '[CloudSync]';
 
   LocalStorageService? _storage;
@@ -80,6 +81,14 @@ class CloudSyncService {
     } catch (_) {}
   }
 
+  Future<void> flush(DatabaseRecord record) async {
+    if (!_isCloudBacked(record)) return;
+    await awaitPending(record.databasePath);
+    if (await isDirty(record.databasePath)) {
+      await _ensureLoop(record);
+    }
+  }
+
   Future<bool> isDirty(String path) async {
     final storage = _storage;
     if (storage == null) return false;
@@ -103,7 +112,8 @@ class CloudSyncService {
         await _ensureLoop(record);
         _log('refreshFromCloud — retry push succeeded, skipping download');
       } catch (e) {
-        final isPermError = e.toString().contains('403') ||
+        final isPermError =
+            e.toString().contains('403') ||
             e.toString().contains('has not granted the app') ||
             e.toString().contains('insufficientPermissions');
         if (isPermError) {
@@ -119,20 +129,27 @@ class CloudSyncService {
     }
 
     try {
-      _emit(CloudSyncStatus(
-        path: record.databasePath,
-        phase: CloudSyncPhase.downloading,
-      ));
+      _emit(
+        CloudSyncStatus(
+          path: record.databasePath,
+          phase: CloudSyncPhase.downloading,
+        ),
+      );
       final remoteModified = await _fetchRemoteModifiedTime(record);
       final localFile = File(record.databasePath);
       DateTime? localModified;
       if (await localFile.exists()) {
         localModified = (await localFile.stat()).modified;
       }
+      final lastSyncedRemoteModified = await _readLastSyncedRemoteModified(
+        record.databasePath,
+      );
 
-      final shouldDownload = localModified == null ||
-          remoteModified == null ||
-          remoteModified.isAfter(localModified);
+      final shouldDownload = shouldDownloadRemoteVaultCopy(
+        localModified: localModified,
+        remoteModified: remoteModified,
+        lastSyncedRemoteModified: lastSyncedRemoteModified,
+      );
 
       if (!shouldDownload) {
         _emit(CloudSyncStatus.idle(record.databasePath));
@@ -142,23 +159,29 @@ class CloudSyncService {
       final Uint8List bytes;
       switch (record.storageType) {
         case 'googleDrive':
-          bytes = await CloudDatabaseService.instance
-              .downloadGoogleDriveFile(record.cloudFileId!);
+          bytes = await CloudDatabaseService.instance.downloadGoogleDriveFile(
+            record.cloudFileId!,
+          );
         case 'dropbox':
-          bytes = await CloudDatabaseService.instance
-              .downloadDropboxFile(record.cloudFileId!);
+          bytes = await CloudDatabaseService.instance.downloadDropboxFile(
+            record.cloudFileId!,
+          );
         case 'oneDrive':
-          bytes = await CloudDatabaseService.instance
-              .downloadOneDriveFile(record.cloudFileId!);
+          bytes = await CloudDatabaseService.instance.downloadOneDriveFile(
+            record.cloudFileId!,
+          );
         case 'webdav':
-          bytes = await CloudDatabaseService.instance
-              .downloadWebDavFile(record.cloudFileId!);
+          bytes = await CloudDatabaseService.instance.downloadWebDavFile(
+            record.cloudFileId!,
+          );
         case 'sftp':
-          bytes = await CloudDatabaseService.instance
-              .downloadSftpFile(record.cloudFileId!);
+          bytes = await CloudDatabaseService.instance.downloadSftpFile(
+            record.cloudFileId!,
+          );
         case 's3':
-          bytes = await CloudDatabaseService.instance
-              .downloadS3File(record.cloudFileId!);
+          bytes = await CloudDatabaseService.instance.downloadS3File(
+            record.cloudFileId!,
+          );
         default:
           _emit(CloudSyncStatus.idle(record.databasePath));
           return;
@@ -167,16 +190,19 @@ class CloudSyncService {
       await localFile.parent.create(recursive: true);
       await localFile.writeAsBytes(bytes, flush: true);
       await _setDirty(record.databasePath, false);
+      await _writeLastSyncedRemoteModified(record.databasePath, remoteModified);
       _log('refreshFromCloud pulled ${bytes.length} bytes');
       _emit(CloudSyncStatus.idle(record.databasePath));
     } catch (e, stack) {
       _log('refreshFromCloud FAILED: $e\n$stack');
-      _emit(CloudSyncStatus(
-        path: record.databasePath,
-        phase: CloudSyncPhase.error,
-        error: e,
-        dirty: await isDirty(record.databasePath),
-      ));
+      _emit(
+        CloudSyncStatus(
+          path: record.databasePath,
+          phase: CloudSyncPhase.error,
+          error: e,
+          dirty: await isDirty(record.databasePath),
+        ),
+      );
     }
   }
 
@@ -194,7 +220,9 @@ class CloudSyncService {
   }
 
   Future<void> _runLoop(
-      DatabaseRecord record, Completer<void> completer) async {
+    DatabaseRecord record,
+    Completer<void> completer,
+  ) async {
     final path = record.databasePath;
     Object? lastError;
     try {
@@ -211,12 +239,14 @@ class CloudSyncService {
     } finally {
       _inFlight.remove(path);
       if (lastError != null) {
-        _emit(CloudSyncStatus(
-          path: path,
-          phase: CloudSyncPhase.error,
-          error: lastError,
-          dirty: true,
-        ));
+        _emit(
+          CloudSyncStatus(
+            path: path,
+            phase: CloudSyncPhase.error,
+            error: lastError,
+            dirty: true,
+          ),
+        );
         completer.completeError(lastError);
       } else {
         _emit(CloudSyncStatus.idle(path));
@@ -226,11 +256,13 @@ class CloudSyncService {
   }
 
   Future<void> _performUpload(DatabaseRecord record) async {
-    _emit(CloudSyncStatus(
-      path: record.databasePath,
-      phase: CloudSyncPhase.uploading,
-      dirty: true,
-    ));
+    _emit(
+      CloudSyncStatus(
+        path: record.databasePath,
+        phase: CloudSyncPhase.uploading,
+        dirty: true,
+      ),
+    );
 
     final file = File(record.databasePath);
     if (!await file.exists()) {
@@ -245,13 +277,19 @@ class CloudSyncService {
 
     switch (record.storageType) {
       case 'googleDrive':
-        await CloudDatabaseService.instance
-            .updateGoogleDriveFile(fileId, bytes, fileName);
+        await CloudDatabaseService.instance.updateGoogleDriveFile(
+          fileId,
+          bytes,
+          fileName,
+        );
       case 'dropbox':
         await CloudDatabaseService.instance.uploadToDropbox(bytes, fileId);
       case 'oneDrive':
-        await CloudDatabaseService.instance
-            .updateOneDriveFile(fileId, bytes, fileName);
+        await CloudDatabaseService.instance.updateOneDriveFile(
+          fileId,
+          bytes,
+          fileName,
+        );
       case 'webdav':
         await CloudDatabaseService.instance.updateWebDavFile(fileId, bytes);
       case 'sftp':
@@ -265,6 +303,7 @@ class CloudSyncService {
     }
 
     await _setDirty(record.databasePath, false);
+    await _refreshStoredRemoteModified(record);
     _log('upload ✓ ${record.storageType} size=${bytes.length}');
   }
 
@@ -275,20 +314,24 @@ class CloudSyncService {
           return await CloudDatabaseService.instance
               .getGoogleDriveFileModifiedTime(record.cloudFileId!);
         case 'dropbox':
-          return await CloudDatabaseService.instance
-              .getDropboxFileModifiedTime(record.cloudFileId!);
+          return await CloudDatabaseService.instance.getDropboxFileModifiedTime(
+            record.cloudFileId!,
+          );
         case 'oneDrive':
           return await CloudDatabaseService.instance
               .getOneDriveFileModifiedTime(record.cloudFileId!);
         case 'webdav':
-          return await CloudDatabaseService.instance
-              .getWebDavFileModifiedTime(record.cloudFileId!);
+          return await CloudDatabaseService.instance.getWebDavFileModifiedTime(
+            record.cloudFileId!,
+          );
         case 'sftp':
-          return await CloudDatabaseService.instance
-              .getSftpFileModifiedTime(record.cloudFileId!);
+          return await CloudDatabaseService.instance.getSftpFileModifiedTime(
+            record.cloudFileId!,
+          );
         case 's3':
-          return await CloudDatabaseService.instance
-              .getS3FileModifiedTime(record.cloudFileId!);
+          return await CloudDatabaseService.instance.getS3FileModifiedTime(
+            record.cloudFileId!,
+          );
       }
     } catch (e) {
       _log('remote mtime lookup failed: $e');
@@ -305,18 +348,7 @@ class CloudSyncService {
         record.storageType != 's3') {
       return false;
     }
-    // Premium-only providers (OneDrive / WebDAV) stop syncing for non-Premium
-    // or signed-out users — the in-process analog of a 401/403 from a gated
-    // backend endpoint. Holds even if the vault was registered while Premium
-    // and the plan later lapsed.
-    if (!CloudDatabaseService.instance
-        .isCloudProviderAccessible(record.storageType)) {
-      _log(
-        'sync blocked — ${record.storageType} requires Premium '
-        '(${_shortPath(record.databasePath)})',
-      );
-      return false;
-    }
+
     final fileId = record.cloudFileId;
     return fileId != null && fileId.isNotEmpty;
   }
@@ -332,18 +364,51 @@ class CloudSyncService {
 
     final current = _statuses[path];
     if (current != null && current.dirty != dirty) {
-      _emit(CloudSyncStatus(
-        path: path,
-        phase: current.phase,
-        error: current.error,
-        dirty: dirty,
-      ));
+      _emit(
+        CloudSyncStatus(
+          path: path,
+          phase: current.phase,
+          error: current.error,
+          dirty: dirty,
+        ),
+      );
     }
   }
 
   String _dirtyKey(String path) {
     final hash = sha1.convert(utf8.encode(path)).toString();
     return '$_dirtyKeyPrefix$hash';
+  }
+
+  Future<DateTime?> _readLastSyncedRemoteModified(String path) async {
+    final storage = _storage;
+    if (storage == null) return null;
+    final raw = await storage.read(_remoteModifiedKey(path));
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw)?.toUtc();
+  }
+
+  Future<void> _writeLastSyncedRemoteModified(
+    String path,
+    DateTime? modified,
+  ) async {
+    final storage = _storage;
+    if (storage == null) return;
+    if (modified == null) return;
+    await storage.write(
+      _remoteModifiedKey(path),
+      modified.toUtc().toIso8601String(),
+    );
+  }
+
+  Future<void> _refreshStoredRemoteModified(DatabaseRecord record) async {
+    final remoteModified = await _fetchRemoteModifiedTime(record);
+    await _writeLastSyncedRemoteModified(record.databasePath, remoteModified);
+  }
+
+  String _remoteModifiedKey(String path) {
+    final hash = sha1.convert(utf8.encode(path)).toString();
+    return '$_remoteModifiedKeyPrefix$hash';
   }
 
   void _emit(CloudSyncStatus status) {
@@ -370,14 +435,37 @@ class CloudSyncService {
   }
 }
 
-final cloudSyncStatusProvider =
-    StreamProvider.family<CloudSyncStatus, String>((ref, path) async* {
+@visibleForTesting
+bool shouldDownloadRemoteVaultCopy({
+  required DateTime? localModified,
+  required DateTime? remoteModified,
+  required DateTime? lastSyncedRemoteModified,
+}) {
+  if (localModified == null) return true;
+  if (remoteModified == null) return true;
+  if (remoteModified.isAfter(localModified)) return true;
+  if (lastSyncedRemoteModified == null) {
+    // Older installs do not have a remembered remote revision yet. Pull once
+    // so the cache can self-heal even when local mtimes are ahead of remote.
+    return true;
+  }
+  return !_sameInstant(remoteModified, lastSyncedRemoteModified);
+}
+
+bool _sameInstant(DateTime a, DateTime b) {
+  return a.toUtc().microsecondsSinceEpoch == b.toUtc().microsecondsSinceEpoch;
+}
+
+final cloudSyncStatusProvider = StreamProvider.family<CloudSyncStatus, String>((
+  ref,
+  path,
+) async* {
   yield CloudSyncService.instance.statusFor(path);
-  yield* CloudSyncService.instance.statusStream
-      .where((status) => status.path == path);
+  yield* CloudSyncService.instance.statusStream.where(
+    (status) => status.path == path,
+  );
 });
 
 void initCloudSyncService(ProviderContainer container) {
-  CloudSyncService.instance
-      .attach(container.read(localStorageProvider));
+  CloudSyncService.instance.attach(container.read(localStorageProvider));
 }

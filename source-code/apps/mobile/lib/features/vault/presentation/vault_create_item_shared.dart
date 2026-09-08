@@ -8,6 +8,40 @@ import 'package:lumenpass_core/lumenpass_core.dart';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const Color kPrimaryButtonColor = Color(0xFF0A3B48);
+const int kVaultCategoryImageCount = 392;
+
+String? vaultItemIconAssetPath(String? presetId) {
+  final raw = presetId?.trim() ?? '';
+  if (!raw.startsWith('img:')) return null;
+  final imageId = raw.substring(4).trim();
+  if (imageId.isEmpty) return null;
+  return 'assets/images/categories/$imageId.png';
+}
+
+String? vaultEntryItemIconPresetId(KdbxEntry? entry) {
+  final raw = entry?.fieldByKey(AppKdbxFieldKeys.itemIconPresetId)?.value;
+  final normalized = raw?.trim() ?? '';
+  return normalized.isEmpty ? null : normalized;
+}
+
+void appendVaultItemIconField(List<EntryField> fields, String? presetId) {
+  final normalized = presetId?.trim() ?? '';
+  if (normalized.isEmpty) return;
+  fields.add(
+    EntryField(key: AppKdbxFieldKeys.itemIconPresetId, value: normalized),
+  );
+}
+
+Future<String?> showVaultItemIconPickerDialog(
+  BuildContext context, {
+  String? selectedPresetId,
+}) {
+  return showDialog<String>(
+    context: context,
+    builder: (_) =>
+        _VaultItemIconPickerDialog(selectedPresetId: selectedPresetId),
+  );
+}
 
 // ── Text helper ───────────────────────────────────────────────────────────────
 
@@ -32,17 +66,15 @@ class LoginCustomAttribute {
     required String label,
     required String value,
     this.isSecret = false,
-  })
-      : labelController = TextEditingController(text: label),
-        valueController = TextEditingController(text: value);
+  }) : labelController = TextEditingController(text: label),
+       valueController = TextEditingController(text: value);
 
   final TextEditingController labelController;
   final TextEditingController valueController;
   final bool isSecret;
 
   bool get shouldProtect =>
-      isSecret ||
-      AppKdbxFieldKeys.isProtectedKey(labelController.text.trim());
+      isSecret || AppKdbxFieldKeys.isProtectedKey(labelController.text.trim());
 
   void dispose() {
     labelController.dispose();
@@ -74,8 +106,8 @@ class CreditCardFieldDraft {
     this.isLabelEditable = false,
     this.keyboardType,
     this.trailingIcon,
-  })  : labelController = TextEditingController(text: label),
-        valueController = TextEditingController();
+  }) : labelController = TextEditingController(text: label),
+       valueController = TextEditingController();
 
   final TextEditingController labelController;
   final TextEditingController valueController;
@@ -90,6 +122,38 @@ class CreditCardFieldDraft {
   void dispose() {
     labelController.dispose();
     valueController.dispose();
+  }
+}
+
+class VaultSelectedItemIconTile extends StatelessWidget {
+  const VaultSelectedItemIconTile({
+    super.key,
+    required this.presetId,
+    required this.fallback,
+    this.borderRadius = const BorderRadius.all(Radius.circular(12)),
+    this.size = 50,
+  });
+
+  final String? presetId;
+  final Widget fallback;
+  final BorderRadius borderRadius;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final assetPath = vaultItemIconAssetPath(presetId);
+    if (assetPath == null) return fallback;
+
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: Image.asset(
+        assetPath,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallback,
+      ),
+    );
   }
 }
 
@@ -114,10 +178,7 @@ void showDiscardDialog(BuildContext context, VoidCallback onDiscard) {
       content: const Text(
         "You'll lose your changes to this item. Keep editing to go back and save.",
         textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 13,
-          color: Color(0xFF6B7280),
-        ),
+        style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
       ),
       actionsAlignment: MainAxisAlignment.center,
       actions: [
@@ -134,7 +195,8 @@ void showDiscardDialog(BuildContext context, VoidCallback onDiscard) {
                 backgroundColor: const Color(0xFFCC2929),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Discard Changes'),
             ),
@@ -145,7 +207,8 @@ void showDiscardDialog(BuildContext context, VoidCallback onDiscard) {
                 foregroundColor: const Color(0xFF2F6BFF),
                 side: const BorderSide(color: Color(0xFF2F6BFF), width: 2),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Keep Editing'),
             ),
@@ -182,29 +245,39 @@ class CategoryDropdownField extends StatelessWidget {
 
     final options = <DropdownMenuItem<String>>[];
     if (rootGroupUuid != null) {
-      options.add(DropdownMenuItem<String>(
-        value: rootGroupUuid,
-        child: Text('Uncategorized',
-            style: itemText(12, itemTextColor, fontWeight: FontWeight.w500)),
-      ));
+      options.add(
+        DropdownMenuItem<String>(
+          value: rootGroupUuid,
+          child: Text(
+            'Uncategorized',
+            style: itemText(12, itemTextColor, fontWeight: FontWeight.w500),
+          ),
+        ),
+      );
     }
-    options.addAll(categories.map((c) => DropdownMenuItem<String>(
+    options.addAll(
+      categories.map(
+        (c) => DropdownMenuItem<String>(
           value: c.uuid,
-          child: Text(c.name,
-              style: itemText(12, itemTextColor, fontWeight: FontWeight.w500)),
-        )));
+          child: Text(
+            c.name,
+            style: itemText(12, itemTextColor, fontWeight: FontWeight.w500),
+          ),
+        ),
+      ),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(TablerIcons.folder,
-                size: 14, color: Color(0xFF5A78C5)),
+            const Icon(TablerIcons.folder, size: 14, color: Color(0xFF5A78C5)),
             const SizedBox(width: 6),
-            Text('category',
-                style:
-                    itemText(11, labelColor, fontWeight: FontWeight.w600)),
+            Text(
+              'category',
+              style: itemText(11, labelColor, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
         const SizedBox(height: 6),
@@ -222,11 +295,15 @@ class CategoryDropdownField extends StatelessWidget {
               isExpanded: true,
               style: itemText(12, itemTextColor, fontWeight: FontWeight.w500),
               dropdownColor: Colors.white,
-              icon: const Icon(TablerIcons.chevron_down,
-                  size: 14, color: Color(0xFF6B7280)),
-              hint: Text('Select category',
-                  style:
-                      itemText(12, hintColor, fontWeight: FontWeight.w500)),
+              icon: const Icon(
+                TablerIcons.chevron_down,
+                size: 14,
+                color: Color(0xFF6B7280),
+              ),
+              hint: Text(
+                'Select category',
+                style: itemText(12, hintColor, fontWeight: FontWeight.w500),
+              ),
               items: options,
               onChanged: onChanged,
             ),
@@ -261,21 +338,22 @@ class TagEditor extends StatefulWidget {
 
 class _TagEditorState extends State<TagEditor> {
   final FocusNode _focusNode = FocusNode();
-  bool _showSuggestions = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(_syncSuggestions);
-    widget.controller.addListener(_syncSuggestions);
+    widget.controller.addListener(_onInputChanged);
   }
 
   @override
   void dispose() {
-    widget.controller.removeListener(_syncSuggestions);
-    _focusNode.removeListener(_syncSuggestions);
+    widget.controller.removeListener(_onInputChanged);
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _onInputChanged() {
+    if (mounted) setState(() {});
   }
 
   String get _activeQuery {
@@ -301,13 +379,6 @@ class _TagEditorState extends State<TagEditor> {
         .toList(growable: false);
   }
 
-  void _syncSuggestions() {
-    final shouldShow = _focusNode.hasFocus && _suggestedTags.isNotEmpty;
-    if (_showSuggestions != shouldShow) {
-      setState(() => _showSuggestions = shouldShow);
-    }
-  }
-
   void _commitTagInput({String? selectedSuggestion}) {
     final rawValue = widget.controller.text;
     if (selectedSuggestion == null) {
@@ -320,16 +391,13 @@ class _TagEditorState extends State<TagEditor> {
       }
     } else {
       final parts = rawValue.split(',');
-      for (final part
-          in parts.take(parts.length > 1 ? parts.length - 1 : 0)) {
+      for (final part in parts.take(parts.length > 1 ? parts.length - 1 : 0)) {
         final normalized = part.trim();
         if (normalized.isNotEmpty) widget.onAddTag(normalized);
       }
       widget.onAddTag(selectedSuggestion);
     }
     widget.controller.clear();
-    _focusNode.requestFocus();
-    _syncSuggestions();
   }
 
   @override
@@ -343,8 +411,12 @@ class _TagEditorState extends State<TagEditor> {
             spacing: 8,
             runSpacing: 8,
             children: widget.tags
-                .map((tag) => TagChip(
-                    label: tag, onRemove: () => widget.onRemoveTag(tag)))
+                .map(
+                  (tag) => TagChip(
+                    label: tag,
+                    onRemove: () => widget.onRemoveTag(tag),
+                  ),
+                )
                 .toList(growable: false),
           ),
           const SizedBox(height: 8),
@@ -359,23 +431,25 @@ class _TagEditorState extends State<TagEditor> {
           ),
           child: Row(
             children: [
-              const Icon(TablerIcons.tag,
-                  size: 14, color: Color(0xFF6D63D6)),
+              const Icon(TablerIcons.tag, size: 14, color: Color(0xFF6D63D6)),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
                   focusNode: _focusNode,
                   controller: widget.controller,
-                  onChanged: (_) => _syncSuggestions(),
                   onSubmitted: (_) => _commitTagInput(),
-                  style: itemText(12, const Color(0xFF111827),
-                      fontWeight: FontWeight.w500),
+                  style: itemText(
+                    12,
+                    const Color(0xFF111827),
+                    fontWeight: FontWeight.w500,
+                  ),
                   decoration: const InputDecoration(
                     hintText: 'Add a tag and press Enter',
                     hintStyle: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF98A2B3),
-                        fontWeight: FontWeight.w500),
+                      fontSize: 12,
+                      color: Color(0xFF98A2B3),
+                      fontWeight: FontWeight.w500,
+                    ),
                     border: InputBorder.none,
                     isCollapsed: true,
                     contentPadding: EdgeInsets.zero,
@@ -386,21 +460,28 @@ class _TagEditorState extends State<TagEditor> {
                 onTap: () => _commitTagInput(),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEAF1FF),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text('Add',
-                      style: itemText(11, const Color(0xFF3B6FD3),
-                          fontWeight: FontWeight.w600)),
+                  child: Text(
+                    'Add',
+                    style: itemText(
+                      11,
+                      const Color(0xFF3B6FD3),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
         ),
-        if (_showSuggestions && suggestions.isNotEmpty) ...[
+        if (suggestions.isNotEmpty) ...[
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
@@ -410,9 +491,10 @@ class _TagEditorState extends State<TagEditor> {
               border: Border.all(color: const Color(0xFFDDE3EC)),
               boxShadow: const [
                 BoxShadow(
-                    color: Color(0x14172033),
-                    blurRadius: 24,
-                    offset: Offset(0, 10))
+                  color: Color(0x14172033),
+                  blurRadius: 24,
+                  offset: Offset(0, 10),
+                ),
               ],
             ),
             child: Column(
@@ -420,32 +502,44 @@ class _TagEditorState extends State<TagEditor> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _activeQuery.isEmpty ? 'Reuse an existing tag' : 'Matching tags',
-                  style: itemText(11, const Color(0xFF667085),
-                      fontWeight: FontWeight.w600),
+                  _activeQuery.isEmpty
+                      ? 'Reuse an existing tag'
+                      : 'Matching tags',
+                  style: itemText(
+                    11,
+                    const Color(0xFF667085),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: suggestions
-                      .map((tag) => InkWell(
-                            onTap: () =>
-                                _commitTagInput(selectedSuggestion: tag),
-                            borderRadius: BorderRadius.circular(999),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEAF1FF),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text('#$tag',
-                                  style: itemText(
-                                      11, const Color(0xFF2E4D8B),
-                                      fontWeight: FontWeight.w600)),
+                      .map(
+                        (tag) => InkWell(
+                          onTap: () => _commitTagInput(selectedSuggestion: tag),
+                          borderRadius: BorderRadius.circular(999),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
                             ),
-                          ))
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF1FF),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              '#$tag',
+                              style: itemText(
+                                11,
+                                const Color(0xFF2E4D8B),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
                       .toList(growable: false),
                 ),
               ],
@@ -474,15 +568,23 @@ class TagChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label,
-              style: itemText(11, const Color(0xFF2E4D8B),
-                  fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: itemText(
+              11,
+              const Color(0xFF2E4D8B),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(width: 6),
           InkWell(
             onTap: onRemove,
             borderRadius: BorderRadius.circular(999),
-            child: const Icon(TablerIcons.x,
-                size: 12, color: Color(0xFF5E6676)),
+            child: const Icon(
+              TablerIcons.x,
+              size: 12,
+              color: Color(0xFF5E6676),
+            ),
           ),
         ],
       ),
@@ -525,9 +627,14 @@ class LoginFormField extends StatelessWidget {
           children: [
             Icon(icon, size: 14, color: iconColor),
             const SizedBox(width: 6),
-            Text(label,
-                style: itemText(11, const Color(0xFF344054),
-                    fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: itemText(
+                11,
+                const Color(0xFF344054),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 6),
@@ -556,18 +663,18 @@ class LoginFormField extends StatelessWidget {
                   style: itemText(12, const Color(0xFF111827)),
                   decoration: InputDecoration(
                     hintText: hintText,
-                    hintStyle: itemText(12, const Color(0xFF98A2B3),
-                        fontWeight: FontWeight.w500),
+                    hintStyle: itemText(
+                      12,
+                      const Color(0xFF98A2B3),
+                      fontWeight: FontWeight.w500,
+                    ),
                     border: InputBorder.none,
                     isCollapsed: true,
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: 10),
-                trailing!,
-              ],
+              if (trailing != null) ...[const SizedBox(width: 10), trailing!],
             ],
           ),
         ),
@@ -597,8 +704,11 @@ class WebsiteRemoveButton extends StatelessWidget {
           border: Border.all(color: const Color(0xFFF4B8B8)),
         ),
         alignment: Alignment.center,
-        child: const Icon(TablerIcons.minus,
-            size: 12, color: Color(0xFFD94A4A)),
+        child: const Icon(
+          TablerIcons.minus,
+          size: 12,
+          color: Color(0xFFD94A4A),
+        ),
       ),
     );
   }
@@ -627,8 +737,11 @@ class SectionMinusBadge extends StatelessWidget {
           border: Border.all(color: const Color(0xFFFF7A59)),
         ),
         alignment: Alignment.center,
-        child: const Icon(TablerIcons.minus,
-            size: 12, color: Color(0xFFFF5A36)),
+        child: const Icon(
+          TablerIcons.minus,
+          size: 12,
+          color: Color(0xFFFF5A36),
+        ),
       ),
     );
   }
@@ -657,9 +770,10 @@ class AddMoreOptionsCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFD8DEE9)),
         boxShadow: const [
           BoxShadow(
-              color: Color(0x14172033),
-              blurRadius: 16,
-              offset: Offset(0, 6)),
+            color: Color(0x14172033),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
@@ -670,18 +784,28 @@ class AddMoreOptionsCard extends StatelessWidget {
             InkWell(
               onTap: () => onSelected(options[index]),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                child: Text(options[index],
-                    style: itemText(13, const Color(0xFF2E3138),
-                        fontWeight: FontWeight.w500)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                child: Text(
+                  options[index],
+                  style: itemText(
+                    13,
+                    const Color(0xFF2E3138),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ),
             if (index != options.length - 1)
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Divider(
-                    height: 1, thickness: 1, color: Color(0xFFE6EBF2)),
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFFE6EBF2),
+                ),
               ),
           ],
         ],
@@ -710,8 +834,7 @@ class _CustomAttributeCardState extends State<CustomAttributeCard> {
   bool _isSecretVisible = false;
 
   bool get _isSecretField {
-    final label =
-        widget.attribute.labelController.text.trim().toLowerCase();
+    final label = widget.attribute.labelController.text.trim().toLowerCase();
     return widget.attribute.isSecret || AppKdbxFieldKeys.isProtectedKey(label);
   }
 
@@ -751,8 +874,7 @@ class _CustomAttributeCardState extends State<CustomAttributeCard> {
         children: [
           const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Icon(TablerIcons.menu_2,
-                size: 24, color: Color(0xFF2E3138)),
+            child: Icon(TablerIcons.menu_2, size: 24, color: Color(0xFF2E3138)),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -762,8 +884,11 @@ class _CustomAttributeCardState extends State<CustomAttributeCard> {
                 TextField(
                   controller: widget.attribute.labelController,
                   maxLines: 1,
-                  style: itemText(13, const Color(0xFF2E3138),
-                      fontWeight: FontWeight.w500),
+                  style: itemText(
+                    13,
+                    const Color(0xFF2E3138),
+                    fontWeight: FontWeight.w500,
+                  ),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     isCollapsed: true,
@@ -775,14 +900,18 @@ class _CustomAttributeCardState extends State<CustomAttributeCard> {
                   controller: widget.attribute.valueController,
                   maxLines: 1,
                   obscureText: isSecretField && !_isSecretVisible,
-                  style: itemText(11, const Color(0xFF6B7280),
-                      fontWeight: FontWeight.w400),
+                  style: itemText(
+                    11,
+                    const Color(0xFF6B7280),
+                    fontWeight: FontWeight.w400,
+                  ),
                   decoration: const InputDecoration(
                     hintText: 'Enter value',
                     hintStyle: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF98A2B3),
-                        fontWeight: FontWeight.w400),
+                      fontSize: 11,
+                      color: Color(0xFF98A2B3),
+                      fontWeight: FontWeight.w400,
+                    ),
                     border: InputBorder.none,
                     isCollapsed: true,
                     contentPadding: EdgeInsets.zero,
@@ -856,19 +985,22 @@ class CreditCardSectionCard extends StatelessWidget {
           if (title != null)
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: const BoxDecoration(
                 color: Color(0xFFF5F6F8),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
               ),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(title!,
-                        style: itemText(13, const Color(0xFF2E3138),
-                            fontWeight: FontWeight.w700)),
+                    child: Text(
+                      title!,
+                      style: itemText(
+                        13,
+                        const Color(0xFF2E3138),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                   if (showHeaderAction) const SectionMinusBadge(),
                 ],
@@ -882,25 +1014,32 @@ class CreditCardSectionCard extends StatelessWidget {
                   : () => onRemoveField!(fields[index]),
             ),
             if (index != fields.length - 1)
-              const Divider(
-                  height: 1, thickness: 1, color: Color(0xFFE8ECF3)),
+              const Divider(height: 1, thickness: 1, color: Color(0xFFE8ECF3)),
           ],
           const Divider(height: 1, thickness: 1, color: Color(0xFFE8ECF3)),
           InkWell(
             onTap: onAddField,
             borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(12)),
+              bottom: Radius.circular(12),
+            ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  Text('+ add another field',
-                      style: itemText(12, const Color(0xFF0B63E5),
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    '+ add another field',
+                    style: itemText(
+                      12,
+                      const Color(0xFF0B63E5),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const Spacer(),
-                  const Icon(TablerIcons.chevron_down,
-                      size: 14, color: Color(0xFF6A7282)),
+                  const Icon(
+                    TablerIcons.chevron_down,
+                    size: 14,
+                    color: Color(0xFF6A7282),
+                  ),
                 ],
               ),
             ),
@@ -965,8 +1104,7 @@ class _CreditCardFieldRowState extends State<_CreditCardFieldRow> {
         children: [
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Icon(TablerIcons.menu_2,
-                size: 18, color: Color(0xFF3A3A3A)),
+            child: Icon(TablerIcons.menu_2, size: 18, color: Color(0xFF3A3A3A)),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -977,12 +1115,17 @@ class _CreditCardFieldRowState extends State<_CreditCardFieldRow> {
                     ? TextField(
                         controller: field.labelController,
                         maxLines: 1,
-                        style: itemText(12, const Color(0xFF5E56E8),
-                            fontWeight: FontWeight.w500),
+                        style: itemText(
+                          12,
+                          const Color(0xFF5E56E8),
+                          fontWeight: FontWeight.w500,
+                        ),
                         decoration: const InputDecoration(
                           hintText: 'field name',
                           hintStyle: TextStyle(
-                              fontSize: 12, color: Color(0xFF98A2B3)),
+                            fontSize: 12,
+                            color: Color(0xFF98A2B3),
+                          ),
                           isCollapsed: true,
                           contentPadding: EdgeInsets.zero,
                           border: InputBorder.none,
@@ -990,8 +1133,11 @@ class _CreditCardFieldRowState extends State<_CreditCardFieldRow> {
                       )
                     : Text(
                         field.labelController.text,
-                        style: itemText(12, const Color(0xFF5E56E8),
-                            fontWeight: FontWeight.w500),
+                        style: itemText(
+                          12,
+                          const Color(0xFF5E56E8),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                 const SizedBox(height: 4),
                 field.showsCalendarPicker
@@ -1002,11 +1148,12 @@ class _CreditCardFieldRowState extends State<_CreditCardFieldRow> {
                               ? field.valueHint
                               : field.valueController.text,
                           style: itemText(
-                              16,
-                              field.valueController.text.isEmpty
-                                  ? const Color(0xFF8A8F98)
-                                  : const Color(0xFF6B7280),
-                              fontWeight: FontWeight.w400),
+                            16,
+                            field.valueController.text.isEmpty
+                                ? const Color(0xFF8A8F98)
+                                : const Color(0xFF6B7280),
+                            fontWeight: FontWeight.w400,
+                          ),
                         ),
                       )
                     : TextField(
@@ -1017,18 +1164,26 @@ class _CreditCardFieldRowState extends State<_CreditCardFieldRow> {
                         keyboardType: field.keyboardType,
                         inputFormatters: field.isLabelEditable
                             ? null
-                            : field.labelController.text.toLowerCase().contains('expir') ||
-                                    field.labelController.text.toLowerCase().contains('valid')
-                                ? [_MonthYearTextInputFormatter()]
-                                : null,
-                        style: itemText(16, const Color(0xFF6B7280),
-                            fontWeight: FontWeight.w400),
+                            : field.labelController.text.toLowerCase().contains(
+                                    'expir',
+                                  ) ||
+                                  field.labelController.text
+                                      .toLowerCase()
+                                      .contains('valid')
+                            ? [_MonthYearTextInputFormatter()]
+                            : null,
+                        style: itemText(
+                          16,
+                          const Color(0xFF6B7280),
+                          fontWeight: FontWeight.w400,
+                        ),
                         decoration: InputDecoration(
                           hintText: field.valueHint,
                           hintStyle: const TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFF8A8F98),
-                              fontWeight: FontWeight.w400),
+                            fontSize: 16,
+                            color: Color(0xFF8A8F98),
+                            fontWeight: FontWeight.w400,
+                          ),
                           isCollapsed: true,
                           contentPadding: EdgeInsets.zero,
                           border: InputBorder.none,
@@ -1044,8 +1199,11 @@ class _CreditCardFieldRowState extends State<_CreditCardFieldRow> {
               borderRadius: BorderRadius.circular(12),
               child: const Padding(
                 padding: EdgeInsets.only(top: 10),
-                child: Icon(Icons.calendar_today_outlined,
-                    size: 18, color: Color(0xFF8A8F98)),
+                child: Icon(
+                  Icons.calendar_today_outlined,
+                  size: 18,
+                  color: Color(0xFF8A8F98),
+                ),
               ),
             )
           else if (field.removable && widget.onRemove != null)
@@ -1064,22 +1222,22 @@ class _CreditCardFieldRowState extends State<_CreditCardFieldRow> {
 class _MonthYearTextInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    final trimmed =
-        digits.length > 6 ? digits.substring(0, 6) : digits;
+    final trimmed = digits.length > 6 ? digits.substring(0, 6) : digits;
     final formatted = _formatMonthYear(trimmed);
     final digitsBeforeCursor = newValue.selection.baseOffset <= 0
         ? 0
         : newValue.text
-            .substring(
+              .substring(
                 0,
-                math.min(
-                    newValue.selection.baseOffset, newValue.text.length))
-            .replaceAll(RegExp(r'[^0-9]'), '')
-            .length;
-    final clampedDigits =
-        digitsBeforeCursor.clamp(0, trimmed.length);
+                math.min(newValue.selection.baseOffset, newValue.text.length),
+              )
+              .replaceAll(RegExp(r'[^0-9]'), '')
+              .length;
+    final clampedDigits = digitsBeforeCursor.clamp(0, trimmed.length);
     final selectionOffset = _selectionOffsetForDigits(clampedDigits);
     return TextEditingValue(
       text: formatted,
@@ -1101,6 +1259,120 @@ class _MonthYearTextInputFormatter extends TextInputFormatter {
 }
 
 // ── Footer button ─────────────────────────────────────────────────────────────
+
+class VaultEditorSheet extends StatelessWidget {
+  const VaultEditorSheet({
+    super.key,
+    required this.title,
+    required this.headerContent,
+    required this.body,
+    required this.onClose,
+    this.footer,
+    this.onBack,
+    this.showBackButton = true,
+    this.maxHeightFactor = 0.92,
+  });
+
+  final String title;
+  final Widget headerContent;
+  final Widget body;
+  final Widget? footer;
+  final VoidCallback onClose;
+  final VoidCallback? onBack;
+  final bool showBackButton;
+  final double maxHeightFactor;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
+
+    return Container(
+      width: double.infinity,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * maxHeightFactor,
+      ),
+      clipBehavior: Clip.antiAlias,
+      decoration: const BoxDecoration(
+        color: Color(0xFFE7EBF0),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x1C172033),
+            blurRadius: 44,
+            offset: Offset(0, -8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+              border: Border(bottom: BorderSide(color: Color(0xFFE1EAF0))),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCE6EC),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 38,
+                    child: Row(
+                      children: [
+                        if (showBackButton)
+                          ModalIconAction(
+                            icon: TablerIcons.arrow_left,
+                            onTap: onBack ?? onClose,
+                          )
+                        else
+                          const SizedBox(width: 38, height: 38),
+                        const Spacer(),
+                        ModalCloseCircleButton(onTap: onClose),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  headerContent,
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                16,
+                20,
+                footer == null ? 16 + bottomSafeArea : 0,
+              ),
+              child: body,
+            ),
+          ),
+          if (footer != null) ...[
+            Container(height: 1, color: const Color(0xFFCCD4DF)),
+            Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + bottomSafeArea),
+              child: footer!,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
 
 class LoginFooterButton extends StatelessWidget {
   const LoginFooterButton({
@@ -1125,22 +1397,21 @@ class LoginFooterButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isEnabled
               ? backgroundColor
               : backgroundColor.withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(10),
-          border: borderColor != null
-              ? Border.all(color: borderColor!)
-              : null,
+          border: borderColor != null ? Border.all(color: borderColor!) : null,
         ),
         child: Text(
           label,
-          style: itemText(12,
-              isEnabled ? textColor : textColor.withValues(alpha: 0.75),
-              fontWeight: FontWeight.w600),
+          style: itemText(
+            12,
+            isEnabled ? textColor : textColor.withValues(alpha: 0.75),
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
@@ -1150,11 +1421,7 @@ class LoginFooterButton extends StatelessWidget {
 // ── Modal header ──────────────────────────────────────────────────────────────
 
 class ModalIconAction extends StatelessWidget {
-  const ModalIconAction({
-    super.key,
-    required this.icon,
-    required this.onTap,
-  });
+  const ModalIconAction({super.key, required this.icon, required this.onTap});
 
   final IconData icon;
   final VoidCallback onTap;
@@ -1164,11 +1431,182 @@ class ModalIconAction extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
-      child: Container(
-        width: 30,
-        height: 30,
-        alignment: Alignment.center,
-        child: Icon(icon, size: 18, color: const Color(0xFF5E6676)),
+      child: Center(
+        child: SizedBox(
+          width: 38,
+          height: 38,
+          child: Center(
+            child: Icon(icon, size: 20, color: const Color(0xFF5E6676)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ModalCloseCircleButton extends StatelessWidget {
+  const ModalCloseCircleButton({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x180F172A),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(side: BorderSide(color: Color(0xFFD7E2E8))),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: const SizedBox(
+            width: 38,
+            height: 38,
+            child: Icon(
+              Icons.close_rounded,
+              color: Color(0xFF5E7180),
+              size: 22,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class VaultItemIconPickerTrigger extends StatelessWidget {
+  const VaultItemIconPickerTrigger({
+    super.key,
+    required this.iconTile,
+    this.onTap,
+  });
+
+  final Widget iconTile;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 58,
+      height: 58,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(left: 0, bottom: 0, child: iconTile),
+          if (onTap != null)
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: Material(
+                color: const Color(0xFFF1F4F8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: const BorderSide(color: Color(0xFFE3EAF0)),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: onTap,
+                  child: const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Icon(
+                      TablerIcons.chevron_down,
+                      size: 14,
+                      color: Color(0xFF667085),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VaultItemIconPickerDialog extends StatelessWidget {
+  const _VaultItemIconPickerDialog({this.selectedPresetId});
+
+  final String? selectedPresetId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 560),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 10, 10),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Choose icon',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF213247),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.all(12),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: kVaultCategoryImageCount,
+                itemBuilder: (context, index) {
+                  final imageNumber = index + 1;
+                  final presetId = 'img:$imageNumber';
+                  final selected = presetId == selectedPresetId;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => Navigator.of(context).pop(presetId),
+                    child: Container(
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected
+                              ? const Color(0xFF2B7FFF)
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: Image.asset(
+                        'assets/images/categories/$imageNumber.png',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1195,12 +1633,20 @@ class AttachmentSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Icon(TablerIcons.paperclip,
-                size: 14, color: Color(0xFF5A78C5)),
+            const Icon(
+              TablerIcons.paperclip,
+              size: 14,
+              color: Color(0xFF5A78C5),
+            ),
             const SizedBox(width: 6),
-            Text('attachments',
-                style: itemText(11, const Color(0xFF344054),
-                    fontWeight: FontWeight.w600)),
+            Text(
+              'attachments',
+              style: itemText(
+                11,
+                const Color(0xFF344054),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 6),
@@ -1209,8 +1655,7 @@ class AttachmentSection extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFD),
               borderRadius: BorderRadius.circular(12),
@@ -1226,26 +1671,42 @@ class AttachmentSection extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(TablerIcons.upload,
-                      size: 18, color: Color(0xFF3B6FD3)),
+                  child: const Icon(
+                    TablerIcons.upload,
+                    size: 18,
+                    color: Color(0xFF3B6FD3),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Add files or images',
-                          style: itemText(12, const Color(0xFF2E3138),
-                              fontWeight: FontWeight.w600)),
+                      Text(
+                        'Add files or images',
+                        style: itemText(
+                          12,
+                          const Color(0xFF2E3138),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text('Upload attachments for this item',
-                          style: itemText(10, const Color(0xFF7B8798),
-                              fontWeight: FontWeight.w500)),
+                      Text(
+                        'Upload attachments for this item',
+                        style: itemText(
+                          10,
+                          const Color(0xFF7B8798),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const Icon(TablerIcons.plus,
-                    size: 16, color: Color(0xFF3B6FD3)),
+                const Icon(
+                  TablerIcons.plus,
+                  size: 16,
+                  color: Color(0xFF3B6FD3),
+                ),
               ],
             ),
           ),
@@ -1266,8 +1727,7 @@ class AttachmentSection extends StatelessWidget {
 }
 
 class _AttachmentTile extends StatelessWidget {
-  const _AttachmentTile(
-      {required this.attachment, required this.onRemove});
+  const _AttachmentTile({required this.attachment, required this.onRemove});
 
   final LoginAttachment attachment;
   final VoidCallback onRemove;
@@ -1323,13 +1783,21 @@ class _AttachmentTile extends StatelessWidget {
                   attachment.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: itemText(11, const Color(0xFF2B3444),
-                      fontWeight: FontWeight.w500),
+                  style: itemText(
+                    11,
+                    const Color(0xFF2B3444),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 2),
-                Text(_formatSize(attachment.size),
-                    style: itemText(10, const Color(0xFF7B8CA6),
-                        fontWeight: FontWeight.w500)),
+                Text(
+                  _formatSize(attachment.size),
+                  style: itemText(
+                    10,
+                    const Color(0xFF7B8CA6),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),

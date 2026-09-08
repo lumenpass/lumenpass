@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lumenpass_core/lumenpass_core.dart';
 
 import '../../../core/models/entry_field.dart';
 import '../../../core/models/kdbx_entry.dart';
 import '../../../core/constants/kdbx_field_keys.dart';
 import '../../../core/models/kdbx_group.dart';
 import '../../../core/repository/kdbx_repository_provider.dart';
+import '../../../core/repository/vault_write_scheduler_provider.dart';
 import 'vault_item_type.dart';
 import 'vault_search_ranking.dart';
 
@@ -15,9 +17,17 @@ final vaultSearchDraftProvider = StateProvider<String>((ref) => '');
 
 final vaultRefreshTriggerProvider = StateProvider<int>((ref) => 0);
 
-const Duration kVaultSearchDebounce = Duration(milliseconds: 1000);
-const Duration kVaultSearchLoadingFrame = Duration(milliseconds: 16);
-const Duration kVaultSearchLoadingMinVisible = Duration(milliseconds: 250);
+// Short debounce so results feel live as the user types, without running the
+// ranker on every single keystroke. ~150 ms is below the threshold where a
+// pause feels laggy but still coalesces fast typing into one search.
+const Duration kVaultSearchDebounce = Duration(milliseconds: 150);
+// The ranker runs synchronously in well under a frame even for a few thousand
+// entries, so there is no artificial "loading" window: showing a spinner (and
+// disabling the text field) for a sub-millisecond operation is what made
+// typing feel janky. Both durations are zero so the loading flag never blocks
+// input or causes a spinner flash; the state machine is otherwise unchanged.
+const Duration kVaultSearchLoadingFrame = Duration.zero;
+const Duration kVaultSearchLoadingMinVisible = Duration.zero;
 const int kVaultSearchSuggestionLimit = 6;
 
 class VaultSearchSuggestionsState {
@@ -114,6 +124,30 @@ class _VaultSearchSuggestionsController
 
   Future<void> _runSearch(String query, int seq) async {
     if (seq != _searchSeq) {
+      return;
+    }
+
+    // When there is no artificial loading window the ranking is effectively
+    // instant, so we skip the loading flag entirely to avoid a one-frame
+    // spinner flash and any flicker on the search field.
+    if (kVaultSearchLoadingFrame <= Duration.zero &&
+        kVaultSearchLoadingMinVisible <= Duration.zero) {
+      try {
+        final suggestions = _computeSuggestions(query);
+        if (seq != _searchSeq) {
+          return;
+        }
+        state = VaultSearchSuggestionsState(
+          query: query,
+          suggestions: suggestions,
+          isLoading: false,
+        );
+      } catch (_) {
+        if (seq != _searchSeq) {
+          return;
+        }
+        state = state.copyWith(isLoading: false);
+      }
       return;
     }
 
@@ -415,6 +449,35 @@ final vaultSearchSuggestionsProvider = Provider<List<KdbxEntry>>((ref) {
   return ref.watch(vaultSearchSuggestionsStateProvider).suggestions;
 });
 
+/// Publishes the already-mutated in-memory database to the UI immediately
+/// and schedules persistence in the background via [VaultWriteScheduler].
+///
+/// Use after any repository mutation (create/update/delete). The UI reflects
+/// the change instantly; the expensive encrypt-and-write runs off the
+/// interaction path. Set [immediate] to `false` for low-priority writes
+/// (favicon caching) so they coalesce into one save.
+KdbxDatabase publishAndScheduleSave(
+  WidgetRef ref,
+  KdbxRepository repository, {
+  bool immediate = true,
+}) {
+  final database = repository.currentDatabase;
+  if (database == null) {
+    throw const VaultStateException('No open vault to publish.');
+  }
+  ref.read(activeDatabaseProvider.notifier).state = database;
+  ref.invalidate(vaultEntriesProvider);
+  ref.invalidate(vaultSidebarTagsProvider);
+  ref.invalidate(vaultSidebarCategoriesProvider);
+  final scheduler = ref.read(vaultWriteSchedulerProvider);
+  if (immediate) {
+    scheduler.markDirtyImmediate();
+  } else {
+    scheduler.markDirtyDebounced();
+  }
+  return database;
+}
+
 final vaultSearchSuggestionsLoadingProvider = Provider<bool>((ref) {
   return ref.watch(vaultSearchSuggestionsStateProvider).isLoading;
 });
@@ -438,7 +501,8 @@ SearchableEntryView kdbxEntrySearchView(KdbxEntry entry) {
     otpAuthUrl: entry.otpAuthUrl ?? '',
     tags: entry.tags,
     extraFields: extras,
-    lastTouchedAt: entry.updatedAt ??
+    lastTouchedAt: entry.lastUsedAt ??
+        entry.updatedAt ??
         entry.createdAt ??
         DateTime.fromMillisecondsSinceEpoch(0),
   );
@@ -657,9 +721,9 @@ final passwordAuditDuplicateGroupsProvider =
   return _findDuplicateItemGroups(entries);
 });
 
-/// Computes the number of days since an entry was last modified/created.
+/// Computes the number of days since an entry was last used/modified/created.
 int? _daysSinceLastTouched(KdbxEntry entry) {
-  final touched = entry.updatedAt ?? entry.createdAt;
+  final touched = entry.lastUsedAt ?? entry.updatedAt ?? entry.createdAt;
   if (touched == null) return null;
   return DateTime.now().difference(touched).inDays;
 }

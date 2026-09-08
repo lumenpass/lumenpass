@@ -6,9 +6,8 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:lumenpass_core/lumenpass_core.dart';
 
 import '../application/vault_entries_providers.dart';
-import '../../../core/repository/database_save_sync.dart';
+import '../application/vault_items_list_providers.dart';
 import '../../../core/repository/providers.dart';
-import '../../unlock/application/database_registry.dart';
 import 'vault_create_item_models.dart';
 import 'vault_create_item_shared.dart';
 
@@ -50,6 +49,7 @@ class _AddSecureNoteItemModalState
   final List<LoginCustomAttribute> _customAttributes = <LoginCustomAttribute>[];
   final List<LoginAttachment> _attachments = <LoginAttachment>[];
   final List<String> _tags = <String>[];
+  String? _selectedItemIconPresetId;
   String? _selectedCategoryUuid;
   bool _showAddMoreOptions = false;
   bool _isDirty = false;
@@ -66,11 +66,13 @@ class _AddSecureNoteItemModalState
       _bodyController = TextEditingController(text: edit.notes ?? '');
       _tagController = TextEditingController();
       _tags.addAll(edit.tags);
+      _selectedItemIconPresetId = vaultEntryItemIconPresetId(edit);
 
       const standardAndSystem = <String>{AppKdbxFieldKeys.title};
       for (final field in edit.fields) {
         final key = field.key;
         if (standardAndSystem.contains(key)) continue;
+        if (key == AppKdbxFieldKeys.itemIconPresetId) continue;
         if (AppKdbxFieldKeys.isAttachmentMetaKey(key)) continue;
         _customAttributes.add(
           LoginCustomAttribute(
@@ -102,6 +104,18 @@ class _AddSecureNoteItemModalState
 
   void _markDirty() {
     if (!_isDirty) setState(() => _isDirty = true);
+  }
+
+  Future<void> _pickItemIcon() async {
+    final picked = await showVaultItemIconPickerDialog(
+      context,
+      selectedPresetId: _selectedItemIconPresetId,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _selectedItemIconPresetId = picked;
+      _isDirty = true;
+    });
   }
 
   void _confirmClose() {
@@ -228,6 +242,7 @@ class _AddSecureNoteItemModalState
         fields.add(field);
       }
     }
+    appendVaultItemIconField(fields, _selectedItemIconPresetId);
 
     setState(() => _isSaving = true);
     try {
@@ -238,12 +253,7 @@ class _AddSecureNoteItemModalState
         notes: _bodyController.text.trim(),
         tags: List<String>.unmodifiable(_tags),
       );
-      final registry = ref.read(databaseRegistryProvider);
-      final database = await saveAndSyncDatabase(repository, registry);
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultVisibleEntriesProvider);
-      ref.invalidate(vaultAllTagsProvider);
-      ref.invalidate(vaultSidebarCategoriesProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onItemSaved(edit.uuid);
       widget.onShowToast('Secure note saved');
       if (!mounted) return;
@@ -319,6 +329,7 @@ class _AddSecureNoteItemModalState
         ),
       );
     }
+    appendVaultItemIconField(fields, _selectedItemIconPresetId);
 
     setState(() => _isSaving = true);
     try {
@@ -334,12 +345,7 @@ class _AddSecureNoteItemModalState
         tags: List<String>.unmodifiable(_tags),
         attachments: entryAttachments,
       );
-      final registry = ref.read(databaseRegistryProvider);
-      final database = await saveAndSyncDatabase(repository, registry);
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultVisibleEntriesProvider);
-      ref.invalidate(vaultAllTagsProvider);
-      ref.invalidate(vaultSidebarCategoriesProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onItemSaved(createdEntry.uuid);
       widget.onShowToast('Secure note saved');
       if (!mounted) return;
@@ -385,51 +391,18 @@ class _AddSecureNoteItemModalState
 
     return Theme(
       data: modalTheme,
-      child: Container(
-        width: double.infinity,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-        ),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFFE7EBF0),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFD0D8E2)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x1C172033),
-              blurRadius: 44,
-              offset: Offset(0, 20),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      child: VaultEditorSheet(
+        title: _isEditing ? 'Edit Item' : 'New Item',
+        onBack: widget.onReturnToPicker,
+        onClose: _confirmClose,
+        showBackButton: widget.onReturnToPicker != null,
+        headerContent: Row(
           children: [
-            Row(
-              children: [
-                ModalIconAction(
-                  icon: TablerIcons.arrow_left,
-                  onTap: widget.onReturnToPicker ?? widget.onClose,
-                ),
-                Expanded(
-                  child: Text(
-                    _isEditing ? 'Edit Item' : 'New Item',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF2E3138),
-                    ),
-                  ),
-                ),
-                ModalIconAction(icon: TablerIcons.x, onTap: _confirmClose),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Container(
+            VaultItemIconPickerTrigger(
+              onTap: _pickItemIcon,
+              iconTile: VaultSelectedItemIconTile(
+                presetId: _selectedItemIconPresetId,
+                fallback: Container(
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
@@ -448,189 +421,161 @@ class _AddSecureNoteItemModalState
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                InkWell(
-                  onTap: widget.onReturnToPicker,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2F7),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      TablerIcons.chevron_down,
-                      size: 14,
-                      color: Color(0xFF667085),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Container(
-                    height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF7F9FB),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: const Color(0xFF8BA9D8),
-                        width: 2,
-                      ),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    child: TextField(
-                      controller: _titleController,
-                      maxLines: 1,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        color: Color(0xFF2E3138),
-                        fontWeight: FontWeight.w700,
-                      ),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        isCollapsed: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(width: 10),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    LoginFormField(
-                      label: 'note',
-                      controller: _bodyController,
-                      maxLines: 8,
-                      minLines: 8,
-                      icon: TablerIcons.notes,
-                      iconColor: const Color(0xFFB98A1B),
-                      hintText: 'Add any notes about this item here.',
-                    ),
-                    const SizedBox(height: 12),
-                    InkWell(
-                      onTap: () => setState(
-                        () => _showAddMoreOptions = !_showAddMoreOptions,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        height: 34,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8EEF9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              '+ add more',
-                              style: itemText(
-                                12,
-                                const Color(0xFF3B6FD3),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const Spacer(),
-                            Icon(
-                              _showAddMoreOptions
-                                  ? TablerIcons.chevron_up
-                                  : TablerIcons.chevron_down,
-                              size: 14,
-                              color: const Color(0xFF6A7282),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (_showAddMoreOptions) ...[
-                      const SizedBox(height: 8),
-                      AddMoreOptionsCard(
-                        options: _secureNoteAddMoreOptions,
-                        onSelected: _addCustomAttribute,
-                      ),
-                    ],
-                    if (_customAttributes.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      for (var i = 0; i < _customAttributes.length; i++) ...[
-                        CustomAttributeCard(
-                          attribute: _customAttributes[i],
-                          onRemove: () => _removeCustomAttribute(i),
-                        ),
-                        if (i != _customAttributes.length - 1)
-                          const SizedBox(height: 10),
-                      ],
-                    ],
-                    const SizedBox(height: 12),
-                    CategoryDropdownField(
-                      categories: categories,
-                      rootGroupUuid: rootGroupUuid,
-                      selectedCategoryUuid: effectiveCategoryUuid,
-                      onChanged: (value) =>
-                          setState(() => _selectedCategoryUuid = value),
-                    ),
-                    const SizedBox(height: 10),
-                    AttachmentSection(
-                      attachments: _attachments,
-                      onAddPressed: _pickAttachments,
-                      onRemove: _removeAttachment,
-                    ),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'tags',
-                        style: itemText(
-                          12,
-                          const Color(0xFF6D63D6),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TagEditor(
-                      tags: _tags,
-                      existingTags: existingTags,
-                      controller: _tagController,
-                      onAddTag: _addTag,
-                      onRemoveTag: _removeTag,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+              child: Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F9FB),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF8BA9D8), width: 2),
+                ),
+                alignment: Alignment.centerLeft,
+                child: TextField(
+                  controller: _titleController,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    color: Color(0xFF2E3138),
+                    fontWeight: FontWeight.w700,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    isCollapsed: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
                 ),
               ),
             ),
-            Container(height: 1, color: const Color(0xFFCCD4DF)),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                LoginFooterButton(
-                  label: 'Cancel',
-                  backgroundColor: const Color(0xFFEBEEF3),
-                  textColor: const Color(0xFF3E4B60),
-                  borderColor: const Color(0xFFC0C9D4),
-                  onTap: _isSaving ? null : _confirmClose,
-                ),
-                const SizedBox(width: 10),
-                LoginFooterButton(
-                  label: _isSaving ? 'Saving...' : 'Save',
-                  backgroundColor: kPrimaryButtonColor,
-                  textColor: Colors.white,
-                  onTap: _isSaving
-                      ? null
-                      : () => _save(
-                          categories: categories,
-                          rootGroupUuid: rootGroupUuid,
-                          selectedGroupUuid: selectedGroupUuid,
+          ],
+        ),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              LoginFormField(
+                label: 'note',
+                controller: _bodyController,
+                maxLines: 8,
+                minLines: 8,
+                icon: TablerIcons.notes,
+                iconColor: const Color(0xFFB98A1B),
+                hintText: 'Add any notes about this item here.',
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () =>
+                    setState(() => _showAddMoreOptions = !_showAddMoreOptions),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  height: 34,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8EEF9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        '+ add more',
+                        style: itemText(
+                          12,
+                          const Color(0xFF3B6FD3),
+                          fontWeight: FontWeight.w600,
                         ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        _showAddMoreOptions
+                            ? TablerIcons.chevron_up
+                            : TablerIcons.chevron_down,
+                        size: 14,
+                        color: const Color(0xFF6A7282),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (_showAddMoreOptions) ...[
+                const SizedBox(height: 8),
+                AddMoreOptionsCard(
+                  options: _secureNoteAddMoreOptions,
+                  onSelected: _addCustomAttribute,
                 ),
               ],
+              if (_customAttributes.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                for (var i = 0; i < _customAttributes.length; i++) ...[
+                  CustomAttributeCard(
+                    attribute: _customAttributes[i],
+                    onRemove: () => _removeCustomAttribute(i),
+                  ),
+                  if (i != _customAttributes.length - 1)
+                    const SizedBox(height: 10),
+                ],
+              ],
+              const SizedBox(height: 12),
+              CategoryDropdownField(
+                categories: categories,
+                rootGroupUuid: rootGroupUuid,
+                selectedCategoryUuid: effectiveCategoryUuid,
+                onChanged: (value) =>
+                    setState(() => _selectedCategoryUuid = value),
+              ),
+              const SizedBox(height: 10),
+              AttachmentSection(
+                attachments: _attachments,
+                onAddPressed: _pickAttachments,
+                onRemove: _removeAttachment,
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'tags',
+                  style: itemText(
+                    12,
+                    const Color(0xFF6D63D6),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              TagEditor(
+                tags: _tags,
+                existingTags: existingTags,
+                controller: _tagController,
+                onAddTag: _addTag,
+                onRemoveTag: _removeTag,
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+        footer: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            LoginFooterButton(
+              label: 'Cancel',
+              backgroundColor: const Color(0xFFEBEEF3),
+              textColor: const Color(0xFF3E4B60),
+              borderColor: const Color(0xFFC0C9D4),
+              onTap: _isSaving ? null : _confirmClose,
+            ),
+            const SizedBox(width: 10),
+            LoginFooterButton(
+              label: _isSaving ? 'Saving...' : 'Save',
+              backgroundColor: kPrimaryButtonColor,
+              textColor: Colors.white,
+              onTap: _isSaving
+                  ? null
+                  : () => _save(
+                      categories: categories,
+                      rootGroupUuid: rootGroupUuid,
+                      selectedGroupUuid: selectedGroupUuid,
+                    ),
             ),
           ],
         ),

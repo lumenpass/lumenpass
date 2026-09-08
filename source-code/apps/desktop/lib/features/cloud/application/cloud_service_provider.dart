@@ -86,22 +86,6 @@ extension CloudServiceProviderX on CloudServiceProvider {
     }
   }
 
-  /// Whether the provider is restricted to Premium accounts. Mirrors
-  /// [kFreeStorageProviderTokens] in subscription_gate_service.dart
-  /// (Google Drive + Dropbox are free; OneDrive + WebDAV + SFTP are premium).
-  bool get isPremiumOnly {
-    switch (this) {
-      case CloudServiceProvider.googleDrive:
-      case CloudServiceProvider.dropbox:
-        return false;
-      case CloudServiceProvider.oneDrive:
-      case CloudServiceProvider.webdav:
-      case CloudServiceProvider.sftp:
-      case CloudServiceProvider.s3:
-        return true;
-    }
-  }
-
   /// Whether this provider is usable in the current build. Google Drive and
   /// WebDAV/SFTP need no build-time key; Dropbox and OneDrive require an OAuth
   /// client id/key passed via --dart-define.

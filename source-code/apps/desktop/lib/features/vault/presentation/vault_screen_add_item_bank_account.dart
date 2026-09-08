@@ -481,7 +481,6 @@ class _AddBankAccountItemModalState
     _appendAttachmentFields(fields, _attachments);
 
     setState(() => _isSaving = true);
-    await _delayBeforeSavingOperation();
     try {
       final repository = ref.read(kdbxRepositoryProvider);
       final entryAttachments =
@@ -493,11 +492,7 @@ class _AddBankAccountItemModalState
         tags: List<String>.unmodifiable(_tags),
         attachments: entryAttachments,
       );
-      final database = await saveAndSyncDatabase(
-          repository, ref.read(databaseRegistryProvider));
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultEntriesProvider);
-      ref.invalidate(vaultSidebarTagsProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onItemSaved(edit.uuid);
       widget.onShowToast('Bank account saved');
       if (!mounted) return;
@@ -609,7 +604,6 @@ class _AddBankAccountItemModalState
     _appendAttachmentFields(fields, _attachments);
 
     setState(() => _isSaving = true);
-    await _delayBeforeSavingOperation();
     try {
       final repository = ref.read(kdbxRepositoryProvider);
       final entryAttachments = _newEntryAttachmentsFrom(_attachments);
@@ -620,12 +614,7 @@ class _AddBankAccountItemModalState
         tags: List<String>.unmodifiable(_tags),
         attachments: entryAttachments,
       );
-      final database = await saveAndSyncDatabase(
-          repository, ref.read(databaseRegistryProvider));
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultEntriesProvider);
-      ref.invalidate(vaultSidebarTagsProvider);
-      ref.invalidate(vaultSidebarCategoriesProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onItemSaved(createdEntry.uuid);
       widget.onShowToast('Bank account saved');
       if (!mounted) {

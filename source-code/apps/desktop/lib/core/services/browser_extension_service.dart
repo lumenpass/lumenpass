@@ -54,6 +54,10 @@ typedef BridgeUnlockBiometric = Future<BridgeUnlockResult> Function();
 class BrowserExtensionService {
   BrowserExtensionService({
     required KdbxRepository repository,
+    String host = defaultHost,
+    int port = defaultPort,
+    Duration healthCheckTimeout = defaultHealthCheckTimeout,
+    Duration watchdogInterval = defaultWatchdogInterval,
     String Function()? getDomainSetting,
     List<DisabledAutofillDomain> Function()? getDisabledAutofillDomains,
     Future<void> Function(List<DisabledAutofillDomain> domains)?
@@ -62,11 +66,16 @@ class BrowserExtensionService {
     void Function()? onOpenNewItemRequest,
     void Function(String entryUuid)? onOpenEditItemRequest,
     Future<void> Function()? onAfterSave,
+    Future<void> Function()? persistNow,
     BridgeUnlockOptionsProvider? getUnlockOptions,
     BridgeUnlockPassword? unlockWithPassword,
     BridgeUnlockPin? unlockWithPin,
     BridgeUnlockBiometric? unlockWithBiometric,
   })  : _repository = repository,
+        _host = host,
+        _port = port,
+        _healthCheckTimeout = healthCheckTimeout,
+        _watchdogInterval = watchdogInterval,
         _getDomainSetting = getDomainSetting ?? (() => 'default'),
         _getDisabledAutofillDomains =
             getDisabledAutofillDomains ?? (() => const []),
@@ -75,6 +84,7 @@ class BrowserExtensionService {
         _onOpenNewItemRequest = onOpenNewItemRequest,
         _onOpenEditItemRequest = onOpenEditItemRequest,
         _onAfterSave = onAfterSave,
+        _persistNow = persistNow,
         _getUnlockOptions = getUnlockOptions,
         _unlockWithPassword = unlockWithPassword,
         _unlockWithPin = unlockWithPin,
@@ -88,13 +98,30 @@ class BrowserExtensionService {
   final void Function()? _onOpenNewItemRequest;
   final void Function(String entryUuid)? _onOpenEditItemRequest;
   final Future<void> Function()? _onAfterSave;
+
+  /// Persists the vault before responding to an extension write request.
+  /// Wired to the app-wide [VaultWriteScheduler] flush so extension writes
+  /// share the serial save queue; falls back to a direct repository save
+  /// when not provided (e.g. in tests).
+  final Future<void> Function()? _persistNow;
+
+  Future<void> _persist() async {
+    final persist = _persistNow;
+    if (persist != null) {
+      await persist();
+      return;
+    }
+    await _repository.saveDatabase();
+  }
   final BridgeUnlockOptionsProvider? _getUnlockOptions;
   final BridgeUnlockPassword? _unlockWithPassword;
   final BridgeUnlockPin? _unlockWithPin;
   final BridgeUnlockBiometric? _unlockWithBiometric;
 
-  static const int _port = 19455;
-  static const String _host = '127.0.0.1';
+  static const int defaultPort = 19455;
+  static const String defaultHost = '127.0.0.1';
+  static const Duration defaultHealthCheckTimeout = Duration(seconds: 2);
+  static const Duration defaultWatchdogInterval = Duration(seconds: 30);
   static const String _appVersion = '1.0.0';
 
   static const String _passkeyCredentialIdField = 'KPEX_PASSKEY_CREDENTIAL_ID';
@@ -110,9 +137,18 @@ class BrowserExtensionService {
   static const String _passkeyUserHandleField = 'KPEX_PASSKEY_USER_HANDLE';
 
   final KdbxRepository _repository;
+  final String _host;
+  final int _port;
+  final Duration _healthCheckTimeout;
+  final Duration _watchdogInterval;
 
   HttpServer? _server;
+  StreamSubscription<HttpRequest>? _serverSubscription;
+  Future<void>? _ensureFuture;
+  Future<void>? _startFuture;
+  Timer? _watchdogTimer;
   bool _running = false;
+  bool _stopping = false;
 
   bool get isRunning => _running;
 
@@ -127,16 +163,31 @@ class BrowserExtensionService {
   /// Start the HTTP server. Retries several times on bind failure (e.g. the
   /// previous process is still releasing the port after a crash/restart).
   Future<void> start() async {
-    if (_running) {
-      _log('start skipped: server already running');
-      return;
-    }
-    await _startServerWithRetry();
+    await ensureRunning();
+    _startWatchdog();
   }
 
   /// Verify the server is responsive. If it has stopped (e.g. after a system
   /// sleep/wake cycle or unexpected socket error), restart it.
   Future<void> ensureRunning() async {
+    final existing = _ensureFuture;
+    if (existing != null) {
+      await existing;
+      return;
+    }
+    late final Future<void> future;
+    future = _ensureRunning();
+    _ensureFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_ensureFuture, future)) {
+        _ensureFuture = null;
+      }
+    }
+  }
+
+  Future<void> _ensureRunning() async {
     if (!_running) {
       _log('ensureRunning: server was not running – restarting');
       await _startServerWithRetry();
@@ -148,12 +199,12 @@ class BrowserExtensionService {
       // Sending a test request to our own ping endpoint is the simplest
       // way to verify the loopback listener is still healthy after sleep.
       final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 2);
+      client.connectionTimeout = _healthCheckTimeout;
       try {
         final request = await client.get(_host, _port, '/ping');
         final response = await request.close().timeout(
-          const Duration(seconds: 2),
-        );
+              _healthCheckTimeout,
+            );
         if (response.statusCode == 200) {
           _log('ensureRunning: health check passed');
           client.close();
@@ -173,10 +224,19 @@ class BrowserExtensionService {
   /// Stop the HTTP server.
   Future<void> stop() async {
     _log('stopping server');
-    _cancelRetry();
-    await _server?.close(force: true);
-    _server = null;
-    _running = false;
+    _stopping = true;
+    try {
+      _cancelWatchdog();
+      _cancelRetry();
+      final subscription = _serverSubscription;
+      _serverSubscription = null;
+      await subscription?.cancel();
+      await _server?.close(force: true);
+      _server = null;
+      _running = false;
+    } finally {
+      _stopping = false;
+    }
   }
 
   // ─── Server ─────────────────────────────────────────────────────────────────
@@ -188,10 +248,42 @@ class BrowserExtensionService {
     _retryTimer = null;
   }
 
+  void _startWatchdog() {
+    if (_watchdogInterval <= Duration.zero || _watchdogTimer != null) {
+      return;
+    }
+    _watchdogTimer = Timer.periodic(_watchdogInterval, (_) {
+      unawaited(ensureRunning());
+    });
+  }
+
+  void _cancelWatchdog() {
+    _watchdogTimer?.cancel();
+    _watchdogTimer = null;
+  }
+
   static const int _maxBindRetries = 6;
   static const Duration _bindRetryBaseDelay = Duration(seconds: 2);
 
   Future<void> _startServerWithRetry() async {
+    final existing = _startFuture;
+    if (existing != null) {
+      await existing;
+      return;
+    }
+    late final Future<void> future;
+    future = _startServerWithRetryInternal();
+    _startFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_startFuture, future)) {
+        _startFuture = null;
+      }
+    }
+  }
+
+  Future<void> _startServerWithRetryInternal() async {
     _cancelRetry();
     for (var attempt = 0; attempt < _maxBindRetries; attempt++) {
       try {
@@ -216,6 +308,10 @@ class BrowserExtensionService {
 
   Future<void> _startServer() async {
     try {
+      await _serverSubscription?.cancel();
+      _serverSubscription = null;
+      await _server?.close(force: true);
+      _server = null;
       _server = await HttpServer.bind(
         InternetAddress(_host, type: InternetAddressType.IPv4),
         _port,
@@ -225,9 +321,15 @@ class BrowserExtensionService {
       _log(
         'server listening on $_host:$_port, vaultOpen=${_repository.hasOpenDatabase}',
       );
-      _server!.listen(
+      _serverSubscription = _server!.listen(
         _handleRequest,
-        onError: (_) {},
+        onError: (Object error, StackTrace stackTrace) {
+          _log('server listener error: $error');
+          _handleServerStopped('listener error');
+        },
+        onDone: () {
+          _handleServerStopped('listener closed');
+        },
         cancelOnError: false,
       );
     } catch (error) {
@@ -235,6 +337,15 @@ class BrowserExtensionService {
       _log('failed to bind server: $error');
       rethrow; // Let the retry loop handle it.
     }
+  }
+
+  void _handleServerStopped(String reason) {
+    if (_stopping) {
+      return;
+    }
+    _log('server stopped unexpectedly: $reason – restarting');
+    _running = false;
+    unawaited(_startServerWithRetry());
   }
 
   Future<void> _handleRequest(HttpRequest request) async {
@@ -285,6 +396,8 @@ class BrowserExtensionService {
         await _handleOpenEditItem(request);
       } else if (request.method == 'POST' && path == '/item/delete') {
         await _handleDeleteItem(request);
+      } else if (request.method == 'POST' && path == '/item/touch') {
+        await _handleTouchItem(request);
       } else if (request.method == 'GET' && path == '/unlock/options') {
         await _handleUnlockOptions(request);
       } else if (request.method == 'POST' && path == '/unlock') {
@@ -398,7 +511,7 @@ class BrowserExtensionService {
     try {
       final entry = await _findEntryByUuid(entryUuid);
       await _repository.deleteEntry(entry.uuid);
-      await _repository.saveDatabase();
+      await _persist();
       unawaited(_onAfterSave?.call());
       _log('delete item request succeeded entryUuid=${entry.uuid}');
       _respondJson(request.response, 200, {
@@ -412,6 +525,58 @@ class BrowserExtensionService {
       });
     } catch (e) {
       _log('delete item request failed entryUuid=$entryUuid: $e');
+      _respondJson(request.response, 500, {
+        'ok': false,
+        'error': e.toString(),
+      });
+    }
+  }
+
+  Future<void> _handleTouchItem(HttpRequest request) async {
+    if (!_repository.hasOpenDatabase) {
+      _respondJson(request.response, 404, {
+        'ok': false,
+        'error': 'No open database',
+      });
+      return;
+    }
+
+    final body = await _readJsonBody(request);
+    if (body == null) {
+      _respondJson(
+        request.response,
+        400,
+        {'ok': false, 'error': 'Invalid JSON'},
+      );
+      return;
+    }
+
+    final entryUuid = (body['id'] as String? ?? '').trim();
+    if (entryUuid.isEmpty) {
+      _respondJson(request.response, 400, {
+        'ok': false,
+        'error': 'Item id is required',
+      });
+      return;
+    }
+
+    try {
+      final entry = await _findEntryByUuid(entryUuid);
+      await _repository.touchEntryLastUsedAt(entry.uuid);
+      await _persist();
+      unawaited(_onAfterSave?.call());
+      _log('touch item request succeeded entryUuid=${entry.uuid}');
+      _respondJson(request.response, 200, {
+        'ok': true,
+        'id': entry.uuid,
+      });
+    } on StateError {
+      _respondJson(request.response, 404, {
+        'ok': false,
+        'error': 'Entry not found',
+      });
+    } catch (e) {
+      _log('touch item request failed entryUuid=$entryUuid: $e');
       _respondJson(request.response, 500, {
         'ok': false,
         'error': e.toString(),
@@ -686,9 +851,9 @@ class BrowserExtensionService {
     }
 
     entries.sort((a, b) {
-      final aTouched = _latestTimestamp(a.updatedAt, a.createdAt) ??
+      final aTouched = _lastEditedTimestamp(a.updatedAt, a.createdAt) ??
           DateTime.fromMillisecondsSinceEpoch(0);
-      final bTouched = _latestTimestamp(b.updatedAt, b.createdAt) ??
+      final bTouched = _lastEditedTimestamp(b.updatedAt, b.createdAt) ??
           DateTime.fromMillisecondsSinceEpoch(0);
       final byDate = bTouched.compareTo(aTouched);
       if (byDate != 0) {
@@ -824,7 +989,7 @@ class BrowserExtensionService {
         );
         mode = 'created';
       }
-      await _repository.saveDatabase();
+      await _persist();
       unawaited(_onAfterSave?.call());
       _respondJson(request.response, 200, {
         'ok': true,
@@ -910,7 +1075,7 @@ class BrowserExtensionService {
           notes: existing.notes,
           tags: existing.tags,
         );
-        await _repository.saveDatabase();
+        await _persist();
         unawaited(_onAfterSave?.call());
         _log('updateEntry (extension) success id=${entry.uuid} title="$title"');
         _respondJson(request.response, 200, {
@@ -927,7 +1092,7 @@ class BrowserExtensionService {
         groupUuid: targetGroupUuid,
         fields: fields,
       );
-      await _repository.saveDatabase();
+      await _persist();
       unawaited(_onAfterSave?.call());
       _log('createEntry success id=${entry.uuid} title="$title"');
       _respondJson(request.response, 200, {
@@ -1018,7 +1183,7 @@ class BrowserExtensionService {
         notes: notes,
         tags: List<String>.unmodifiable(tags),
       );
-      await _repository.saveDatabase();
+      await _persist();
       unawaited(_onAfterSave?.call());
       _log('createNote success id=${entry.uuid} title="$title"');
       _respondJson(request.response, 200, {
@@ -1141,6 +1306,7 @@ class BrowserExtensionService {
           .toList(),
       'createdAt': entry.createdAt?.toIso8601String(),
       'updatedAt': entry.updatedAt?.toIso8601String(),
+      'lastUsedAt': entry.lastUsedAt?.toIso8601String(),
     };
   }
 
@@ -1258,14 +1424,13 @@ class BrowserExtensionService {
     return '';
   }
 
-  DateTime? _latestTimestamp(DateTime? a, DateTime? b) {
-    if (a == null) {
-      return b;
-    }
-    if (b == null) {
-      return a;
-    }
-    return a.isAfter(b) ? a : b;
+  /// Timestamp used to order autofill suggestions by "last edited". This is
+  /// the genuine last-modification time ([updatedAt]); creation time is only a
+  /// fallback for entries that never recorded a modification. Deliberately not
+  /// `max(updatedAt, createdAt)` so an entry whose creation timestamp is newer
+  /// than its modification timestamp doesn't masquerade as recently edited.
+  DateTime? _lastEditedTimestamp(DateTime? updatedAt, DateTime? createdAt) {
+    return updatedAt ?? createdAt;
   }
 
   String _singleLinePreview(String input) {

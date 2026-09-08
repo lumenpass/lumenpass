@@ -863,7 +863,6 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
     _appendAttachmentFields(fields);
 
     setState(() => _isSaving = true);
-    await _delayBeforeSavingOperation();
     try {
       final repository = ref.read(kdbxRepositoryProvider);
       final entryAttachments =
@@ -875,11 +874,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
         tags: List<String>.unmodifiable(_tags),
         attachments: entryAttachments,
       );
-      final database = await saveAndSyncDatabase(
-          repository, ref.read(databaseRegistryProvider));
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultEntriesProvider);
-      ref.invalidate(vaultSidebarTagsProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onItemSaved(edit.uuid);
       widget.onShowToast('Item saved');
       if (!mounted) return;
@@ -968,7 +963,6 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
     _appendAttachmentFields(fields);
 
     setState(() => _isSaving = true);
-    await _delayBeforeSavingOperation();
     try {
       final repository = ref.read(kdbxRepositoryProvider);
       final entryAttachments = _attachments
@@ -982,12 +976,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
         tags: List<String>.unmodifiable(_tags),
         attachments: entryAttachments,
       );
-      final database = await saveAndSyncDatabase(
-          repository, ref.read(databaseRegistryProvider));
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultEntriesProvider);
-      ref.invalidate(vaultSidebarTagsProvider);
-      ref.invalidate(vaultSidebarCategoriesProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onItemSaved(createdEntry.uuid);
       widget.onShowToast('Login item saved');
       if (!mounted) return;

@@ -151,6 +151,16 @@ export async function getEntry(id: string, timeoutMs?: number): Promise<EntryDet
   return response.json() as Promise<EntryDetail>;
 }
 
+export async function touchItem(id: string): Promise<{ ok: boolean; id?: string }> {
+  const response = await fetchWithTimeout(`${DESKTOP_BASE_URL}/item/touch`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ id }),
+  });
+  if (!response.ok) throw buildError("SERVER_ERROR", `Server returned ${response.status}`);
+  return response.json() as Promise<{ ok: boolean; id?: string }>;
+}
+
 /** Fetch available save categories/groups for the current vault. */
 export async function getCategories(timeoutMs?: number): Promise<CategoryItem[]> {
   const response = await fetchWithTimeout(`${DESKTOP_BASE_URL}/categories`, {}, timeoutMs);

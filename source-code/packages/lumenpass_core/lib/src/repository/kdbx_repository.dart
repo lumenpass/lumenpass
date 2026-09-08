@@ -75,9 +75,12 @@ abstract class KdbxRepository {
 
   Future<void> deleteEntry(String entryUuid);
 
+  Future<void> touchEntryLastUsedAt(String entryUuid);
+
   /// Writes the cached favicon payload (base64 PNG, or the sentinel
   /// [AppKdbxFieldKeys.faviconFailedSentinel]) into the entry's hidden
-  /// custom field. Call [saveDatabase] afterwards to persist.
+  /// custom field without treating it as a user edit. Call [saveDatabase]
+  /// afterwards to persist.
   Future<void> setEntryFaviconCache({
     required String entryUuid,
     required String payload,
@@ -369,16 +372,55 @@ class KdbxRepositoryImpl implements KdbxRepository {
   }
 
   @override
+  Future<void> touchEntryLastUsedAt(String entryUuid) async {
+    final entry = _findEntry(entryUuid);
+    entry.times.lastAccessTime.set(DateTime.now().toUtc());
+    _invalidateCaches();
+  }
+
+  @override
   Future<void> setEntryFaviconCache({
     required String entryUuid,
     required String payload,
   }) async {
     final entry = _findEntry(entryUuid);
-    entry.setString(
-      native.KdbxKey(AppKdbxFieldKeys.faviconPngBase64),
-      native.PlainValue(payload),
-    );
+    // Caching a favicon is an automatic, app-driven write and must never be
+    // treated as a user edit or a user access. Preserve the entry's edit/use
+    // timestamps around the field write.
+    _writeWithoutTouchingUsageTimes(entry, () {
+      entry.setString(
+        native.KdbxKey(AppKdbxFieldKeys.faviconPngBase64),
+        native.PlainValue(payload),
+      );
+    });
     _invalidateCaches();
+  }
+
+  /// Runs [write] against [entry] while shielding its usage timestamps from the
+  /// kdbx library's automatic bookkeeping.
+  ///
+  /// Any field mutation routes through `KdbxObject.modify()`, whose
+  /// `onAfterAnyModify` hook calls `times.modifiedNow()` and stamps **both**
+  /// `lastModificationTime` (our `updatedAt`) and `lastAccessTime` (our
+  /// `lastUsedAt`) to "now". That is correct for genuine user edits (see
+  /// [updateEntry]) but wrong for automatic writes such as favicon caching,
+  /// which would otherwise make every entry look freshly edited right after
+  /// unlock. We snapshot those timestamps before the write and restore them
+  /// afterwards. Restoring via `times.<node>.set(...)` mutates the `KdbxTimes`
+  /// sub-node, whose modify hook is a no-op, so it does not re-bump the entry.
+  void _writeWithoutTouchingUsageTimes(
+    native.KdbxEntry entry,
+    void Function() write,
+  ) {
+    final originalLastModificationTime = entry.times.lastModificationTime.get();
+    final originalLastAccessTime = entry.times.lastAccessTime.get();
+    write();
+    if (originalLastModificationTime != null) {
+      entry.times.lastModificationTime.set(originalLastModificationTime);
+    }
+    if (originalLastAccessTime != null) {
+      entry.times.lastAccessTime.set(originalLastAccessTime);
+    }
   }
 
   @override
@@ -421,8 +463,6 @@ class KdbxRepositoryImpl implements KdbxRepository {
     entry.times.creationTime.set(utcCreatedAt);
     if (isUpdatedAtInvalid) {
       entry.times.lastModificationTime.set(utcCreatedAt);
-    } else {
-      entry.times.lastModificationTime.set(now);
     }
     _invalidateCaches();
   }
@@ -619,7 +659,9 @@ class _IndexedEntry {
       entry.tags.join(' '),
       ...entry.fields
           .where((field) =>
-              !field.isProtected && !AppKdbxFieldKeys.isProtectedKey(field.key))
+              field.key != AppKdbxFieldKeys.itemIconPresetId &&
+              !field.isProtected &&
+              !AppKdbxFieldKeys.isProtectedKey(field.key))
           .map((field) => '${field.key} ${field.value}'),
     ];
 

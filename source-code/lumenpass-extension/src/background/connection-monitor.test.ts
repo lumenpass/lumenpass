@@ -97,14 +97,76 @@ describe("ConnectionMonitor", () => {
     ping.mockResolvedValueOnce({ vaultOpen: true });
     ping.mockRejectedValueOnce(new Error("offline 1"));
     ping.mockRejectedValueOnce(new Error("offline 2"));
+    ping.mockRejectedValueOnce(new Error("offline 3"));
+    ping.mockRejectedValueOnce(new Error("offline 4"));
 
     await monitor.check();
     expect(monitor.getState().connected).toBe(true);
     transitions.length = 0;
 
     await monitor.check();
+    expect(monitor.getState()).toEqual({ connected: true, vaultOpen: true });
+    expect(transitions).toEqual([]);
+
+    await monitor.check();
     expect(monitor.getState()).toEqual({ connected: false, vaultOpen: false });
     expect(transitions).toEqual([{ connected: false, vaultOpen: false }]);
+  });
+
+  it("keeps a previously healthy locked vault state during one failed check", async () => {
+    const ping = vi.fn()
+      .mockResolvedValueOnce({ vaultOpen: false })
+      .mockRejectedValueOnce(new Error("timeout 1"))
+      .mockRejectedValueOnce(new Error("timeout 2"));
+    const { monitor, transitions } = makeMonitor({ ping });
+
+    await monitor.check();
+    expect(monitor.getState()).toEqual({ connected: true, vaultOpen: false });
+    transitions.length = 0;
+
+    await monitor.check();
+
+    expect(monitor.getState()).toEqual({ connected: true, vaultOpen: false });
+    expect(transitions).toEqual([]);
+  });
+
+  it("honors disconnectGraceMs before marking a healthy desktop disconnected", async () => {
+    const ping = vi.fn()
+      .mockResolvedValueOnce({ vaultOpen: true })
+      .mockRejectedValue(new Error("offline"));
+
+    // Recreate with a grace window so the first confirmed failed checks stay
+    // optimistic until the window has elapsed.
+    let now = 1000;
+    const gracefulTransitions: VaultState[] = [];
+    const graceful = new ConnectionMonitor({
+      ping,
+      retryDelayMs: 0,
+      disconnectGraceMs: 2000,
+      onStateChange: (s) => {
+        gracefulTransitions.push({ ...s });
+      },
+      now: () => now,
+      wait: () => Promise.resolve(),
+    });
+
+    await graceful.check();
+    expect(graceful.getState()).toEqual({ connected: true, vaultOpen: true });
+    gracefulTransitions.length = 0;
+
+    await graceful.check();
+    expect(graceful.getState()).toEqual({ connected: true, vaultOpen: true });
+
+    now += 1000;
+    await graceful.check();
+    expect(graceful.getState()).toEqual({ connected: true, vaultOpen: true });
+
+    now += 1000;
+    await graceful.check();
+    expect(graceful.getState()).toEqual({ connected: false, vaultOpen: false });
+    expect(gracefulTransitions).toEqual([
+      { connected: false, vaultOpen: false },
+    ]);
   });
 
   it("dedupes concurrent check() calls into a single ping round-trip", async () => {
@@ -177,7 +239,7 @@ describe("ConnectionMonitor", () => {
     await monitor.check();
 
     expect(transitions).toHaveLength(1); // only the initial transition
-    expect(settled).toHaveLength(3);     // settled fires every time
+    expect(settled).toHaveLength(3); // settled fires every time
   });
 
   it("emits transition when vault goes unlocked → locked (desktop re-locked)", async () => {
@@ -204,8 +266,13 @@ describe("ConnectionMonitor", () => {
       .mockResolvedValueOnce({ vaultOpen: true })
       .mockRejectedValueOnce(new Error("offline"))
       .mockRejectedValueOnce(new Error("offline"))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValueOnce({ vaultOpen: true });
     const { monitor, transitions } = makeMonitor({ ping });
+
+    await monitor.check();
+    expect(monitor.getState().connected).toBe(true);
 
     await monitor.check();
     expect(monitor.getState().connected).toBe(true);
@@ -249,32 +316,24 @@ describe("ConnectionMonitor", () => {
   it("emits transition for each connected→disconnected→connected cycle", async () => {
     // This models the reconnect loop: desktop crashes → monitor detects
     // offline → desktop restarts → monitor reconnects.
-    const ping = vi.fn()
-      .mockRejectedValueOnce(new Error("offline 1"))
-      .mockRejectedValueOnce(new Error("offline 2")) // first check fails
-      .mockRejectedValueOnce(new Error("offline 1")) // backoff retry 1 fails
-      .mockRejectedValueOnce(new Error("offline 2"))
-      .mockResolvedValueOnce({ vaultOpen: true }); // backoff retry 2 succeeds
-    const { monitor, transitions } = makeMonitor({ ping, nowSeed: 0 });
-
-    // Seed connected state first.
-    ping.mockResolvedValueOnce({ vaultOpen: true });
-    ping.mockRejectedValueOnce(new Error("crash"));
-    ping.mockRejectedValueOnce(new Error("crash"));
-
-    // Actually let's rewrite: first get connected, then go through cycles.
     const p = vi.fn()
-      .mockResolvedValueOnce({ vaultOpen: true })   // initial: connected+unlocked
-      .mockRejectedValueOnce(new Error("down"))       // check: connected→disconnected
+      .mockResolvedValueOnce({ vaultOpen: true }) // initial: connected+unlocked
+      .mockRejectedValueOnce(new Error("down")) // first failed check: grace
       .mockRejectedValueOnce(new Error("down"))
-      .mockResolvedValueOnce({ vaultOpen: true });   // reconnect: disconnected→connected
+      .mockRejectedValueOnce(new Error("down")) // second failed check: disconnected
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValueOnce({ vaultOpen: true }); // reconnect: disconnected→connected
 
     const m = makeMonitor({ ping: p });
     await m.monitor.check();
     expect(m.monitor.getState()).toEqual({ connected: true, vaultOpen: true });
     expect(m.transitions).toEqual([{ connected: true, vaultOpen: true }]);
 
-    // Desktop goes offline — the first check detects it.
+    // Desktop goes offline — the first failed check keeps the optimistic state.
+    await m.monitor.check();
+    expect(m.monitor.getState()).toEqual({ connected: true, vaultOpen: true });
+
+    // The second failed check confirms the disconnect.
     await m.monitor.check();
     expect(m.monitor.getState()).toEqual({ connected: false, vaultOpen: false });
 

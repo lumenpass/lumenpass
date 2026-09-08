@@ -267,9 +267,63 @@ class SftpService {
     }
   }
 
-  void restore(SftpConfig config) {
-    _config = config.copyWith(rootPath: normalizeRootPath(config.rootPath));
+  /// Restores a persisted configuration without opening a connection.
+  ///
+  /// For key-based auth the persisted [SftpConfig.keyFilePath] points at the
+  /// internal copy under the app documents directory. That directory path can
+  /// change across reinstalls/updates, so the stored absolute path is
+  /// re-resolved against the current location before it is kept.
+  ///
+  /// Returns whether the restored configuration is usable (i.e. the private key
+  /// file can still be found). Callers should treat a `false` result as "not
+  /// connected" so the UI does not advertise a connection that cannot be used.
+  Future<bool> restore(SftpConfig config) async {
+    var resolved = config.copyWith(rootPath: normalizeRootPath(config.rootPath));
+    if (resolved.authMethod == SftpAuthMethod.publicKeyFile) {
+      final repaired = await _resolveInternalKeyPath(resolved.keyFilePath);
+      if (repaired != null) {
+        resolved = resolved.copyWith(keyFilePath: repaired);
+      }
+    }
+    _config = resolved;
     _log('config restored for ${_config!.accountLabel}');
+    return isConfigUsable();
+  }
+
+  /// Whether the current configuration can be used to authenticate without
+  /// re-prompting the user. For key-based auth this verifies the private key
+  /// file still exists on disk; password auth is always considered usable.
+  Future<bool> isConfigUsable() async {
+    final cfg = _config;
+    if (cfg == null) return false;
+    if (cfg.authMethod == SftpAuthMethod.publicKeyFile) {
+      final path = cfg.keyFilePath;
+      if (path == null || path.isEmpty) return false;
+      return File(path).exists();
+    }
+    return true;
+  }
+
+  /// Re-resolves a stored internal key path against the current documents
+  /// directory. Returns the existing path when it is still valid, the repaired
+  /// path when the internal key file is found at its current location, or the
+  /// original (possibly stale) path when it cannot be repaired.
+  Future<String?> _resolveInternalKeyPath(String? storedPath) async {
+    if (storedPath == null || storedPath.isEmpty) return storedPath;
+    if (await File(storedPath).exists()) return storedPath;
+    if (p.basename(storedPath) == _kInternalKeyFileName) {
+      try {
+        final dir = await _getKeyFilesDir();
+        final candidate = '${dir.path}/$_kInternalKeyFileName';
+        if (await File(candidate).exists()) {
+          _log('internal key path re-resolved to current documents directory');
+          return candidate;
+        }
+      } catch (e) {
+        _log('failed to re-resolve internal key path: $e');
+      }
+    }
+    return storedPath;
   }
 
   Future<void> disconnect() async {

@@ -21,6 +21,7 @@ import {
   buildFeaturedTotps,
   isOtpLikeFieldLabel,
 } from "../../lib/totp-display";
+import { formatVersionLabel } from "../../lib/version";
 import type { EntryItem, EntryDetail } from "../../lib/api";
 import type { ExtensionSettings } from "../../lib/storage";
 
@@ -798,6 +799,7 @@ function DetailPanel({
     FIELD_HAS_VALUE(entry.username) ||
     hasPassword || loading ||
     FIELD_HAS_VALUE(detailUrl) ||
+    FIELD_HAS_VALUE(detail.notes) ||
     visibleCustomFields.length > 0;
 
   useEffect(() => {
@@ -971,6 +973,16 @@ function DetailPanel({
             </div>
           )}
 
+          {/* Notes (e.g. secure-note body) */}
+          {FIELD_HAS_VALUE(detail.notes) && (
+            <NotesRow
+              value={detail.notes!}
+              fieldKey="notes"
+              copiedField={copiedField}
+              onCopy={onCopy}
+            />
+          )}
+
           {/* Custom fields */}
           {visibleCustomFields.map((f, index) => {
             const fieldKey = `custom:${index}:${f.label}`;
@@ -1017,37 +1029,45 @@ function DetailActionBar({
 }) {
   return (
     <div className="px-3 py-2.5 border-t border-[#dbe7ff] dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
-      <div className="flex items-center justify-end gap-2 min-h-[34px]">
-        {showActions && (
-          <>
-        <button
-          type="button"
-          onClick={onEdit}
-          disabled={editPending || deletePending}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+      <div className="flex items-center justify-between gap-2 min-h-[34px]">
+        <span
+          className="select-none text-[11px] tabular-nums text-gray-300 dark:text-gray-600"
+          title="Extension version"
         >
-          {editPending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <PencilLine className="h-3.5 w-3.5" />
+          {formatVersionLabel()}
+        </span>
+        <div className="flex items-center gap-2">
+          {showActions && (
+            <>
+              <button
+                type="button"
+                onClick={onEdit}
+                disabled={editPending || deletePending}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+              >
+                {editPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <PencilLine className="h-3.5 w-3.5" />
+                )}
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={editPending || deletePending}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[12px] font-semibold text-rose-700 shadow-sm transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
+              >
+                {deletePending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                Delete
+              </button>
+            </>
           )}
-          Edit
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={editPending || deletePending}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[12px] font-semibold text-rose-700 shadow-sm transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
-        >
-          {deletePending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Trash2 className="h-3.5 w-3.5" />
-          )}
-          Delete
-        </button>
-          </>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -1301,6 +1321,37 @@ function CredentialRow({
         onClick={() => onCopy(value, fieldKey)}
         className="p-1.5 mt-1 rounded-lg text-gray-300 opacity-70 group-hover:opacity-100 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all shrink-0"
         title={`Copy ${label}`}
+      >
+        {copiedField === fieldKey
+          ? <Check className="w-4 h-4 text-emerald-500" />
+          : <Copy className="w-4 h-4" />}
+      </button>
+    </div>
+  );
+}
+
+/** Multi-line notes row. Preserves newlines and lets long notes scroll inside
+ *  the card instead of being truncated, so secure-note bodies are readable. */
+function NotesRow({
+  value, fieldKey, copiedField, onCopy,
+}: {
+  value: string;
+  fieldKey: string;
+  copiedField: string | null;
+  onCopy: (value: string, field: string) => void;
+}) {
+  return (
+    <div className="group flex items-start px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-medium text-brand-600 dark:text-brand-400 mb-1">notes</p>
+        <pre className="text-[14px] text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words font-sans max-h-72 overflow-y-auto">
+          {value}
+        </pre>
+      </div>
+      <button
+        onClick={() => onCopy(value, fieldKey)}
+        className="p-1.5 mt-1 rounded-lg text-gray-300 opacity-70 group-hover:opacity-100 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all shrink-0"
+        title="Copy notes"
       >
         {copiedField === fieldKey
           ? <Check className="w-4 h-4 text-emerald-500" />

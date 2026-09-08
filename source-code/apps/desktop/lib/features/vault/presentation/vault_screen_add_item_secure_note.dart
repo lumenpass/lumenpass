@@ -261,7 +261,6 @@ class _AddSecureNoteItemModalState
     _appendAttachmentFields(fields, _attachments);
 
     setState(() => _isSaving = true);
-    await _delayBeforeSavingOperation();
     try {
       final repository = ref.read(kdbxRepositoryProvider);
       final entryAttachments =
@@ -273,11 +272,7 @@ class _AddSecureNoteItemModalState
         tags: List<String>.unmodifiable(_tags),
         attachments: entryAttachments,
       );
-      final database = await saveAndSyncDatabase(
-          repository, ref.read(databaseRegistryProvider));
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultEntriesProvider);
-      ref.invalidate(vaultSidebarTagsProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onItemSaved(edit.uuid);
       widget.onShowToast('Secure note saved');
       if (!mounted) return;
@@ -337,7 +332,6 @@ class _AddSecureNoteItemModalState
     _appendAttachmentFields(fields, _attachments);
 
     setState(() => _isSaving = true);
-    await _delayBeforeSavingOperation();
     try {
       final repository = ref.read(kdbxRepositoryProvider);
       final entryAttachments = _newEntryAttachmentsFrom(_attachments);
@@ -348,12 +342,7 @@ class _AddSecureNoteItemModalState
         tags: List<String>.unmodifiable(_tags),
         attachments: entryAttachments,
       );
-      final database = await saveAndSyncDatabase(
-          repository, ref.read(databaseRegistryProvider));
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultEntriesProvider);
-      ref.invalidate(vaultSidebarTagsProvider);
-      ref.invalidate(vaultSidebarCategoriesProvider);
+      publishAndScheduleSave(ref, repository);
       widget.onItemSaved(createdEntry.uuid);
       widget.onShowToast('Secure note saved');
       if (!mounted) return;

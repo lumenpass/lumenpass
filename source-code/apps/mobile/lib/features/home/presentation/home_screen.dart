@@ -1,17 +1,28 @@
 import 'dart:async';
-import 'dart:ui';
+import 'dart:developer' as developer;
+import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:lumenpass_core/lumenpass_core.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:path/path.dart' as p;
 
 import '../../../app/routes.dart';
-import '../../../core/repository/database_save_sync.dart';
 import '../../../core/repository/providers.dart';
+import '../../../core/repository/vault_write_scheduler_provider.dart';
+import '../../../core/services/app_runtime_info.dart';
+import '../../../core/services/cloud_sync_service.dart';
+import '../../../core/services/release_api_client.dart';
+
 import '../../../core/ui/app_snack_bar.dart';
 import '../../../core/ui/floating_glass_search_bar.dart';
+
 import '../../unlock/application/database_registry.dart';
 import '../../autofill/presentation/autofill_reminder_sheet.dart';
 import '../../settings/application/vault_security_provider.dart';
@@ -19,21 +30,23 @@ import '../../startup/presentation/startup_router.dart';
 import '../../unlock/presentation/unlock_vault_screen.dart';
 import '../../vault/application/vault_entries_providers.dart';
 import '../../vault/application/vault_items_list_providers.dart';
-import '../../vault/presentation/vault_category_filter_dropdown.dart';
 import '../../vault/presentation/vault_create_item.dart';
 import '../../vault/presentation/vault_create_item_models.dart';
+import '../../vault/presentation/vault_create_item_shared.dart';
 import '../../vault/presentation/vault_entry_avatar.dart';
 import '../../vault/presentation/vault_entry_context_menu.dart';
 import '../../vault/presentation/vault_entry_list_tile.dart';
+import '../../vault/presentation/vault_all_items_screen.dart';
 import '../../vault/presentation/vault_item_details_modal.dart';
 import '../../vault/presentation/vault_items_tab.dart';
-import '../../vault/presentation/vault_search_floating_toolbar.dart';
+import '../../vault/presentation/vault_search_screen.dart';
 import '../../vault/presentation/vault_toast.dart';
 import '../application/home_vault_providers.dart';
 import '../application/mobile_home_tab_provider.dart';
 import 'password_generator_modal.dart';
 import 'profile_tab.dart';
 import 'vault_settings_modal.dart';
+import 'version_changelog_modal.dart';
 
 const _homeBackground = Color(0xFFF4F9FA);
 const _homeSurface = Colors.white;
@@ -41,23 +54,244 @@ const _homeInk = Color(0xFF0A3B48);
 const _homeText = Color(0xFF163640);
 const _homeMuted = Color(0xFF6B858D);
 const _homeBorder = Color(0xFFE3EAF0);
+const _floatingHeaderTopInset = 10.0;
+const _floatingHeaderHeight = 68.0;
+const _floatingHeaderContentTopPadding =
+    _floatingHeaderTopInset + _floatingHeaderHeight + 14.0;
+const _homeContentBottomPadding = 96.0;
 
 bool _entryIsLoginOrSecureNote(KdbxEntry entry) {
   final t = classifyVaultItemType(entry);
   return t == VaultItemType.login || t == VaultItemType.secureNote;
 }
 
-void _showUnlockForLockedVault(
-  BuildContext context,
-  DatabaseRecord lockedRecord,
-) {
+void _openUnlockForVault(BuildContext context, DatabaseRecord record) {
   final navigator = Navigator.of(context);
   navigator.pushNamedAndRemoveUntil(Routes.vaults, (route) => false);
   navigator.push(
-    MaterialPageRoute<void>(
-      builder: (_) => UnlockVaultScreen(record: lockedRecord),
+    MaterialPageRoute<void>(builder: (_) => UnlockVaultScreen(record: record)),
+  );
+}
+
+void _clearActiveVaultSession(WidgetRef ref) {
+  // Drop any pending-write state: the in-memory database is about to be
+  // disposed, so a stale scheduled save would target the wrong (or closed)
+  // vault. Lock paths flush first; this reset is the safety net.
+  ref.read(vaultWriteSchedulerProvider).reset();
+  ref.read(kdbxRepositoryProvider).closeDatabase();
+  ref.read(activeDatabaseProvider.notifier).state = null;
+  ref.read(cachedMasterPasswordProvider.notifier).state = null;
+  ref.read(vaultSearchUiStateProvider.notifier).clear();
+  ref.read(vaultSelectedGroupProvider.notifier).state = kCategoryFilterAll;
+  ref.read(vaultItemsSelectedEntryUuidProvider.notifier).state = null;
+}
+
+bool _isCloudBackedRecord(DatabaseRecord record) {
+  if (record.cloudFileId == null || record.cloudFileId!.isEmpty) return false;
+  return record.storageType == 'googleDrive' ||
+      record.storageType == 'dropbox' ||
+      record.storageType == 'oneDrive' ||
+      record.storageType == 'webdav' ||
+      record.storageType == 'sftp' ||
+      record.storageType == 's3';
+}
+
+Future<void> _flushCloudSyncBeforeLock(
+  BuildContext context,
+  DatabaseRecord? record,
+) async {
+  if (record == null || !_isCloudBackedRecord(record)) return;
+
+  final status = CloudSyncService.instance.statusFor(record.databasePath);
+  final dirty = await CloudSyncService.instance.isDirty(record.databasePath);
+  if (!status.isBusy && !dirty) return;
+  if (!context.mounted) return;
+
+  final rootNavigator = Navigator.of(context, rootNavigator: true);
+  final dialog = showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    useRootNavigator: true,
+    builder: (_) => const _CloudSyncLockDialog(),
+  );
+
+  try {
+    await CloudSyncService.instance.flush(record);
+    await CloudSyncService.instance.awaitPending(record.databasePath);
+  } finally {
+    if (rootNavigator.canPop()) {
+      rootNavigator.pop();
+    }
+    await dialog;
+  }
+
+  if (!context.mounted) return;
+  final settled = CloudSyncService.instance.statusFor(record.databasePath);
+  final stillDirty = await CloudSyncService.instance.isDirty(
+    record.databasePath,
+  );
+  if (!context.mounted) return;
+  if (settled.phase == CloudSyncPhase.error || stillDirty) {
+    AppSnackBar.error(
+      context,
+      'Cloud sync is still pending. Your latest changes stay on this device and will retry on the next sync.',
+    );
+  }
+}
+
+void _showQuickSwitchVaultSheet(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) => _QuickSwitchVaultSheet(
+      onVaultSelected: (record) {
+        Navigator.of(sheetContext).pop();
+        _switchVaultFromHome(context, ref, record);
+      },
     ),
   );
+}
+
+void _switchVaultFromHome(
+  BuildContext context,
+  WidgetRef ref,
+  DatabaseRecord record,
+) {
+  final activeRecord = ref.read(homeVaultRecordProvider);
+  if (activeRecord != null && activeRecord.id == record.id) {
+    return;
+  }
+
+  final activePath = ref.read(activeDatabaseProvider)?.path;
+  if (activePath != null && _vaultPathsMatch(record.databasePath, activePath)) {
+    return;
+  }
+
+  _clearActiveVaultSession(ref);
+  _openUnlockForVault(context, record);
+}
+
+String _vaultStorageIconAsset(String storageType) {
+  return switch (storageType) {
+    'googleDrive' => 'assets/images/google-drive.png',
+    'dropbox' => 'assets/images/dropbox.png',
+    'oneDrive' => 'assets/images/onedrive.png',
+    'webdav' => 'assets/images/webdav.png',
+    _ => 'assets/images/dir.png',
+  };
+}
+
+bool _vaultPathsMatch(String a, String b) {
+  return p.normalize(a) == p.normalize(b);
+}
+
+String _cleanVaultDisplayName(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) {
+    return '';
+  }
+  return trimmed.replaceFirst(
+    RegExp(r'_[a-f0-9]{12}$', caseSensitive: false),
+    '',
+  );
+}
+
+String _quickSwitchVaultName(DatabaseRecord record) {
+  final nickname = _cleanVaultDisplayName(record.nickname);
+  if (nickname.isNotEmpty) {
+    return nickname;
+  }
+
+  final cloudFileName = _cleanVaultDisplayName(record.cloudFileName ?? '');
+  if (cloudFileName.isNotEmpty) {
+    return p.basenameWithoutExtension(cloudFileName);
+  }
+
+  final basename = p.basenameWithoutExtension(record.databasePath);
+  if (basename.isNotEmpty && basename != '.' && basename != '/') {
+    return _cleanVaultDisplayName(basename);
+  }
+
+  return 'Vault';
+}
+
+String _quickSwitchVaultLocationLabel(DatabaseRecord record) {
+  final cloudFileName = (record.cloudFileName ?? '').trim();
+  switch (record.storageType) {
+    case 'googleDrive':
+      return cloudFileName.isEmpty
+          ? 'Google Drive'
+          : 'Google Drive · $cloudFileName';
+    case 'dropbox':
+      return cloudFileName.isEmpty ? 'Dropbox' : 'Dropbox · $cloudFileName';
+    case 'oneDrive':
+      return cloudFileName.isEmpty ? 'OneDrive' : 'OneDrive · $cloudFileName';
+    case 'webdav':
+      return cloudFileName.isEmpty ? 'WebDAV' : 'WebDAV · $cloudFileName';
+    default:
+      return p.basename(record.databasePath);
+  }
+}
+
+bool _isActiveQuickSwitchVault(
+  DatabaseRecord record, {
+  required DatabaseRecord? activeRecord,
+  required String? activePath,
+}) {
+  if (activeRecord != null && activeRecord.id == record.id) {
+    return true;
+  }
+  if (activePath == null) {
+    return false;
+  }
+  return _vaultPathsMatch(record.databasePath, activePath);
+}
+
+List<DatabaseRecord> _sortedQuickSwitchVaults(
+  List<DatabaseRecord> records, {
+  required DatabaseRecord? activeRecord,
+  required String? activePath,
+}) {
+  final copy = List<DatabaseRecord>.of(records);
+  copy.sort((a, b) {
+    final aIsActive = _isActiveQuickSwitchVault(
+      a,
+      activeRecord: activeRecord,
+      activePath: activePath,
+    );
+    final bIsActive = _isActiveQuickSwitchVault(
+      b,
+      activeRecord: activeRecord,
+      activePath: activePath,
+    );
+    if (aIsActive != bIsActive) {
+      return aIsActive ? -1 : 1;
+    }
+    final aTime = a.lastOpenedAt;
+    final bTime = b.lastOpenedAt;
+    if (aTime == null && bTime != null) {
+      return 1;
+    }
+    if (aTime != null && bTime == null) {
+      return -1;
+    }
+    if (aTime != null && bTime != null) {
+      final byRecent = bTime.compareTo(aTime);
+      if (byRecent != 0) {
+        return byRecent;
+      }
+    }
+    final byName = _quickSwitchVaultName(
+      a,
+    ).toLowerCase().compareTo(_quickSwitchVaultName(b).toLowerCase());
+    if (byName != 0) {
+      return byName;
+    }
+    return b.addedAt.compareTo(a.addedAt);
+  });
+  return copy;
 }
 
 Future<void> _confirmLockVault(BuildContext context, WidgetRef ref) async {
@@ -137,18 +371,19 @@ Future<void> _confirmLockVault(BuildContext context, WidgetRef ref) async {
 
   // Capture the record BEFORE tearing down providers.
   final lockedRecord = ref.read(homeVaultRecordProvider);
+  // Persist any pending background writes before flushing cloud sync so the
+  // upload picks up the latest local state.
+  await ref.read(vaultWriteSchedulerProvider).flushNow();
+  if (!context.mounted) return;
+  await _flushCloudSyncBeforeLock(context, lockedRecord);
+  if (!context.mounted) return;
 
-  ref.read(kdbxRepositoryProvider).closeDatabase();
-  ref.read(activeDatabaseProvider.notifier).state = null;
-  ref.read(cachedMasterPasswordProvider.notifier).state = null;
-  ref.read(vaultSearchUiStateProvider.notifier).clear();
-  ref.read(vaultSelectedGroupProvider.notifier).state = kCategoryFilterAll;
-  ref.read(vaultItemsSelectedEntryUuidProvider.notifier).state = null;
+  _clearActiveVaultSession(ref);
 
   if (!context.mounted) return;
 
   if (lockedRecord != null) {
-    _showUnlockForLockedVault(context, lockedRecord);
+    _openUnlockForVault(context, lockedRecord);
     return;
   }
 
@@ -158,6 +393,45 @@ Future<void> _confirmLockVault(BuildContext context, WidgetRef ref) async {
   Navigator.of(
     context,
   ).pushNamedAndRemoveUntil(Routes.vaults, (route) => false);
+}
+
+class _CloudSyncLockDialog extends StatelessWidget {
+  const _CloudSyncLockDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
+              ),
+              SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  'Syncing your latest vault changes…',
+                  style: TextStyle(
+                    color: Color(0xFF12232C),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -171,6 +445,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   DateTime? _unlockTime;
   Timer? _autoLockTimer;
   late final AppLifecycleListener _lifecycleListener;
+  bool _bottomNavCollapsed = false;
+  final ReleaseApiClient _releaseApi = ReleaseApiClient();
 
   @override
   void initState() {
@@ -187,9 +463,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _promptAutoFillReminder();
     });
 
-    _lifecycleListener = AppLifecycleListener(onResume: _resetAutoLockTimer);
+    _lifecycleListener = AppLifecycleListener(
+      onResume: _resetAutoLockTimer,
+      // Persist pending background writes as soon as the app leaves the
+      // foreground so a system kill can't discard unflushed edits. The flush
+      // is fire-and-forget: the scheduler serializes saves internally and the
+      // lock path flushes again (awaited) if the user locks manually.
+      onInactive: () =>
+          unawaited(ref.read(vaultWriteSchedulerProvider).flushNow()),
+      onPause: () =>
+          unawaited(ref.read(vaultWriteSchedulerProvider).flushNow()),
+    );
 
-    _resetAutoLockTimer();
+    // Arm the auto-lock timer only after persisted settings have loaded from
+    // storage. Reading the provider before _load() completes would return the
+    // default (fourHours) even when the user saved "Never", causing a spurious
+    // lock. The ref.listen in build() re-arms the timer whenever the setting
+    // changes, so this deferred call is only needed for the initial arm.
+    unawaited(
+      ref.read(vaultSecuritySettingsProvider.notifier).loaded.then((_) {
+        if (mounted) _resetAutoLockTimer();
+      }),
+    );
+
+    unawaited(_checkForNewVersionSilently());
   }
 
   /// Surfaces the "Turn On AutoFill" sheet right after the vault opens if
@@ -208,6 +505,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void dispose() {
     _autoLockTimer?.cancel();
     _lifecycleListener.dispose();
+    _releaseApi.close();
     super.dispose();
   }
 
@@ -228,17 +526,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _doAutoLock() {
+    unawaited(_doAutoLockAsync());
+  }
+
+  Future<void> _doAutoLockAsync() async {
     if (!mounted) return;
     final lockedRecord = ref.read(homeVaultRecordProvider);
-    ref.read(kdbxRepositoryProvider).closeDatabase();
-    ref.read(activeDatabaseProvider.notifier).state = null;
-    ref.read(cachedMasterPasswordProvider.notifier).state = null;
-    ref.read(vaultSearchUiStateProvider.notifier).clear();
-    ref.read(vaultSelectedGroupProvider.notifier).state = kCategoryFilterAll;
-    ref.read(vaultItemsSelectedEntryUuidProvider.notifier).state = null;
+    await ref.read(vaultWriteSchedulerProvider).flushNow();
+    if (!mounted) return;
+    await _flushCloudSyncBeforeLock(context, lockedRecord);
+    if (!mounted) return;
+    _clearActiveVaultSession(ref);
 
     if (lockedRecord != null) {
-      _showUnlockForLockedVault(context, lockedRecord);
+      _openUnlockForVault(context, lockedRecord);
       return;
     }
 
@@ -248,6 +549,80 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil(Routes.vaults, (route) => false);
+  }
+
+  void _collapseBottomNav() {
+    if (_bottomNavCollapsed || !mounted) return;
+    setState(() => _bottomNavCollapsed = true);
+  }
+
+  void _expandBottomNav() {
+    if (!_bottomNavCollapsed || !mounted) return;
+    setState(() => _bottomNavCollapsed = false);
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+
+    if (notification is UserScrollNotification) {
+      switch (notification.direction) {
+        case ScrollDirection.reverse:
+          // Scrolling down -> hide.
+          _collapseBottomNav();
+        case ScrollDirection.forward:
+          // Scrolling up -> show.
+          _expandBottomNav();
+        case ScrollDirection.idle:
+          break;
+      }
+    }
+
+    return false;
+  }
+
+  Future<void> _checkForNewVersionSilently() async {
+    String? platformKey;
+    if (Platform.isIOS) {
+      platformKey = 'ios';
+    } else if (Platform.isAndroid) {
+      platformKey = 'android';
+    }
+    if (platformKey == null) return;
+
+    try {
+      final info = await AppRuntimeInfoService.load();
+      developer.log(
+        'version-check: runtime info = $info',
+        name: 'version_check',
+      );
+      if (info == null) return;
+      final localCombined = info.buildNumber.isNotEmpty
+          ? '${info.version}+${info.buildNumber}'
+          : info.version;
+      final latest = await _releaseApi.fetchLatest(platform: platformKey);
+      developer.log(
+        'version-check: latest=${latest.version} local=$localCombined '
+        'cmp=${compareReleaseVersions(latest.version, localCombined)}',
+        name: 'version_check',
+      );
+      if (!mounted) return;
+      if (compareReleaseVersions(latest.version, localCombined) > 0) {
+        AppSnackBar.info(
+          context,
+          'A new version is available: v${formatReleaseVersion(latest.version)}',
+          onTap: () => showVersionChangeLogModal(context, latest),
+        );
+      }
+    } catch (err, stackTrace) {
+      developer.log(
+        'version-check failed: $err',
+        name: 'version_check',
+        error: err,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   @override
@@ -286,46 +661,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             Column(
               children: [
-                if (tab != MobileHomeTab.profile)
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(10, 14, 10, 0),
-                    child: _TopBar(),
-                  ),
                 Expanded(
-                  child: switch (tab) {
-                    MobileHomeTab.home => Stack(
-                      children: [
-                        ListView(
-                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
-                          children: const [
-                            VaultCategorySearchRow(),
-                            SizedBox(height: 14),
-                            _LastUsedSection(),
-                            SizedBox(height: 14),
-                            _QuickAccessSection(),
-                            SizedBox(height: 14),
-                            _TagsSection(),
-                          ],
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: _handleScrollNotification,
+                    child: switch (tab) {
+                      MobileHomeTab.home => ListView(
+                        padding: const EdgeInsets.fromLTRB(
+                          20,
+                          _floatingHeaderContentTopPadding,
+                          20,
+                          _homeContentBottomPadding,
                         ),
-                        Positioned(
-                          left: 20,
-                          right: 20,
-                          bottom: 12,
-                          child: VaultSearchFloatingToolbar(
-                            hintText: 'Search items',
-                            onAdd: () => showAddNewItemOverlay(context),
-                            addSemanticLabel: 'Create item',
-                          ),
-                        ),
-                      ],
-                    ),
-                    MobileHomeTab.items => const VaultItemsTab(),
-                    MobileHomeTab.totp => const _TotpTab(),
-                    MobileHomeTab.profile => const ProfileTab(),
-                  },
+                        children: const [
+                          _QuickAccessSection(),
+                          SizedBox(height: 14),
+                          _ProfileSummaryBar(),
+                          SizedBox(height: 14),
+                          _LastUsedSection(),
+                          SizedBox(height: 14),
+                          _RecentCreatedSection(),
+                          SizedBox(height: 14),
+                          _TagsSection(),
+                        ],
+                      ),
+                      MobileHomeTab.items => const VaultItemsTab(),
+                      MobileHomeTab.totp => const _TotpTab(),
+                      MobileHomeTab.profile => const ProfileTab(),
+                    },
+                  ),
                 ),
-                const _BottomNavBar(),
               ],
+            ),
+            if (tab != MobileHomeTab.profile)
+              const Positioned(
+                left: 10,
+                right: 10,
+                top: _floatingHeaderTopInset,
+                child: _TopBar(),
+              ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _BottomNavBar(
+                collapsed: _bottomNavCollapsed,
+                onExpand: _expandBottomNav,
+              ),
             ),
             if (isDeleting)
               const Positioned.fill(
@@ -376,6 +757,11 @@ class _AddTotpOverlayState extends ConsumerState<_AddTotpOverlay> {
   _AddTotpStep _step = _AddTotpStep.input;
   final TextEditingController _manualCtrl = TextEditingController();
   final TextEditingController _itemSearchCtrl = TextEditingController();
+  // New-item form controllers (used when _saveMode == newItem).
+  final TextEditingController _newTitleCtrl = TextEditingController();
+  final TextEditingController _newEmailCtrl = TextEditingController();
+  final TextEditingController _newWebsiteCtrl = TextEditingController();
+  bool _newItemDefaultsApplied = false;
   Timer? _timer;
   DateTime _now = DateTime.now();
   String? _otpauthUrl;
@@ -391,6 +777,9 @@ class _AddTotpOverlayState extends ConsumerState<_AddTotpOverlay> {
     _timer?.cancel();
     _manualCtrl.dispose();
     _itemSearchCtrl.dispose();
+    _newTitleCtrl.dispose();
+    _newEmailCtrl.dispose();
+    _newWebsiteCtrl.dispose();
     super.dispose();
   }
 
@@ -487,6 +876,7 @@ class _AddTotpOverlayState extends ConsumerState<_AddTotpOverlay> {
           .where(_entryIsLoginOrSecureNote)
           .toList(),
     );
+    _seedNewItemDefaults();
     setState(() {
       _step = _AddTotpStep.target;
       if (entries.isEmpty) {
@@ -497,6 +887,26 @@ class _AddTotpOverlayState extends ConsumerState<_AddTotpOverlay> {
         _selectedEntryUuid = null;
       }
     });
+  }
+
+  /// Pre-fills the new-item form from the parsed otpauth info the first time
+  /// the target step is shown, so the title is never blank.
+  void _seedNewItemDefaults() {
+    if (_newItemDefaultsApplied) return;
+    final url = _otpauthUrl;
+    if (url == null) return;
+    final info = _parseOtpInfo(url);
+    if (_newTitleCtrl.text.trim().isEmpty) {
+      _newTitleCtrl.text = info.issuer.isNotEmpty
+          ? info.issuer
+          : (info.account.isNotEmpty ? info.account : 'Authenticator');
+    }
+    if (_newEmailCtrl.text.trim().isEmpty &&
+        info.account.isNotEmpty &&
+        info.account.toLowerCase() != 'account') {
+      _newEmailCtrl.text = info.account;
+    }
+    _newItemDefaultsApplied = true;
   }
 
   bool _isOtpFieldKey(String key) {
@@ -581,18 +991,19 @@ class _AddTotpOverlayState extends ConsumerState<_AddTotpOverlay> {
       throw const VaultStateException('Select a category before saving');
     }
 
-    final info = _parseOtpInfo(otpAuthUrl);
-    final title = info.issuer.isNotEmpty
-        ? info.issuer
-        : (info.account.isNotEmpty ? info.account : 'Authenticator');
+    final title = _newTitleCtrl.text.trim();
+    final email = _newEmailCtrl.text.trim();
+    final website = _newWebsiteCtrl.text.trim();
     final fields = <EntryField>[
       EntryField(key: AppKdbxFieldKeys.title, value: title, isStandard: true),
-      if (info.account.isNotEmpty)
+      if (email.isNotEmpty)
         EntryField(
           key: AppKdbxFieldKeys.userName,
-          value: info.account,
+          value: email,
           isStandard: true,
         ),
+      if (website.isNotEmpty && website != 'https://')
+        EntryField(key: AppKdbxFieldKeys.url, value: website, isStandard: true),
       EntryField(
         key: 'otp',
         value: otpAuthUrl,
@@ -600,6 +1011,7 @@ class _AddTotpOverlayState extends ConsumerState<_AddTotpOverlay> {
         isStandard: true,
       ),
     ];
+
     await repository.createEntry(groupUuid: targetGroupUuid, fields: fields);
   }
 
@@ -632,16 +1044,14 @@ class _AddTotpOverlayState extends ConsumerState<_AddTotpOverlay> {
         }
         await _saveToExistingItem(entry: selected, otpAuthUrl: url);
       } else {
+        if (_newTitleCtrl.text.trim().isEmpty) {
+          throw const VaultStateException('Title is required');
+        }
         await _createNewItemWithTotp(otpAuthUrl: url);
       }
 
       final repository = ref.read(kdbxRepositoryProvider);
-      final registry = ref.read(databaseRegistryProvider);
-      final database = await saveAndSyncDatabase(repository, registry);
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultVisibleEntriesProvider);
-      ref.invalidate(vaultAllTagsProvider);
-      ref.invalidate(vaultSidebarCategoriesProvider);
+      publishAndScheduleSave(ref, repository);
 
       if (!mounted) return;
       final success = _saveMode == _TotpSaveMode.existingItem
@@ -1426,43 +1836,36 @@ class _AddTotpOverlayState extends ConsumerState<_AddTotpOverlay> {
             ),
           ] else ...[
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE4E9F2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'A new item will be created with this 2FA code.',
-                    style: TextStyle(
-                      color: Color(0xFF344054),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    LoginFormField(
+                      label: 'title',
+                      controller: _newTitleCtrl,
+                      icon: Icons.title_rounded,
+                      iconColor: const Color(0xFF0A3B48),
+                      hintText: 'Item title (required)',
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Title: ${info.issuer.isNotEmpty ? info.issuer : 'Authenticator'}',
-                    style: const TextStyle(
-                      color: Color(0xFF667085),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(height: 12),
+                    LoginFormField(
+                      label: 'email',
+                      controller: _newEmailCtrl,
+                      icon: Icons.alternate_email_rounded,
+                      iconColor: const Color(0xFF5C7CFA),
+                      hintText: 'name@example.com (optional)',
                     ),
-                  ),
-                  if (info.account.isNotEmpty)
-                    Text(
-                      'Username: ${info.account}',
-                      style: const TextStyle(
-                        color: Color(0xFF667085),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    const SizedBox(height: 12),
+                    LoginFormField(
+                      label: 'website / url',
+                      controller: _newWebsiteCtrl,
+                      icon: Icons.public_rounded,
+                      iconColor: const Color(0xFF635BDB),
+                      hintText: 'https://example.com (optional)',
                     ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -1728,8 +2131,6 @@ class _TotpTabState extends ConsumerState<_TotpTab>
     with WidgetsBindingObserver {
   static const _totp = TOTPService();
   Timer? _clock;
-  late final TextEditingController _searchCtrl;
-  String _query = '';
 
   /// Broadcast ticker. Using a [ValueNotifier] instead of `setState` on every
   /// tick means only the rows that actually show the TOTP countdown rebuild
@@ -1743,7 +2144,6 @@ class _TotpTabState extends ConsumerState<_TotpTab>
   @override
   void initState() {
     super.initState();
-    _searchCtrl = TextEditingController();
     _nowNotifier = ValueNotifier<DateTime>(DateTime.now());
     WidgetsBinding.instance.addObserver(this);
     _startClock();
@@ -1763,7 +2163,6 @@ class _TotpTabState extends ConsumerState<_TotpTab>
     WidgetsBinding.instance.removeObserver(this);
     _stopClock();
     _nowNotifier.dispose();
-    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -1813,6 +2212,219 @@ class _TotpTabState extends ConsumerState<_TotpTab>
     );
   }
 
+  /// Long-press action sheet for a TOTP row: Edit or Delete.
+  /// Styled to match the Password Generator sheet (bottom-up slide, white
+  /// header card with grab handle, icon + title, circular close button).
+  Future<void> _showTotpActions(KdbxEntry entry) async {
+    final action = await showModalBottomSheet<_TotpRowAction>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final bottom = MediaQuery.paddingOf(sheetContext).bottom;
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFF7FAFC),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x290A2F3D),
+                blurRadius: 24,
+                offset: Offset(0, -4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                  border: Border(bottom: BorderSide(color: Color(0xFFE1EAF0))),
+                ),
+                child: Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 36,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDCE6EC),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 54),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE5EFF3),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(
+                                    Icons.timelapse_rounded,
+                                    color: Color(0xFF0A3B48),
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    entry.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(sheetContext)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: _homeText,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      top: 12,
+                      right: 16,
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x180F172A),
+                              blurRadius: 12,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.white,
+                          shape: const CircleBorder(
+                            side: BorderSide(color: Color(0xFFD7E2E8)),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () => Navigator.of(sheetContext).pop(),
+                            customBorder: const CircleBorder(),
+                            child: const SizedBox(
+                              width: 38,
+                              height: 38,
+                              child: Icon(
+                                Icons.close_rounded,
+                                color: Color(0xFF5E7180),
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(8, 8, 8, 12 + bottom),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _TotpActionTile(
+                      icon: Icons.edit_rounded,
+                      label: 'Edit Item',
+                      description: 'Update name, credentials, or details',
+                      onTap: () =>
+                          Navigator.of(sheetContext).pop(_TotpRowAction.edit),
+                    ),
+                    _TotpActionTile(
+                      icon: Icons.delete_rounded,
+                      label: 'Delete Item',
+                      description: 'Permanently remove this item',
+                      isDestructive: true,
+                      onTap: () =>
+                          Navigator.of(sheetContext).pop(_TotpRowAction.delete),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+    switch (action) {
+      case _TotpRowAction.edit:
+        showEditItemModal(context, entry: entry);
+        break;
+      case _TotpRowAction.delete:
+        await _confirmDeleteTotp(entry);
+        break;
+      case null:
+        break;
+    }
+  }
+
+  Future<void> _confirmDeleteTotp(KdbxEntry entry) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Item'),
+        content: Text(
+          'Are you sure you want to permanently delete "${entry.title}"? '
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFB42318),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    ref.read(vaultItemsIsDeletingProvider.notifier).state = true;
+    try {
+      final repo = ref.read(kdbxRepositoryProvider);
+      await repo.deleteEntry(entry.uuid);
+      publishAndScheduleSave(ref, repo);
+      if (!mounted) return;
+      AppSnackBar.success(context, 'Deleted ${entry.title}');
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Failed to delete: $e');
+    } finally {
+      if (mounted) {
+        ref.read(vaultItemsIsDeletingProvider.notifier).state = false;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final entries = ref.watch(vaultVisibleEntriesProvider);
@@ -1823,49 +2435,23 @@ class _TotpTabState extends ConsumerState<_TotpTab>
           ..sort(
             (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
           );
-    final terms = _query
-        .trim()
-        .toLowerCase()
-        .split(RegExp(r'\s+'))
-        .where((term) => term.isNotEmpty)
-        .toList(growable: false);
-    final filtered = terms.isEmpty
-        ? totpEntries
-        : totpEntries
-              .where((entry) {
-                final haystack = [
-                  entry.title,
-                  entry.username ?? '',
-                  entry.url ?? '',
-                  entry.notes ?? '',
-                  ...entry.tags,
-                ].join(' ').toLowerCase();
-                return terms.every(haystack.contains);
-              })
-              .toList(growable: false);
-
-    if (totpEntries.isEmpty) {
-      return const _PlaceholderTab(
-        title: 'TOTP',
-        message: 'No items with TOTP in this vault yet.',
-      );
-    }
+    final filtered = totpEntries;
 
     return Stack(
       children: [
         Positioned.fill(
-          child: filtered.isEmpty
-              ? Center(
-                  child: Text(
-                    'No matching TOTP items',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: _homeMuted,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+          child: totpEntries.isEmpty
+              ? const _PlaceholderTab(
+                  title: 'TOTP',
+                  message: 'No items with TOTP in this vault yet.',
                 )
               : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
+                  padding: const EdgeInsets.fromLTRB(
+                    20,
+                    _floatingHeaderContentTopPadding,
+                    20,
+                    _homeContentBottomPadding,
+                  ),
                   itemBuilder: (context, index) {
                     final entry = filtered[index];
                     // Each row subscribes individually to the tick so only
@@ -1903,6 +2489,10 @@ class _TotpTabState extends ConsumerState<_TotpTab>
                                   context,
                                   'Copied TOTP for ${entry.title}',
                                 );
+                              },
+                              onLongPress: () {
+                                HapticFeedback.mediumImpact();
+                                _showTotpActions(entry);
                               },
                               child: Ink(
                                 padding: const EdgeInsets.all(14),
@@ -1993,18 +2583,6 @@ class _TotpTabState extends ConsumerState<_TotpTab>
                   itemCount: filtered.length,
                 ),
         ),
-        Positioned(
-          left: 20,
-          right: 20,
-          bottom: 12,
-          child: FloatingGlassSearchToolbar(
-            controller: _searchCtrl,
-            hintText: 'Search TOTP items',
-            onChanged: (value) => setState(() => _query = value),
-            onAdd: () => showAddTotpOverlay(context),
-            addSemanticLabel: 'Add TOTP',
-          ),
-        ),
       ],
     );
   }
@@ -2028,105 +2606,68 @@ Color _totpCountdownColor(int secondsRemaining) {
   return const Color(0xFF16A34A);
 }
 
-class _TopBar extends ConsumerWidget {
-  const _TopBar();
+enum _TotpRowAction { edit, delete }
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final title = ref.watch(homeVaultTitleProvider);
-    final storageType = ref.watch(homeVaultStorageTypeProvider);
-
-    final vaultIconAsset = switch (storageType) {
-      'googleDrive' => 'assets/images/google-drive.png',
-      'dropbox' => 'assets/images/dropbox.png',
-      'oneDrive' => 'assets/images/onedrive.png',
-      'webdav' => 'assets/images/webdav.png',
-      _ => 'assets/images/dir.png',
-    };
-
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              vaultIconAsset,
-              width: 22,
-              height: 22,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: const Color(0xFF0B1F26),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 20,
-                ),
-              ),
-            ),
-          ],
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                _IconAction(
-                  icon: Icons.lock_outline_rounded,
-                  filled: true,
-                  onTap: () => _confirmLockVault(context, ref),
-                ),
-                const SizedBox(width: 2),
-                _IconAction(
-                  icon: Icons.key_outlined,
-                  filled: true,
-                  onTap: () => showPasswordGeneratorModal(context),
-                ),
-              ],
-            ),
-            _IconAction(
-              icon: Icons.settings_outlined,
-              filled: true,
-              onTap: () => showVaultSettingsModal(context),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _IconAction extends StatelessWidget {
-  const _IconAction({required this.icon, this.filled = false, this.onTap});
+class _TotpActionTile extends StatelessWidget {
+  const _TotpActionTile({
+    required this.icon,
+    required this.label,
+    required this.description,
+    required this.onTap,
+    this.isDestructive = false,
+  });
 
   final IconData icon;
-  final bool filled;
-  final VoidCallback? onTap;
+  final String label;
+  final String description;
+  final VoidCallback onTap;
+  final bool isDestructive;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
+    final color = isDestructive ? const Color(0xFFB42318) : _homeText;
+    return Semantics(
+      button: true,
+      label: label,
+      hint: description,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: filled ? _homeInk : const Color(0xFFDCEEF2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: filled ? const Color(0xFFEAF6F9) : _homeInk,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(icon, size: 22, color: color),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        color: _homeMuted,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -2134,138 +2675,872 @@ class _IconAction extends StatelessWidget {
   }
 }
 
-class _LastUsedSection extends ConsumerStatefulWidget {
-  const _LastUsedSection();
-
-  @override
-  ConsumerState<_LastUsedSection> createState() => _LastUsedSectionState();
+enum _VaultMenuAction {
+  addItem,
+  generatePassword,
+  settings,
+  switchVault,
+  lockVault,
 }
 
-class _LastUsedSectionState extends ConsumerState<_LastUsedSection> {
-  @override
-  void dispose() {
-    super.dispose();
+void _handleVaultMenuAction(
+  BuildContext context,
+  WidgetRef ref,
+  _VaultMenuAction action,
+) {
+  switch (action) {
+    case _VaultMenuAction.addItem:
+      showAddNewItemOverlay(context);
+      break;
+    case _VaultMenuAction.generatePassword:
+      showPasswordGeneratorModal(context);
+      break;
+    case _VaultMenuAction.settings:
+      showVaultSettingsModal(context);
+      break;
+    case _VaultMenuAction.switchVault:
+      _showQuickSwitchVaultSheet(context, ref);
+      break;
+    case _VaultMenuAction.lockVault:
+      _confirmLockVault(context, ref);
+      break;
   }
+}
+
+PopupMenuItem<_VaultMenuAction> _vaultMenuItem(
+  _VaultMenuAction value,
+  IconData icon,
+  String label, {
+  bool enabled = true,
+}) {
+  return PopupMenuItem<_VaultMenuAction>(
+    value: value,
+    enabled: enabled,
+    child: Row(
+      children: [
+        Icon(icon, size: 20, color: enabled ? _homeInk : _homeMuted),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: enabled ? _homeText : _homeMuted,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Paints a soft drop shadow that appears only *outside* a rounded-rect
+/// footprint. Uses [Canvas.drawShadow] with an opaque occluder so the shadow
+/// never bleeds through a translucent child (e.g. a glass surface).
+class _OuterShadow extends StatelessWidget {
+  const _OuterShadow({
+    required this.borderRadius,
+    required this.child,
+    this.color = const Color(0x2E0B2430),
+    this.elevation = 10,
+  });
+
+  final double borderRadius;
+  final Widget child;
+  final Color color;
+  final double elevation;
 
   @override
   Widget build(BuildContext context) {
-    final recent = ref.watch(homeRecentEntriesProvider);
-    final query = ref.watch(vaultSearchQueryProvider).trim();
-    final emptyMessage = query.isNotEmpty
-        ? 'No matching items'
-        : 'No items in this vault';
+    return CustomPaint(
+      painter: _OuterShadowPainter(
+        borderRadius: borderRadius,
+        color: color,
+        elevation: elevation,
+      ),
+      child: child,
+    );
+  }
+}
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Row(
+class _OuterShadowPainter extends CustomPainter {
+  _OuterShadowPainter({
+    required this.borderRadius,
+    required this.color,
+    required this.elevation,
+  });
+
+  final double borderRadius;
+  final Color color;
+  final double elevation;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Offset.zero & size,
+          Radius.circular(borderRadius),
+        ),
+      );
+    canvas.drawShadow(path, color, elevation, false);
+  }
+
+  @override
+  bool shouldRepaint(_OuterShadowPainter oldDelegate) {
+    return oldDelegate.borderRadius != borderRadius ||
+        oldDelegate.color != color ||
+        oldDelegate.elevation != elevation;
+  }
+}
+
+class _TopBar extends ConsumerWidget {
+  const _TopBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final title = ref.watch(homeVaultTitleProvider);
+    final storageType = ref.watch(homeVaultStorageTypeProvider);
+    final vaultIconAsset = _vaultStorageIconAsset(storageType);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width - 20;
+
+        return _OuterShadow(
+          borderRadius: 22,
+          color: const Color(0xFF0B2430).withValues(alpha: 0.20),
+          elevation: 12,
+          child: GlassSurface(
+            height: _floatingHeaderHeight,
+            width: width,
+            borderRadius: 22,
+            tint: Colors.white.withValues(alpha: 0.38),
+            borderColor: Colors.white.withValues(alpha: 0.72),
+            blurSigma: 14,
+            highlightOpacity: 0.16,
+            quality: GlassQuality.premium,
+            thickness: 36,
+            chromaticAberration: 0.26,
+            lightIntensity: 0.5,
+            saturation: 1.24,
+            ambientStrength: 0.82,
+            shadowOpacity: 0,
+            shadowBlurRadius: 0,
+            shadowSpreadRadius: 0,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  const Icon(
-                    Icons.history_rounded,
-                    size: 16,
-                    color: Color(0xFF4B8591),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 58),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          vaultIconAsset,
+                          width: 22,
+                          height: 22,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  color: const Color(0xFF0B1F26),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 20,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      'Last used items',
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: _homeText,
-                        fontWeight: FontWeight.w700,
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: PopupMenuButton<_VaultMenuAction>(
+                      tooltip: 'Menu',
+                      offset: const Offset(0, 56),
+                      color: Colors.white,
+                      elevation: 12,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      padding: EdgeInsets.zero,
+                      onSelected: (action) =>
+                          _handleVaultMenuAction(context, ref, action),
+                      itemBuilder: (context) => [
+                        _vaultMenuItem(
+                          _VaultMenuAction.addItem,
+                          Icons.add_rounded,
+                          'Add Item',
+                        ),
+                        _vaultMenuItem(
+                          _VaultMenuAction.generatePassword,
+                          Icons.key_outlined,
+                          'Generate Password',
+                        ),
+                        _vaultMenuItem(
+                          _VaultMenuAction.settings,
+                          Icons.settings_outlined,
+                          'Settings',
+                        ),
+                        _vaultMenuItem(
+                          _VaultMenuAction.switchVault,
+                          Icons.swap_horiz_rounded,
+                          'Switch Vault',
+                        ),
+                        _vaultMenuItem(
+                          _VaultMenuAction.lockVault,
+                          Icons.lock_outline_rounded,
+                          'Lock Vault',
+                        ),
+                      ],
+                      child: const _IconAction(
+                        icon: Icons.menu_rounded,
+                        semanticLabel: 'Menu',
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const Spacer(),
-            GestureDetector(
-              onTap: () => showAddNewItemOverlay(context),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: _homeInk,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '+ Create item',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: const Color(0xFFEAF6F9),
-                    fontWeight: FontWeight.w700,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _QuickSwitchVaultSheet extends ConsumerWidget {
+  const _QuickSwitchVaultSheet({required this.onVaultSelected});
+
+  final ValueChanged<DatabaseRecord> onVaultSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final registry = ref.watch(databaseRegistryProvider);
+    final activeRecord = ref.watch(homeVaultRecordProvider);
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final activePath =
+        ref.watch(
+          activeDatabaseProvider.select((database) => database?.path),
+        ) ??
+        activeRecord?.databasePath;
+    final sortedVaults = _sortedQuickSwitchVaults(
+      registry,
+      activeRecord: activeRecord,
+      activePath: activePath,
+    );
+    final hasAnotherVault = sortedVaults.any(
+      (record) => !_isActiveQuickSwitchVault(
+        record,
+        activeRecord: activeRecord,
+        activePath: activePath,
+      ),
+    );
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.72,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF7FAFC),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Color(0x290A2F3D),
+            blurRadius: 24,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              border: Border(bottom: BorderSide(color: Color(0xFFE1EAF0))),
+            ),
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 38,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD2DCE2),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 54),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE5EFF3),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(
+                                Icons.swap_horiz_rounded,
+                                size: 20,
+                                color: _homeInk,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Switch Vault',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: const Color(0xFF0B1F26),
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    hasAnotherVault
+                                        ? 'Pick another vault to unlock.'
+                                        : 'No other vaults are available yet.',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: const Color(0xFF667787),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
+                Positioned(
+                  top: 12,
+                  right: 16,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x180F172A),
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.white,
+                      shape: const CircleBorder(
+                        side: BorderSide(color: Color(0xFFD7E2E8)),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).pop(),
+                        customBorder: const CircleBorder(),
+                        child: const SizedBox(
+                          width: 38,
+                          height: 38,
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF5E7180),
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
+          Flexible(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 10, 20, 16 + bottomInset),
+              child: sortedVaults.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
+                        child: Text(
+                          'Add another vault from the vault picker to use quick switch.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: _homeMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(0, 6, 0, 0),
+                      shrinkWrap: true,
+                      itemBuilder: (context, index) {
+                        final record = sortedVaults[index];
+                        final isActive = _isActiveQuickSwitchVault(
+                          record,
+                          activeRecord: activeRecord,
+                          activePath: activePath,
+                        );
+                        return _QuickSwitchVaultTile(
+                          record: record,
+                          isActive: isActive,
+                          onTap: isActive
+                              ? null
+                              : () => onVaultSelected(record),
+                        );
+                      },
+                      separatorBuilder: (_, index) => const SizedBox(height: 8),
+                      itemCount: sortedVaults.length,
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickSwitchVaultTile extends StatelessWidget {
+  const _QuickSwitchVaultTile({
+    required this.record,
+    required this.isActive,
+    this.onTap,
+  });
+
+  final DatabaseRecord record;
+  final bool isActive;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final background = isActive ? const Color(0xFFE9F3FF) : Colors.white;
+    final borderColor = isActive
+        ? const Color(0xFF6EA8FF)
+        : const Color(0xFFE2EAF0);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F6F8),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                alignment: Alignment.center,
+                child: Image.asset(
+                  _vaultStorageIconAsset(record.storageType),
+                  width: 24,
+                  height: 24,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _quickSwitchVaultName(record),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: const Color(0xFF122630),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _quickSwitchVaultLocationLabel(record),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF627685),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              if (isActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2F7FEA),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    'Current',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B1F26),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    'Switch',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        Container(
+      ),
+    );
+  }
+}
+
+class _IconAction extends StatelessWidget {
+  const _IconAction({required this.icon, this.semanticLabel});
+
+  final IconData icon;
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(24);
+
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0B2430).withValues(alpha: 0.12),
+                blurRadius: 14,
+                spreadRadius: -4,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: radius,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                color: Colors.white,
+                border: Border.all(
+                  color: const Color(0xFF0B2430).withValues(alpha: 0.08),
+                ),
+              ),
+              child: Icon(icon, size: 23, color: _homeInk),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LastUsedSection extends ConsumerWidget {
+  const _LastUsedSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recent = ref.watch(homeRecentEntriesProvider);
+    final query = ref.watch(vaultSearchQueryProvider).trim();
+    final emptyMessage = query.isNotEmpty
+        ? 'No matching items'
+        : 'No items in this vault';
+
+    return _HomeEntryCard(
+      title: 'Recent Used',
+      icon: Icons.history_rounded,
+      entries: recent,
+      emptyMessage: emptyMessage,
+      ref: ref,
+    );
+  }
+}
+
+class _ProfileSummaryBar extends ConsumerWidget {
+  const _ProfileSummaryBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final greeting = _profileSummaryGreeting(DateTime.now());
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          ref.read(mobileHomeTabProvider.notifier).state =
+              MobileHomeTab.profile;
+        },
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           decoration: BoxDecoration(
             color: _homeSurface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFE6EDF2)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0B2430).withValues(alpha: 0.05),
+                blurRadius: 16,
+                spreadRadius: -8,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-          clipBehavior: Clip.antiAlias,
-          child: recent.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 20,
-                  ),
-                  child: Center(
-                    child: Text(
-                      emptyMessage,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: _homeMuted,
-                        fontWeight: FontWeight.w500,
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F1FF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.settings_outlined,
+                  color: Color(0xFF3366D6),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      greeting,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: _homeText,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
                       ),
                     ),
-                  ),
-                )
-              : Column(
-                  children: [
-                    for (var i = 0; i < recent.length; i++)
-                      VaultEntryListTile(
-                        entry: recent[i],
-                        selected: false,
-                        showBottomBorder: i < recent.length - 1,
-                        onTap: () async {
-                          final categories = ref.read(
-                            vaultSidebarCategoriesProvider,
-                          );
-                          String? categoryName;
-                          for (final c in categories) {
-                            if (c.uuid == recent[i].groupUuid) {
-                              categoryName = c.name;
-                              break;
-                            }
-                          }
-                          ref
-                              .read(
-                                vaultItemsSelectedEntryUuidProvider.notifier,
-                              )
-                              .state = recent[i]
-                              .uuid;
-                          await showItemDetailsModal(
-                            context,
-                            entry: recent[i],
-                            categoryName: categoryName,
-                          );
-                        },
-                        onLongPress: () =>
-                            _showHomeContextMenu(context, ref, recent[i]),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Manage vault security and app settings",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: _homeMuted,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12.5,
                       ),
+                    ),
                   ],
                 ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: _homeMuted,
+                size: 18,
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
+    );
+  }
+}
+
+String _profileSummaryGreeting(DateTime now) {
+  final hour = now.hour;
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+class _RecentCreatedSection extends ConsumerWidget {
+  const _RecentCreatedSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recent = ref.watch(homeRecentCreatedEntriesProvider);
+    final query = ref.watch(vaultSearchQueryProvider).trim();
+    final emptyMessage = query.isNotEmpty
+        ? 'No matching items'
+        : 'No recently created items yet';
+    final now = DateTime.now();
+
+    return _HomeEntryCard(
+      title: 'Recent Created',
+      icon: Icons.add_circle_outline_rounded,
+      entries: recent,
+      emptyMessage: emptyMessage,
+      ref: ref,
+      dateLabelForEntry: (entry) => formatVaultEntryListDateLabel(
+        now: now,
+        updatedAt: null,
+        createdAt: entry.createdAt,
+      ),
+    );
+  }
+}
+
+class _HomeEntryCard extends StatelessWidget {
+  const _HomeEntryCard({
+    required this.title,
+    required this.icon,
+    required this.entries,
+    required this.emptyMessage,
+    required this.ref,
+    this.dateLabelForEntry,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<KdbxEntry> entries;
+  final String emptyMessage;
+  final WidgetRef ref;
+  final String Function(KdbxEntry entry)? dateLabelForEntry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _homeSurface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE6EDF2)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 15, 16, 12),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: const Color(0xFF4B8591)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: _homeText,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE6EDF2)),
+          if (entries.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: Center(
+                child: Text(
+                  emptyMessage,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _homeMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            )
+          else
+            Column(
+              children: [
+                for (var i = 0; i < entries.length; i++)
+                  VaultEntryListTile(
+                    entry: entries[i],
+                    selected: false,
+                    showBottomBorder: i < entries.length - 1,
+                    titleFontSize: 14,
+                    dateLabelOverride: dateLabelForEntry?.call(entries[i]),
+                    onTap: () async {
+                      final categories = ref.read(
+                        vaultSidebarCategoriesProvider,
+                      );
+                      String? categoryName;
+                      for (final c in categories) {
+                        if (c.uuid == entries[i].groupUuid) {
+                          categoryName = c.name;
+                          break;
+                        }
+                      }
+                      ref
+                          .read(vaultItemsSelectedEntryUuidProvider.notifier)
+                          .state = entries[i]
+                          .uuid;
+                      await showItemDetailsModal(
+                        context,
+                        entry: entries[i],
+                        categoryName: categoryName,
+                      );
+                    },
+                    onLongPress: () =>
+                        _showHomeContextMenu(context, ref, entries[i]),
+                  ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }
@@ -2294,97 +3569,229 @@ class _QuickAccessSection extends ConsumerWidget {
     final cards = [
       _QuickCardData(
         title: 'All items',
-        count: '${counts.all} items',
+        count: _formatStatisticCount(counts.all),
         icon: Icons.inventory_2_outlined,
+        startColor: const Color(0xFF53B76C),
+        endColor: const Color(0xFF2D8E55),
+        accentColor: const Color(0xFFB6F2C6),
+        iconBackground: const Color(0xFFDDF7E4),
+        onTap: () => openVaultAllItemsScreen(context),
+      ),
+      _QuickCardData(
+        title: 'Credit Cards',
+        count: _formatStatisticCount(counts.creditCards),
+        icon: Icons.credit_card_rounded,
+        startColor: const Color(0xFF4C78FF),
+        endColor: const Color(0xFF2E57D7),
+        accentColor: const Color(0xFFBCD2FF),
+        iconBackground: const Color(0xFFDCE8FF),
+        onTap: () => openVaultAllItemsScreen(
+          context,
+          title: 'Credit Cards',
+          itemTypeId: 'credit-card',
+        ),
       ),
       _QuickCardData(
         title: 'TOTP',
-        count: '${counts.totp} items',
-        icon: Icons.verified_user_outlined,
+        count: _formatStatisticCount(counts.totp),
+        icon: Icons.timer_outlined,
+        startColor: const Color(0xFFFF9A3D),
+        endColor: const Color(0xFFE06724),
+        accentColor: const Color(0xFFFFD3A8),
+        iconBackground: const Color(0xFFFFE8CF),
+        onTap: () {
+          ref.read(mobileHomeTabProvider.notifier).state = MobileHomeTab.totp;
+        },
       ),
       _QuickCardData(
         title: 'Secure Notes',
-        count: '${counts.secureNotes} items',
+        count: _formatStatisticCount(counts.secureNotes),
         icon: Icons.sticky_note_2_outlined,
-      ),
-      _QuickCardData(
-        title: 'SSH',
-        count: '${counts.ssh} items',
-        icon: Icons.dns_outlined,
+        startColor: const Color(0xFF8F62E8),
+        endColor: const Color(0xFF6B43C6),
+        accentColor: const Color(0xFFD7C2FF),
+        iconBackground: const Color(0xFFEEE5FF),
+        onTap: () => openVaultAllItemsScreen(
+          context,
+          title: 'Secure Notes',
+          itemTypeId: 'secure-note',
+        ),
       ),
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.bolt_rounded, size: 16, color: Color(0xFF1A6272)),
-            const SizedBox(width: 6),
-            Text(
-              'Quick access',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: _homeText,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        for (var row = 0; row < cards.length; row += 2) ...[
-          Row(
-            children: [
-              Expanded(child: _QuickCard(card: cards[row])),
-              const SizedBox(width: 8),
-              Expanded(child: _QuickCard(card: cards[row + 1])),
-            ],
-          ),
-          if (row + 2 < cards.length) const SizedBox(height: 8),
-        ],
-      ],
+    return SizedBox(
+      height: 132,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: cards.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          return _QuickAccessCard(card: cards[index]);
+        },
+      ),
     );
   }
 }
 
-class _QuickCard extends StatelessWidget {
-  const _QuickCard({required this.card});
+String _formatStatisticCount(int value) {
+  final formatted = NumberFormat.decimalPattern('en').format(value);
+  return formatted.replaceAll(',', '.');
+}
+
+class _QuickAccessCard extends StatelessWidget {
+  const _QuickAccessCard({required this.card});
 
   final _QuickCardData card;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _homeSurface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _homeBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(card.icon, size: 16, color: const Color(0xFF1C6374)),
-          const SizedBox(height: 6),
-          Text(
-            card.title,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: _homeText,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+    return SizedBox(
+      width: 214,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [card.startColor, card.endColor],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: card.endColor.withValues(alpha: 0.22),
+                blurRadius: 18,
+                spreadRadius: -6,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: InkWell(
+            onTap: card.onTap,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _QuickAccessBackdropPainter(
+                      accentColor: card.accentColor,
+                      iconBackground: card.iconBackground,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: card.iconBackground.withValues(
+                                alpha: 0.92,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              card.icon,
+                              size: 18,
+                              color: card.endColor,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              card.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Text(
+                        card.count,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 30,
+                              height: 1,
+                            ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'items',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.86),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            card.count,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: const Color(0xFF7A849A),
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+        ),
       ),
     );
+  }
+}
+
+class _QuickAccessBackdropPainter extends CustomPainter {
+  const _QuickAccessBackdropPainter({
+    required this.accentColor,
+    required this.iconBackground,
+  });
+
+  final Color accentColor;
+  final Color iconBackground;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final softPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.14)
+      ..style = PaintingStyle.fill;
+    final ringPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.18)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final glowPaint = Paint()
+      ..color = iconBackground.withValues(alpha: 0.16)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(Offset(size.width - 26, 30), 42, softPaint);
+    canvas.drawCircle(Offset(size.width - 58, size.height - 18), 52, glowPaint);
+    canvas.drawCircle(Offset(size.width - 36, size.height - 28), 28, ringPaint);
+
+    final chipRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(size.width - 90, 20, 36, 14),
+      const Radius.circular(10),
+    );
+    canvas.drawRRect(chipRect, softPaint);
+
+    final orbRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(size.width - 108, size.height - 52, 58, 22),
+      const Radius.circular(18),
+    );
+    canvas.drawRRect(orbRect, glowPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _QuickAccessBackdropPainter oldDelegate) {
+    return oldDelegate.accentColor != accentColor ||
+        oldDelegate.iconBackground != iconBackground;
   }
 }
 
@@ -2445,11 +3852,64 @@ class _TagsSection extends ConsumerWidget {
   }
 }
 
-class _BottomNavBar extends ConsumerWidget {
-  const _BottomNavBar();
+class _BottomNavBar extends ConsumerStatefulWidget {
+  const _BottomNavBar({required this.collapsed, required this.onExpand});
+
+  final bool collapsed;
+  final VoidCallback onExpand;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_BottomNavBar> createState() => _BottomNavBarState();
+}
+
+class _BottomNavBarState extends ConsumerState<_BottomNavBar> {
+  static const _fadeDuration = Duration(milliseconds: 240);
+
+  // Which child is currently rendered. Lags behind widget.collapsed while a
+  // sequential fade-out -> delay -> fade-in transition is running so that only
+  // one item is ever visible.
+  late bool _displayCollapsed;
+  bool _visible = true;
+  Timer? _transitionTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayCollapsed = widget.collapsed;
+  }
+
+  @override
+  void didUpdateWidget(covariant _BottomNavBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.collapsed != _displayCollapsed) {
+      _startTransition();
+    }
+  }
+
+  @override
+  void dispose() {
+    _transitionTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startTransition() {
+    _transitionTimer?.cancel();
+    // 1. Fade the current item out completely.
+    setState(() => _visible = false);
+    // 2. Once it has fully disappeared, swap + fade the new one in. The new
+    //    target is read at fire time so rapid toggles settle on the latest
+    //    requested state.
+    _transitionTimer = Timer(_fadeDuration, () {
+      if (!mounted) return;
+      setState(() {
+        _displayCollapsed = widget.collapsed;
+        _visible = true;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final tab = ref.watch(mobileHomeTabProvider);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
@@ -2467,178 +3927,190 @@ class _BottomNavBar extends ConsumerWidget {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 4, 20, bottomInset > 0 ? 16 : 8),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x240A2F3D),
-              blurRadius: 28,
-              offset: Offset(0, 10),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-            child: Container(
-              height: 68,
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(32),
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xDFFFFFFF),
-                    Color(0xB8F8FEFF),
-                    Color(0x96D9EDF1),
-                  ],
-                  stops: [0, 0.54, 1],
-                ),
-                border: Border.all(color: Color(0xBFFFFFFF), width: 1.1),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: 18,
-                    right: 18,
-                    top: 3,
-                    child: IgnorePointer(
-                      child: Container(
-                        height: 17,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(999),
-                          gradient: const LinearGradient(
-                            colors: [Color(0x8AFFFFFF), Color(0x12FFFFFF)],
-                          ),
-                        ),
-                      ),
-                    ),
+      child: AnimatedOpacity(
+        duration: _fadeDuration,
+        curve: Curves.easeInOut,
+        opacity: _visible ? 1 : 0,
+        // The glass background is shader-based, so wrapping the child in a
+        // RepaintBoundary rasterizes it into its own layer first. The opacity
+        // then fades that cached layer (background included) instead of
+        // compositing the shader directly, which would leave the bar opaque
+        // while only the icons faded.
+        child: RepaintBoundary(
+          child: _displayCollapsed
+              ? Align(
+                  alignment: Alignment.centerRight,
+                  child: _CollapsedBottomNavButton(
+                    icon: _bottomNavActiveIcon(tab),
+                    onTap: widget.onExpand,
                   ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _NavItem(
-                          icon: Icons.house_rounded,
-                          label: 'HOME',
-                          active: tab == MobileHomeTab.home,
-                          onTap: () => select(MobileHomeTab.home),
-                        ),
-                      ),
-                      Expanded(
-                        child: _NavItem(
-                          icon: Icons.grid_view_rounded,
-                          label: 'ITEMS',
-                          active: tab == MobileHomeTab.items,
-                          onTap: () => select(MobileHomeTab.items),
-                        ),
-                      ),
-                      Expanded(
-                        child: _NavItem(
-                          icon: Icons.timer_outlined,
-                          label: 'TOTP',
-                          active: tab == MobileHomeTab.totp,
-                          onTap: () => select(MobileHomeTab.totp),
-                        ),
-                      ),
-                      Expanded(
-                        child: _NavItem(
-                          icon: Icons.person_outline_rounded,
-                          label: 'ACCOUNT',
-                          active: tab == MobileHomeTab.profile,
-                          onTap: () => select(MobileHomeTab.profile),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+                )
+              : _buildExpandedBar(tab, select),
         ),
       ),
     );
   }
+
+  Widget _buildExpandedBar(
+    MobileHomeTab tab,
+    void Function(MobileHomeTab) select,
+  ) {
+    // Light liquid-glass palette, matching the Apple Music / Safari-style
+    // bottom bar. The bar's tint is intentionally faint so the screen
+    // content shows through as refractive colour, and the package's built-in
+    // light-mode drop shadow (controlled by [shadowElevation]) lifts the pill
+    // off the surface. The active tab uses a red accent on top of a lighter
+    // white indicator pill.
+    const defaultLightAngle = 0.75 * math.pi;
+    const brandAccent = Color(0xFFFC1F4D);
+    const darkInk = Color(0xFF111418);
+
+    return GlassBottomBar(
+      verticalPadding: 0,
+      horizontalPadding: 8,
+      barHeight: 60,
+      barBorderRadius: 30,
+      iconSize: 25,
+      labelFontSize: 0,
+      iconLabelSpacing: 0,
+      selectedIconColor: brandAccent,
+      unselectedIconColor: darkInk,
+      indicatorColor: const Color(0x14FC1F4D),
+      quality: GlassQuality.premium,
+      extraButton: GlassBottomBarExtraButton(
+        icon: const Icon(Icons.search_rounded, size: 24),
+        iconColor: darkInk,
+        label: 'Search',
+        size: 60,
+        onTap: () => openVaultSearchScreen(context),
+      ),
+      settings: const LiquidGlassSettings(
+        thickness: 38,
+        blur: 2.5,
+        chromaticAberration: 0.42,
+        lightIntensity: 0.30,
+        refractiveIndex: 1.59,
+        saturation: 1.18,
+        ambientStrength: 0.30,
+        lightAngle: defaultLightAngle,
+        glassColor: Color(0x33FFFFFF),
+        shadowElevation: 1.6,
+      ),
+      indicatorSettings: const LiquidGlassSettings(
+        thickness: 32,
+        blur: 2.5,
+        chromaticAberration: 0.36,
+        lightIntensity: 0.32,
+        refractiveIndex: 1.59,
+        saturation: 1.18,
+        ambientStrength: 0.32,
+        lightAngle: defaultLightAngle,
+        glassColor: Color(0x88FFFFFF),
+        shadowElevation: 0,
+      ),
+      tabs: const [
+        GlassBottomBarTab(
+          icon: Icon(Icons.house_rounded),
+          activeIcon: Icon(Icons.house_rounded),
+        ),
+        GlassBottomBarTab(
+          icon: Icon(Icons.grid_view_rounded),
+          activeIcon: Icon(Icons.grid_view_rounded),
+        ),
+        GlassBottomBarTab(
+          icon: Icon(Icons.timer_outlined),
+          activeIcon: Icon(Icons.timer_rounded),
+        ),
+        GlassBottomBarTab(
+          icon: Icon(Icons.person_outline_rounded),
+          activeIcon: Icon(Icons.person_rounded),
+        ),
+      ],
+      selectedIndex: _mobileHomeTabIndex(tab),
+      onTabSelected: (index) => select(_mobileHomeTabFromIndex(index)),
+    );
+  }
 }
 
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.active = false,
-  });
+class _CollapsedBottomNavButton extends StatelessWidget {
+  const _CollapsedBottomNavButton({required this.icon, required this.onTap});
 
   final IconData icon;
-  final String label;
-  final bool active;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? Colors.white : _homeMuted;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            gradient: active
-                ? const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF0C5562), Color(0xFF063B46)],
-                  )
-                : null,
-            boxShadow: active
-                ? const [
-                    BoxShadow(
-                      color: Color(0x330A3B48),
-                      blurRadius: 14,
-                      offset: Offset(0, 5),
-                    ),
-                    BoxShadow(
-                      color: Color(0x55FFFFFF),
-                      blurRadius: 8,
-                      offset: Offset(-2, -2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
-                  fontSize: 10,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                  letterSpacing: 0.4,
-                ),
-              ),
-            ],
+    return Semantics(
+      button: true,
+      label: 'Open navigation',
+      child: GlassSurface(
+        height: 60,
+        width: 60,
+        borderRadius: 30,
+        tint: Colors.white.withValues(alpha: 0.62),
+        borderColor: Colors.white.withValues(alpha: 0.72),
+        blurSigma: 2.5,
+        highlightOpacity: 0.22,
+        quality: GlassQuality.premium,
+        thickness: 38,
+        chromaticAberration: 0.42,
+        lightIntensity: 0.30,
+        saturation: 1.18,
+        ambientStrength: 0.30,
+        shadowOpacity: 0.16,
+        shadowBlurRadius: 20,
+        shadowSpreadRadius: -5,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(30),
+          onTap: onTap,
+          child: Center(
+            child: Icon(icon, color: const Color(0xFF111418), size: 28),
           ),
         ),
       ),
     );
   }
 }
+
+int _mobileHomeTabIndex(MobileHomeTab tab) => switch (tab) {
+  MobileHomeTab.home => 0,
+  MobileHomeTab.items => 1,
+  MobileHomeTab.totp => 2,
+  MobileHomeTab.profile => 3,
+};
+
+MobileHomeTab _mobileHomeTabFromIndex(int index) => switch (index) {
+  0 => MobileHomeTab.home,
+  1 => MobileHomeTab.items,
+  2 => MobileHomeTab.totp,
+  _ => MobileHomeTab.profile,
+};
+
+IconData _bottomNavActiveIcon(MobileHomeTab tab) => switch (tab) {
+  MobileHomeTab.home => Icons.house_rounded,
+  MobileHomeTab.items => Icons.grid_view_rounded,
+  MobileHomeTab.totp => Icons.timer_rounded,
+  MobileHomeTab.profile => Icons.person_rounded,
+};
 
 class _QuickCardData {
   const _QuickCardData({
     required this.title,
     required this.count,
     required this.icon,
+    required this.startColor,
+    required this.endColor,
+    required this.accentColor,
+    required this.iconBackground,
+    this.onTap,
   });
 
   final String title;
   final String count;
   final IconData icon;
+  final Color startColor;
+  final Color endColor;
+  final Color accentColor;
+  final Color iconBackground;
+  final VoidCallback? onTap;
 }

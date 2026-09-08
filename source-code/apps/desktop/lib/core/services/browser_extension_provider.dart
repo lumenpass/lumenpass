@@ -12,6 +12,7 @@ import '../../features/vault/presentation/vault_screen.dart';
 import '../models/database_record.dart';
 import '../repository/database_save_sync.dart';
 import '../repository/kdbx_repository_provider.dart';
+import '../repository/vault_write_scheduler_provider.dart';
 import 'biometric_auth_service.dart';
 import 'browser_extension_service.dart';
 import 'cloud_sync_service.dart';
@@ -90,6 +91,14 @@ final browserExtensionServiceProvider =
 
       // Same path as [saveAndSyncDatabase]: coalesced upload + dirty flag.
       CloudSyncService.instance.scheduleUpload(record).ignore();
+    },
+    // Extension writes mutate the repository directly; route them through the
+    // write scheduler's serial queue and await the flush so the extension
+    // response is only sent after the bytes are on disk.
+    persistNow: () async {
+      final scheduler = ref.read(vaultWriteSchedulerProvider);
+      scheduler.markDirtyImmediate();
+      await scheduler.flushNow();
     },
     getUnlockOptions: () => _readUnlockOptions(ref),
     unlockWithPassword: (password) => _unlockWithPassword(ref, password),

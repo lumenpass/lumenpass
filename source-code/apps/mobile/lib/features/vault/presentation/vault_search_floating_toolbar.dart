@@ -13,15 +13,21 @@ class VaultSearchFloatingToolbar extends ConsumerStatefulWidget {
     required this.hintText,
     required this.onAdd,
     required this.addSemanticLabel,
+    this.actions = const [],
     this.searchKey,
     this.addKey,
+    this.onSearchTap,
+    this.initiallyExpanded = false,
   });
 
   final String hintText;
   final VoidCallback onAdd;
   final String addSemanticLabel;
+  final List<FloatingGlassToolbarAction> actions;
   final GlobalKey? searchKey;
   final GlobalKey? addKey;
+  final VoidCallback? onSearchTap;
+  final bool initiallyExpanded;
 
   @override
   ConsumerState<VaultSearchFloatingToolbar> createState() =>
@@ -65,10 +71,13 @@ class _VaultSearchFloatingToolbarState
       hintText: widget.hintText,
       onChanged: _onChanged,
       onAdd: widget.onAdd,
+      actions: widget.actions,
+      onSearchTap: widget.onSearchTap,
       isLoading: isLoading,
       searchKey: widget.searchKey,
       addKey: widget.addKey,
       addSemanticLabel: widget.addSemanticLabel,
+      initiallyExpanded: widget.initiallyExpanded,
     );
   }
 }

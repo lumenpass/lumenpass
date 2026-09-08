@@ -22,10 +22,12 @@ class _VaultTitleBar extends ConsumerStatefulWidget {
   const _VaultTitleBar({
     super.key,
     required this.onNewItemPressed,
+    required this.onImportPressed,
     required this.onEntryRequested,
   });
 
   final VoidCallback onNewItemPressed;
+  final VoidCallback onImportPressed;
   final ValueChanged<String> onEntryRequested;
 
   @override
@@ -241,8 +243,10 @@ class _VaultTitleBarState extends ConsumerState<_VaultTitleBar> {
                                 child: TextField(
                                   focusNode: _searchFocusNode,
                                   controller: _searchController,
-                                  readOnly: isSearching,
-                                  showCursor: !isSearching,
+                                  // Never make the field read-only: search is
+                                  // live and runs in well under a frame, so
+                                  // blocking keystrokes here is what made
+                                  // typing feel janky.
                                   onChanged: _onSearchChanged,
                                   onSubmitted: _applySearch,
                                   onTapOutside: (_) =>
@@ -310,6 +314,8 @@ class _VaultTitleBarState extends ConsumerState<_VaultTitleBar> {
               onPressed: () => _showPasswordGeneratorDialog(context),
             ),
             const SizedBox(width: 8),
+            _ImportButton(onPressed: widget.onImportPressed),
+            const SizedBox(width: 8),
             _NewItemButton(onPressed: widget.onNewItemPressed),
             const SizedBox(width: 16),
           ],
@@ -374,905 +380,6 @@ class _VaultStorageIcon extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Image.asset(asset, width: iconSize, height: iconSize),
-    );
-  }
-}
-
-// ───────────────────────────────────────────────────────────────────────
-// Greeting + plan section that replaces the old vault-name title-bar slot.
-// Authenticated:   "Hi <Name>"  · logout button
-//                  "<Plan> - Expires: MM/DD/YYYY"   (or just "Lifetime")
-// Unauthenticated: "Hello Guest"  · login button
-//                  "FREE"
-// ───────────────────────────────────────────────────────────────────────
-
-class _AccountGreetingSection extends StatelessWidget {
-  const _AccountGreetingSection({
-    required this.account,
-    required this.onLoginPressed,
-    required this.onLogoutPressed,
-    required this.onSettingsPressed,
-  });
-
-  final AccountState account;
-  final VoidCallback onLoginPressed;
-  final VoidCallback onLogoutPressed;
-  final VoidCallback onSettingsPressed;
-
-  String _greetingName() {
-    final display = account.displayName?.trim();
-    if (display != null && display.isNotEmpty) return display;
-    final email = account.email?.trim() ?? '';
-    if (email.isNotEmpty) {
-      final at = email.indexOf('@');
-      return at > 0 ? email.substring(0, at) : email;
-    }
-    return 'there';
-  }
-
-  bool _isLifetime(SubscriptionInfo sub) {
-    final code = (sub.planCode ?? '').toLowerCase();
-    final name = (sub.planName ?? '').toLowerCase();
-    final interval = (sub.interval ?? '').toLowerCase();
-    if (code == 'lifetime' ||
-        name.contains('lifetime') ||
-        interval == 'lifetime') {
-      return true;
-    }
-    // Active paid plan with no period end is treated as lifetime.
-    if (sub.isActivePaid &&
-        sub.currentPeriodEnd == null &&
-        sub.trialEndsAt == null) {
-      return true;
-    }
-    return false;
-  }
-
-  String _formatDate(DateTime d) {
-    final mm = d.month.toString().padLeft(2, '0');
-    final dd = d.day.toString().padLeft(2, '0');
-    final yyyy = d.year.toString().padLeft(4, '0');
-    return '$mm/$dd/$yyyy';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isLoggedIn = account.isLoggedIn;
-    final sub = account.subscription;
-    final String greetingName = _greetingName();
-
-    void onPlanPressed() => _showAccountPlanStatusDialog(context, account);
-
-    // Determine plan tag label and colors. Strip recurring suffixes like
-    // "Monthly" / "Yearly" / "Annual" so the tag shows only the plan tier.
-    final bool isLifetime = isLoggedIn && _isLifetime(sub);
-    final bool isPremium = isLoggedIn && (sub.isActivePaid || isLifetime);
-
-    String planLabel;
-    if (!isLoggedIn) {
-      planLabel = 'FREE';
-    } else if (isLifetime) {
-      planLabel = 'Lifetime';
-    } else if (sub.isActivePaid) {
-      final raw = (sub.planName?.trim().isNotEmpty ?? false)
-          ? sub.planName!.trim()
-          : 'Premium';
-      planLabel = _stripPlanRecurringSuffix(raw);
-    } else {
-      planLabel = 'FREE';
-    }
-
-    String? expiryLine;
-    if (isLoggedIn && !isLifetime && sub.isActivePaid) {
-      final expiry = sub.currentPeriodEnd ?? sub.trialEndsAt;
-      if (expiry != null) {
-        expiryLine = 'Expires: ${_formatDate(expiry)}';
-      }
-    }
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            Expanded(
-              child: isLoggedIn
-                  ? Row(
-                      children: <Widget>[
-                        Text(
-                          '🎉 Hi ',
-                          style: _text(
-                            10,
-                            _sidebarTextPrimary,
-                            fontWeight: FontWeight.w400,
-                            height: 1.1,
-                          ),
-                        ),
-                        Flexible(
-                          child: _GreetingPlanLinkText(
-                            label: greetingName,
-                            onTap: onPlanPressed,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Text(
-                      'Hello Guest',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: _text(
-                        10,
-                        _sidebarTextPrimary,
-                        fontWeight: FontWeight.w400,
-                        height: 1.1,
-                      ),
-                    ),
-            ),
-            const SizedBox(width: 6),
-            isLoggedIn
-                ? _GreetingActionButton(
-                    label: '',
-                    icon: TablerIcons.logout,
-                    onPressed: onLogoutPressed,
-                    background: const Color(0xFFDC2626),
-                    hoverBackground: const Color(0xFFB91C1C),
-                    foreground: Colors.white,
-                    borderColor: const Color(0xFFDC2626),
-                    semanticsLabel: 'Logout',
-                    tooltip: 'Logout',
-                  )
-                : _GreetingActionButton(
-                    label: 'Login',
-                    icon: TablerIcons.login_2,
-                    onPressed: onLoginPressed,
-                    background: Colors.white,
-                    hoverBackground: const Color(0xFFE5E7EB),
-                    foreground: const Color(0xFF0A3B48),
-                    borderColor: Colors.white,
-                  ),
-            const SizedBox(width: 6),
-            _GreetingActionButton(
-              label: '',
-              icon: TablerIcons.settings,
-              onPressed: onSettingsPressed,
-              background: Colors.white24,
-              hoverBackground: Colors.white24,
-              foreground: _sidebarTextSecondary,
-              borderColor: Colors.transparent,
-              semanticsLabel: 'Settings',
-              tooltip: 'Settings',
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            _CurrentPlanBadgeButton(
-              label: planLabel,
-              isPremium: isPremium,
-              onPressed: onPlanPressed,
-            ),
-            const SizedBox(width: 6),
-            _PlanFeaturesPillButton(
-              onPressed: () => _showPlansAndFeaturesDialog(context),
-            ),
-          ],
-        ),
-        if (expiryLine != null) ...<Widget>[
-          const SizedBox(height: 3),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const Icon(
-                TablerIcons.clock,
-                size: 10,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  expiryLine,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _text(
-                    9,
-                    _sidebarTextPrimary,
-                    fontWeight: FontWeight.w500,
-                    height: 1.2,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _GreetingPlanLinkText extends StatefulWidget {
-  const _GreetingPlanLinkText({
-    required this.label,
-    required this.onTap,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  State<_GreetingPlanLinkText> createState() => _GreetingPlanLinkTextState();
-}
-
-class _GreetingPlanLinkTextState extends State<_GreetingPlanLinkText> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color color =
-        _hovered ? Colors.white.withValues(alpha: 0.92) : _sidebarTextPrimary;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Semantics(
-          button: true,
-          label: 'Open current plan status for ${widget.label}',
-          child: Text(
-            widget.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: _text(
-              10,
-              color,
-              fontWeight: FontWeight.w700,
-              height: 1.1,
-            ).copyWith(
-              decoration:
-                  _hovered ? TextDecoration.underline : TextDecoration.none,
-              decorationColor: color,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CurrentPlanBadgeButton extends StatefulWidget {
-  const _CurrentPlanBadgeButton({
-    required this.label,
-    required this.isPremium,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool isPremium;
-  final VoidCallback onPressed;
-
-  @override
-  State<_CurrentPlanBadgeButton> createState() =>
-      _CurrentPlanBadgeButtonState();
-}
-
-class _CurrentPlanBadgeButtonState extends State<_CurrentPlanBadgeButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color background = widget.isPremium
-        ? const Color(0xFFF59E0B)
-        : (_hovered ? const Color(0xFFF2F4F8) : Colors.white);
-    final Color foreground =
-        widget.isPremium ? Colors.white : const Color(0xFF0A3B48);
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: Semantics(
-          button: true,
-          label: 'Open current plan status',
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 5),
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: BorderRadius.circular(4),
-              boxShadow: _hovered
-                  ? <BoxShadow>[
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                if (widget.isPremium) ...<Widget>[
-                  Icon(
-                    TablerIcons.crown,
-                    size: 7,
-                    color: foreground,
-                  ),
-                  const SizedBox(width: 3),
-                ],
-                Text(
-                  widget.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _text(
-                    7,
-                    foreground,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3,
-                    height: 1.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GreetingActionButton extends StatefulWidget {
-  const _GreetingActionButton({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-    required this.background,
-    required this.hoverBackground,
-    required this.foreground,
-    required this.borderColor,
-    this.semanticsLabel,
-    this.tooltip,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback onPressed;
-  final Color background;
-  final Color hoverBackground;
-  final Color foreground;
-  final Color borderColor;
-  final String? semanticsLabel;
-  final String? tooltip;
-
-  @override
-  State<_GreetingActionButton> createState() => _GreetingActionButtonState();
-}
-
-class _GreetingActionButtonState extends State<_GreetingActionButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color bg = _hovered ? widget.hoverBackground : widget.background;
-    final bool iconOnly = widget.label.isEmpty;
-    final child = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: Semantics(
-          button: true,
-          label: widget.semanticsLabel ?? widget.label,
-          child: Container(
-            constraints: iconOnly
-                ? const BoxConstraints(minWidth: 26, minHeight: 22)
-                : null,
-            padding: iconOnly
-                ? const EdgeInsets.symmetric(horizontal: 5, vertical: 3)
-                : const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: widget.borderColor),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(
-                  widget.icon,
-                  size: iconOnly ? 14 : 10,
-                  color: widget.foreground,
-                ),
-                if (widget.label.isNotEmpty) ...<Widget>[
-                  const SizedBox(width: 3),
-                  Text(
-                    widget.label,
-                    style: _text(
-                      9,
-                      widget.foreground,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-    if (widget.tooltip != null) {
-      return _AppTooltip(message: widget.tooltip!, child: child);
-    }
-    return child;
-  }
-}
-
-// ───────────────────────────────────────────────────────────────────────
-// Compact "Plan Features" pill — opens the shared Plans & Features modal
-// (defined in vault_screen_settings.dart, accessible because both files
-// are `part of` the same vault_screen library).
-// ───────────────────────────────────────────────────────────────────────
-
-class _PlanFeaturesPillButton extends StatefulWidget {
-  const _PlanFeaturesPillButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  State<_PlanFeaturesPillButton> createState() =>
-      _PlanFeaturesPillButtonState();
-}
-
-class _PlanFeaturesPillButtonState extends State<_PlanFeaturesPillButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color bg = _hovered
-        ? Colors.white.withValues(alpha: 0.18)
-        : Colors.white.withValues(alpha: 0.10);
-    final Color border = Colors.white.withValues(alpha: 0.35);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: Semantics(
-          button: true,
-          label: 'Plan Features',
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: border),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                const Icon(
-                  TablerIcons.list_details,
-                  size: 9,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 3),
-                Text(
-                  'Plan Features',
-                  style: _text(
-                    8,
-                    Colors.white,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ───────────────────────────────────────────────────────────────────────
-// Confirm-logout dialog.
-// ───────────────────────────────────────────────────────────────────────
-
-class _ConfirmLogoutDialog extends StatelessWidget {
-  const _ConfirmLogoutDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 380),
-        padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              'Sign out of LumenPass?',
-              style: _text(
-                16,
-                const Color(0xFF111827),
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Your local vault stays on this device. You can sign back in '
-              'anytime to resume subscription sync.',
-              style: _text(
-                12,
-                const Color(0xFF4B5563),
-                fontWeight: FontWeight.w500,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(
-                    'Cancel',
-                    style: _text(
-                      12,
-                      const Color(0xFF374151),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFDC2626),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    'Sign out',
-                    style: _text(
-                      12,
-                      Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ───────────────────────────────────────────────────────────────────────
-// Quick-login dialog. Sign-in itself is delegated to the website (so Google
-// account chooser, password managers, 2FA challenges etc. all work in a
-// real browser instead of an embedded webview). The dialog opens
-// `${WEBSITE_URL}/login` in the user's default browser and closes itself
-// once the launch is dispatched. Session pickup happens in a follow-up
-// iteration via the desktop handoff flow that already exists server-side.
-// ───────────────────────────────────────────────────────────────────────
-
-class _QuickLoginDialog extends ConsumerStatefulWidget {
-  const _QuickLoginDialog();
-
-  @override
-  ConsumerState<_QuickLoginDialog> createState() => _QuickLoginDialogState();
-}
-
-class _QuickLoginDialogState extends ConsumerState<_QuickLoginDialog> {
-  // The dialog has three visual states:
-  //   • idle      — initial copy + Login button
-  //   • launching — transient: WebAuthService is opening the browser
-  //   • waiting   — loopback HTTP server is up, browser is on the website,
-  //                 we're awaiting the redirect-back. Cancel is supported.
-  // On success the AccountController's state flips to logged-in and we
-  // pop the dialog. On error we drop back to idle with the message shown.
-  bool _launching = false;
-  bool _waiting = false;
-  String? _localError;
-  WebAuthService? _webAuth;
-
-  Future<void> _openWebsiteLogin() async {
-    if (_launching || _waiting) return;
-    setState(() {
-      _launching = true;
-      _waiting = false;
-      _localError = null;
-    });
-
-    final svc = WebAuthService();
-    _webAuth = svc;
-
-    // Flip to waiting before awaiting — the launchUrl call inside
-    // signInViaWeb returns quickly, but the await on the loopback callback
-    // can take seconds. The user needs to see the spinner immediately.
-    final future =
-        ref.read(accountControllerProvider.notifier).signInViaWeb(webAuth: svc);
-    if (mounted) {
-      setState(() {
-        _launching = false;
-        _waiting = true;
-      });
-    }
-
-    try {
-      await future;
-      if (!mounted) return;
-      Navigator.of(context).pop();
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      // `cancelled` is a deliberate user action — drop back to idle
-      // silently rather than scaring them with a red error.
-      setState(() {
-        _launching = false;
-        _waiting = false;
-        _localError = e.code == 'cancelled' ? null : e.message;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _launching = false;
-        _waiting = false;
-        _localError = 'Sign-in failed: $e';
-      });
-    } finally {
-      _webAuth = null;
-    }
-  }
-
-  Future<void> _cancelOrClose() async {
-    if (_launching) return;
-    final svc = _webAuth;
-    if (svc != null && _waiting) {
-      await svc.cancel();
-      // Don't pop here — the awaiting future will throw AuthException
-      // ('cancelled') and reset state via the catch block above.
-      return;
-    }
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Shortcuts(
-        shortcuts: const <ShortcutActivator, Intent>{
-          SingleActivator(LogicalKeyboardKey.escape): DismissIntent(),
-        },
-        child: Actions(
-          actions: <Type, Action<Intent>>{
-            DismissIntent: CallbackAction<DismissIntent>(
-              onInvoke: (_) {
-                _cancelOrClose();
-                return null;
-              },
-            ),
-          },
-          child: Focus(
-            autofocus: true,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const <BoxShadow>[
-                    BoxShadow(
-                      color: Color(0x1A0F172A),
-                      blurRadius: 30,
-                      offset: Offset(0, 14),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              Text(
-                                'Sign in to LumenPass',
-                                style: _text(
-                                  16,
-                                  const Color(0xFF111827),
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _waiting
-                                    ? 'Browser opened. Finish signing in '
-                                        'there, then return to the app.'
-                                    : 'Signing in opens the LumenPass '
-                                        'website in your default browser. '
-                                        'Finish signing in there, then '
-                                        'return to the app.',
-                                style: _text(
-                                  11,
-                                  const Color(0xFF6B7280),
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Close',
-                          onPressed: _launching ? null : _cancelOrClose,
-                          icon: const Icon(TablerIcons.x,
-                              size: 18, color: Color(0xFF6B7280)),
-                        ),
-                      ],
-                    ),
-                    if (_localError != null) ...<Widget>[
-                      const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF2F2),
-                          border: Border.all(color: const Color(0xFFFCA5A5)),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            const Icon(
-                              TablerIcons.alert_circle,
-                              size: 14,
-                              color: Color(0xFFDC2626),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _localError!,
-                                style: _text(
-                                  11,
-                                  const Color(0xFF991B1B),
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 18),
-                    const Divider(
-                      height: 1,
-                      thickness: 0.5,
-                      color: Color(0xFFE2E7ED),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: <Widget>[
-                        if (_waiting) ...<Widget>[
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  Color(0xFF0A67FF)),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Waiting for browser sign-in…',
-                              style: _text(
-                                11,
-                                const Color(0xFF6B7280),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ] else
-                          const Spacer(),
-                        TextButton(
-                          onPressed: _launching ? null : _cancelOrClose,
-                          child: Text(
-                            'Cancel',
-                            style: _text(
-                              12,
-                              const Color(0xFF374151),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        if (!_waiting) ...<Widget>[
-                          const SizedBox(width: 8),
-                          FilledButton(
-                            onPressed: _launching ? null : _openWebsiteLogin,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF0A67FF),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 18, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: _launching
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
-                                    ),
-                                  )
-                                : Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: <Widget>[
-                                      const Icon(
-                                        TablerIcons.external_link,
-                                        size: 14,
-                                        color: Colors.white,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Login',
-                                        style: _text(
-                                          12,
-                                          Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1518,57 +625,17 @@ class _SearchSuggestionRowState extends State<_SearchSuggestionRow> {
 // column's search-row position. Its bottom border is the "left panel divider
 // line" referenced by users.
 //
-// Hosts: macOS traffic-light top inset + greeting + Login/Logout pill +
-// Premium/Free tag + Plan Features button + Expires line + the Settings
-// gear (top-right).
+// Hosts the local-vault session label and Settings gear.
 // ───────────────────────────────────────────────────────────────────────
 
-class _VaultGreetingHeader extends ConsumerStatefulWidget {
-  const _VaultGreetingHeader({
-    required this.onSettingsPressed,
-  });
+class _VaultGreetingHeader extends StatelessWidget {
+  const _VaultGreetingHeader({required this.onSettingsPressed});
 
   final VoidCallback onSettingsPressed;
 
   @override
-  ConsumerState<_VaultGreetingHeader> createState() =>
-      _VaultGreetingHeaderState();
-}
-
-class _VaultGreetingHeaderState extends ConsumerState<_VaultGreetingHeader> {
-  Future<void> _openQuickLoginDialog() async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Quick login',
-      builder: (_) => const _QuickLoginDialog(),
-    );
-  }
-
-  Future<void> _confirmLogout() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Confirm logout',
-      builder: (ctx) => const _ConfirmLogoutDialog(),
-    );
-    if (confirmed != true) return;
-    if (!mounted) return;
-    try {
-      await ref.read(accountControllerProvider.notifier).signOut();
-    } catch (_) {
-      // signOut already handles transport failures by clearing local state.
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final account = ref.watch(accountControllerProvider);
-    // Reserve room at the top so the macOS traffic-light buttons don't
-    // collide with the greeting on the left. Windows has no traffic
-    // lights and uses a custom title bar, so collapse the inset there.
     final double topInset = Platform.isMacOS ? 30 : 8;
-
     return Container(
       width: 230,
       decoration: const BoxDecoration(
@@ -1578,13 +645,95 @@ class _VaultGreetingHeaderState extends ConsumerState<_VaultGreetingHeader> {
           bottom: BorderSide(color: _VaultColors.borderSoft),
         ),
       ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(12, topInset, 8, 6),
-        child: _AccountGreetingSection(
-          account: account,
-          onLoginPressed: _openQuickLoginDialog,
-          onLogoutPressed: _confirmLogout,
-          onSettingsPressed: widget.onSettingsPressed,
+      padding: EdgeInsets.fromLTRB(12, topInset, 8, 10),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  'LumenPass',
+                  style: _text(13, _VaultColors.title,
+                      fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Local vault session',
+                  style: _text(10, _VaultColors.headerLabel,
+                      fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Settings',
+            onPressed: onSettingsPressed,
+            icon: const Icon(TablerIcons.settings, size: 17),
+            color: _VaultColors.headerLabel,
+            splashRadius: 18,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ImportButton extends StatefulWidget {
+  const _ImportButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  State<_ImportButton> createState() => _ImportButtonState();
+}
+
+class _ImportButtonState extends State<_ImportButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedScale(
+        scale: _hovered ? 1.015 : 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        child: InkWell(
+          onTap: widget.onPressed,
+          borderRadius: BorderRadius.circular(8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color:
+                  _hovered ? _kPrimaryButtonHoverColor : _kPrimaryButtonColor,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: _hovered
+                      ? _kPrimaryButtonColor.withValues(alpha: 0.24)
+                      : _kPrimaryButtonColor.withValues(alpha: 0.14),
+                  blurRadius: _hovered ? 12 : 4,
+                  offset: Offset(0, _hovered ? 4 : 1),
+                ),
+              ],
+            ),
+            child: Row(
+              children: <Widget>[
+                const Icon(TablerIcons.download, size: 14, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(
+                  'Import',
+                  style: _text(11, Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

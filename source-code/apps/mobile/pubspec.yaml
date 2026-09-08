@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.5+5
+version: 1.1.0+10
 
 environment:
   sdk: ^3.10.4
@@ -65,12 +65,13 @@ dependencies:
 
   # OAuth (Dropbox on mobile)
   flutter_web_auth_2: ^4.0.0
-  # Social sign-in (Apple ID)
-  sign_in_with_apple: ^6.1.4
   url_launcher: ^6.3.0
   local_auth: ^3.0.1
   mobile_scanner: ^7.0.0
   dartssh2: ^2.17.1               # Pure-Dart SSH/SFTP client (SFTP provider)
+  liquid_glass_widgets: ^0.15.3
+  package_info_plus: ^8.0.2
+  liquid_glass_renderer: ^0.2.0-dev.4
 
 dev_dependencies:
   flutter_test:

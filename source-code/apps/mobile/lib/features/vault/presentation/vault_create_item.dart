@@ -23,6 +23,8 @@ void showAddNewItemOverlay(BuildContext context) {
     PageRouteBuilder<void>(
       opaque: false,
       barrierDismissible: false,
+      transitionDuration: const Duration(milliseconds: 280),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
       pageBuilder: (ctx, animation, secondaryAnimation) {
         // Guard so the route is only popped once. The create modals call
         // onItemSaved (which pops) and then onClose (which would pop again) in
@@ -35,10 +37,13 @@ void showAddNewItemOverlay(BuildContext context) {
           Navigator.of(ctx).pop();
         }
 
-        return AddNewItemOverlay(
-          onClose: popOnce,
-          onItemCreated: (_) => popOnce(),
-          onShowToast: (msg) => showVaultFloatingToast(ctx, msg),
+        return _VaultSheetRouteOverlay(
+          animation: animation,
+          child: AddNewItemOverlay(
+            onClose: popOnce,
+            onItemCreated: (_) => popOnce(),
+            onShowToast: (msg) => showVaultFloatingToast(ctx, msg),
+          ),
         );
       },
     ),
@@ -58,6 +63,8 @@ void showEditItemModal(
     PageRouteBuilder<void>(
       opaque: false,
       barrierDismissible: false,
+      transitionDuration: const Duration(milliseconds: 280),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
       pageBuilder: (ctx, animation, secondaryAnimation) {
         void close() => Navigator.of(ctx).pop();
         void showToast(String msg) => showVaultFloatingToast(ctx, msg);
@@ -116,27 +123,7 @@ void showEditItemModal(
             );
         }
 
-        return Material(
-          type: MaterialType.transparency,
-          child: GestureDetector(
-            onTap: close,
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(
-                  color: const Color(0x52000000),
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 28),
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: modal,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
+        return _VaultSheetRouteOverlay(animation: animation, child: modal);
       },
     ),
   );
@@ -210,26 +197,7 @@ class _AddNewItemOverlayState extends ConsumerState<AddNewItemOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      type: MaterialType.transparency,
-      child: GestureDetector(
-        onTap: widget.onClose,
-        child: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              color: const Color(0x52000000),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
-              child: GestureDetector(
-                onTap: () {},
-                child: _buildCurrentView(),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    return _buildCurrentView();
   }
 
   Widget _buildCurrentView() {
@@ -286,6 +254,56 @@ class _AddNewItemOverlayState extends ConsumerState<AddNewItemOverlay> {
   }
 }
 
+class _VaultSheetRouteOverlay extends StatelessWidget {
+  const _VaultSheetRouteOverlay({required this.animation, required this.child});
+
+  final Animation<double> animation;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    final slide = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(curved);
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final topInset = MediaQuery.paddingOf(context).top + 20;
+
+    return Material(
+      type: MaterialType.transparency,
+      child: FadeTransition(
+        opacity: curved,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(color: const Color(0x52000000)),
+                ),
+              ),
+            ),
+            AnimatedPadding(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              padding: EdgeInsets.only(top: topInset, bottom: bottomInset),
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: SlideTransition(position: slide, child: child),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Type picker modal ─────────────────────────────────────────────────────────
 
 class _TypePickerModal extends StatelessWidget {
@@ -330,8 +348,11 @@ class _TypePickerModal extends StatelessWidget {
                 child: Text(
                   'What would you like to add?',
                   textAlign: TextAlign.center,
-                  style: itemText(18, const Color(0xFF2E3138),
-                      fontWeight: FontWeight.w700),
+                  style: itemText(
+                    18,
+                    const Color(0xFF2E3138),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               InkWell(
@@ -339,8 +360,11 @@ class _TypePickerModal extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
                 child: const Padding(
                   padding: EdgeInsets.all(3),
-                  child: Icon(TablerIcons.x,
-                      size: 18, color: Color(0xFF6E7687)),
+                  child: Icon(
+                    TablerIcons.x,
+                    size: 18,
+                    color: Color(0xFF6E7687),
+                  ),
                 ),
               ),
             ],
@@ -349,9 +373,14 @@ class _TypePickerModal extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('All item types',
-                  style: itemText(10, const Color(0xFF5F6878),
-                      fontWeight: FontWeight.w600)),
+              Text(
+                'All item types',
+                style: itemText(
+                  10,
+                  const Color(0xFF5F6878),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
               for (final option in visibleTypes) ...[
                 _NewItemTypeRow(
@@ -367,7 +396,9 @@ class _TypePickerModal extends StatelessWidget {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 14),
+                  horizontal: 14,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF7F9FC),
                   borderRadius: BorderRadius.circular(10),
@@ -378,15 +409,22 @@ class _TypePickerModal extends StatelessWidget {
                   children: [
                     const Padding(
                       padding: EdgeInsets.only(top: 1),
-                      child: Icon(TablerIcons.info_circle,
-                          size: 16, color: Color(0xFF6B7A90)),
+                      child: Icon(
+                        TablerIcons.info_circle,
+                        size: 16,
+                        color: Color(0xFF6B7A90),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Choose the item type that best matches what you want to store, so your vault stays organized and easier to search later.',
-                        style: itemText(11, const Color(0xFF667085),
-                            fontWeight: FontWeight.w500, height: 1.4),
+                        style: itemText(
+                          11,
+                          const Color(0xFF667085),
+                          fontWeight: FontWeight.w500,
+                          height: 1.4,
+                        ),
                       ),
                     ),
                   ],
@@ -423,9 +461,7 @@ class _NewItemTypeRow extends StatelessWidget {
           color: selected ? const Color(0xFFF1F6FF) : Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected
-                ? const Color(0xFFCFE0FF)
-                : const Color(0xFFD8DEE9),
+            color: selected ? const Color(0xFFCFE0FF) : const Color(0xFFD8DEE9),
           ),
         ),
         child: Row(
@@ -447,12 +483,18 @@ class _NewItemTypeRow extends StatelessWidget {
             Expanded(
               child: Text(
                 option.label,
-                style: itemText(13, const Color(0xFF2E3138),
-                    fontWeight: FontWeight.w500),
+                style: itemText(
+                  13,
+                  const Color(0xFF2E3138),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-            const Icon(TablerIcons.chevron_right,
-                size: 14, color: Color(0xFFAFBCCE)),
+            const Icon(
+              TablerIcons.chevron_right,
+              size: 14,
+              color: Color(0xFFAFBCCE),
+            ),
           ],
         ),
       ),

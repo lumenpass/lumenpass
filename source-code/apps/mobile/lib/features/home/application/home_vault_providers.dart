@@ -6,44 +6,50 @@ import '../../../core/repository/providers.dart';
 import '../../unlock/application/database_registry.dart';
 import '../../vault/application/vault_entries_providers.dart';
 
-/// Recent items for the home list: newest first, capped at 7, respecting search.
+/// Recent items for the home list: most recently used first, capped at 7,
+/// respecting search. Primary key is Last Used, tiebroken by Last Updated.
 final homeRecentEntriesProvider = Provider<List<KdbxEntry>>((ref) {
   final entries = ref.watch(vaultSearchFilteredEntriesProvider).toList();
-  entries.sort((a, b) {
-    final ta = latestEntryTimestamp(a.updatedAt, a.createdAt) ??
-        DateTime.fromMillisecondsSinceEpoch(0);
-    final tb = latestEntryTimestamp(b.updatedAt, b.createdAt) ??
-        DateTime.fromMillisecondsSinceEpoch(0);
-    return tb.compareTo(ta);
-  });
+  entries.sort(compareVaultEntriesByLastUsed);
   return entries.take(7).toList(growable: false);
 });
 
-final homeQuickAccessCountsProvider =
-    Provider<({int all, int totp, int secureNotes, int ssh})>((ref) {
-  final entries = ref.watch(vaultVisibleEntriesProvider);
-  var totp = 0;
-  var secureNotes = 0;
-  var ssh = 0;
-  for (final entry in entries) {
-    if (entry.otpAuthUrl != null && entry.otpAuthUrl!.trim().isNotEmpty) {
-      totp++;
-    }
-    final type = classifyVaultItemType(entry);
-    if (type == VaultItemType.secureNote) {
-      secureNotes++;
-    }
-    if (type == VaultItemType.sshKey) {
-      ssh++;
-    }
-  }
-  return (
-    all: entries.length,
-    totp: totp,
-    secureNotes: secureNotes,
-    ssh: ssh,
-  );
+/// Newest created items for the home list, capped at 10, respecting search.
+final homeRecentCreatedEntriesProvider = Provider<List<KdbxEntry>>((ref) {
+  final entries = ref.watch(vaultSearchFilteredEntriesProvider).toList();
+  entries.sort((a, b) {
+    final ta = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final tb = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    return tb.compareTo(ta);
+  });
+  return entries.take(10).toList(growable: false);
 });
+
+final homeQuickAccessCountsProvider =
+    Provider<({int all, int creditCards, int totp, int secureNotes})>((ref) {
+      final entries = ref.watch(vaultVisibleEntriesProvider);
+      var creditCards = 0;
+      var totp = 0;
+      var secureNotes = 0;
+      for (final entry in entries) {
+        if (entry.otpAuthUrl != null && entry.otpAuthUrl!.trim().isNotEmpty) {
+          totp++;
+        }
+        final type = classifyVaultItemType(entry);
+        if (type == VaultItemType.creditCard) {
+          creditCards++;
+        }
+        if (type == VaultItemType.secureNote) {
+          secureNotes++;
+        }
+      }
+      return (
+        all: entries.length,
+        creditCards: creditCards,
+        totp: totp,
+        secureNotes: secureNotes,
+      );
+    });
 
 final homePopularTagsProvider = Provider<List<String>>((ref) {
   final entries = ref.watch(vaultVisibleEntriesProvider);
@@ -83,7 +89,10 @@ final homeVaultRecordProvider = Provider<DatabaseRecord?>((ref) {
 String _sanitizeVaultDisplayName(String raw) {
   final trimmed = raw.trim();
   if (trimmed.isEmpty) return '';
-  return trimmed.replaceFirst(RegExp(r'_[a-f0-9]{12}$', caseSensitive: false), '');
+  return trimmed.replaceFirst(
+    RegExp(r'_[a-f0-9]{12}$', caseSensitive: false),
+    '',
+  );
 }
 
 final homeVaultStorageTypeProvider = Provider<String>((ref) {

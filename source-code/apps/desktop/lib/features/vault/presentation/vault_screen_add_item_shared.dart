@@ -954,6 +954,11 @@ class _PasswordGeneratorIconButtonState
   Widget build(BuildContext context) {
     return Tooltip(
       message: 'Generate password',
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      textStyle: const TextStyle(color: Colors.white, fontSize: 13),
       child: Semantics(
         button: true,
         label: 'Generate password',

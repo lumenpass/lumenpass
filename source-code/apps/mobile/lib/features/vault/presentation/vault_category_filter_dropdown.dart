@@ -2,17 +2,154 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lumenpass_core/lumenpass_core.dart';
 
-import '../../../core/repository/database_save_sync.dart';
 import '../../../core/repository/providers.dart';
 import '../../../core/ui/app_snack_bar.dart';
-import '../../unlock/application/database_registry.dart';
 import '../application/vault_entries_providers.dart';
+import '../application/vault_items_list_providers.dart';
 import 'vault_create_item_models.dart';
 
 /// Same prefix as desktop category notes encoding.
 const String _kCategoryIconNotesPrefix = 'lumenpass-category-icon:';
 const String _kManageCategoriesAction = '__manage_categories__';
 const int _kTotalCategoryImages = 392;
+
+Future<void> openCreateCategoryDialog(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final result = await _showCategoryEditorSheet(context);
+  if (result == null || !context.mounted) return;
+  _applyCategoryEditorResult(ref, result);
+}
+
+Future<void> openEditCategoryDialog(
+  BuildContext context,
+  WidgetRef ref, {
+  required ({String uuid, String name, String notes, int count}) category,
+}) async {
+  final result = await _showCategoryEditorSheet(context, existing: category);
+  if (result == null || !context.mounted) return;
+  _applyCategoryEditorResult(ref, result);
+}
+
+Future<void> showCategoryActionSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  required ({String uuid, String name, String notes, int count}) category,
+}) async {
+  final action = await showModalBottomSheet<_CategoryAction>(
+    context: context,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _CategoryActionSheet(category: category),
+  );
+  if (action == null || !context.mounted) return;
+
+  switch (action) {
+    case _CategoryAction.edit:
+      await openEditCategoryDialog(context, ref, category: category);
+    case _CategoryAction.delete:
+      await confirmDeleteCategoryDialog(context, ref, category: category);
+  }
+}
+
+Future<void> confirmDeleteCategoryDialog(
+  BuildContext context,
+  WidgetRef ref, {
+  required ({String uuid, String name, String notes, int count}) category,
+}) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Delete category?'),
+      content: Text(
+        'Delete "${category.name}" and its nested groups?\n'
+        'All items in this category will be moved to Uncategorized.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+  await _deleteCategory(context, ref, category);
+}
+
+Future<_CategoryEditorResult?> _showCategoryEditorSheet(
+  BuildContext context, {
+  ({String uuid, String name, String notes, int count})? existing,
+}) {
+  return showModalBottomSheet<_CategoryEditorResult>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _CategoryEditorDialog(existing: existing),
+  );
+}
+
+void _applyCategoryEditorResult(WidgetRef ref, _CategoryEditorResult result) {
+  if (result.created) {
+    ref.read(vaultSelectedGroupProvider.notifier).state = result.groupUuid;
+  }
+  ref.invalidate(vaultSidebarCategoriesProvider);
+  ref.invalidate(vaultVisibleEntriesProvider);
+}
+
+Future<void> _deleteCategory(
+  BuildContext context,
+  WidgetRef ref,
+  ({String uuid, String name, String notes, int count}) category,
+) async {
+  try {
+    final repository = ref.read(kdbxRepositoryProvider);
+    final activeDb = ref.read(activeDatabaseProvider);
+    if (activeDb == null) {
+      throw StateError('Open a vault before deleting categories');
+    }
+    final selectedGroup = _findGroupByUuid(activeDb.rootGroup, category.uuid);
+    if (selectedGroup != null) {
+      final affectedGroupUuids = selectedGroup
+          .flattenedGroups()
+          .map((g) => g.uuid)
+          .toSet();
+      final entriesToMove = ref
+          .read(vaultVisibleEntriesProvider)
+          .where((e) => affectedGroupUuids.contains(e.groupUuid))
+          .toList(growable: false);
+      final uncategorizedGroupUuid = activeDb.rootGroup.uuid;
+      for (final entry in entriesToMove) {
+        await repository.moveEntryToGroup(
+          entryUuid: entry.uuid,
+          targetGroupUuid: uncategorizedGroupUuid,
+        );
+      }
+    }
+    await repository.deleteGroup(category.uuid);
+    publishAndScheduleSave(ref, repository);
+    final selected = ref.read(vaultSelectedGroupProvider);
+    if (selected == category.uuid) {
+      ref.read(vaultSelectedGroupProvider.notifier).state = kCategoryFilterAll;
+    }
+    if (!context.mounted) return;
+    AppSnackBar.success(context, '${category.name} category deleted');
+  } catch (error) {
+    if (!context.mounted) return;
+    AppSnackBar.error(context, 'Unable to delete category: $error');
+  }
+}
+
+enum _CategoryAction { edit, delete }
 
 /// Category dropdown on the left, search field on the right (single row).
 class VaultCategorySearchRow extends StatelessWidget {
@@ -32,10 +169,7 @@ class VaultCategorySearchRow extends StatelessWidget {
             const Expanded(child: VaultItemTypeFilterDropdown()),
           ],
         ),
-        if (searchField != null) ...[
-          const SizedBox(height: 10),
-          searchField!,
-        ],
+        if (searchField != null) ...[const SizedBox(height: 10), searchField!],
       ],
     );
   }
@@ -557,6 +691,132 @@ class _CategoryOption {
   final String notes;
 }
 
+class _CategoryActionSheet extends StatelessWidget {
+  const _CategoryActionSheet({required this.category});
+
+  final ({String uuid, String name, String notes, int count}) category;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+                child: Row(
+                  children: [
+                    _CategoryLeadingVisual(
+                      categoryId: category.uuid,
+                      notes: category.notes,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF243047),
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${category.count} item${category.count == 1 ? '' : 's'}',
+                            style: const TextStyle(
+                              color: Color(0xFF6E8A93),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFFE9EEF3)),
+              _CategoryActionTile(
+                icon: Icons.edit_outlined,
+                label: 'Edit Category',
+                iconColor: const Color(0xFF2563EB),
+                onTap: () => Navigator.of(context).pop(_CategoryAction.edit),
+              ),
+              _CategoryActionTile(
+                icon: Icons.delete_outline_rounded,
+                label: 'Delete Category',
+                iconColor: const Color(0xFFDC2626),
+                destructive: true,
+                onTap: () => Navigator.of(context).pop(_CategoryAction.delete),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryActionTile extends StatelessWidget {
+  const _CategoryActionTile({
+    required this.icon,
+    required this.label,
+    required this.iconColor,
+    required this.onTap,
+    this.destructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color iconColor;
+  final VoidCallback onTap;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: iconColor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: destructive
+                        ? const Color(0xFFB91C1C)
+                        : const Color(0xFF243047),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ManageCategoriesDialog extends ConsumerStatefulWidget {
   const _ManageCategoriesDialog();
 
@@ -814,87 +1074,19 @@ class _ManageCategoriesDialogState
   Future<void> _openCategoryEditor({
     ({String uuid, String name, String notes, int count})? existing,
   }) async {
-    final result = await showDialog<_CategoryEditorResult>(
-      context: context,
-      builder: (_) => _CategoryEditorDialog(existing: existing),
-    );
-    if (result == null || !mounted) return;
-    if (result.created) {
-      ref.read(vaultSelectedGroupProvider.notifier).state = result.groupUuid;
+    setState(() => _openedCategoryUuid = null);
+    if (existing == null) {
+      await openCreateCategoryDialog(context, ref);
+      return;
     }
-    ref.invalidate(vaultSidebarCategoriesProvider);
-    ref.invalidate(vaultVisibleEntriesProvider);
+    await openEditCategoryDialog(context, ref, category: existing);
   }
 
   Future<void> _confirmDeleteCategory(
     ({String uuid, String name, String notes, int count}) category,
   ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete category?'),
-        content: Text(
-          'Delete "${category.name}" and its nested groups?\n'
-          'All items in this category will be moved to Uncategorized.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
-
-    try {
-      final repository = ref.read(kdbxRepositoryProvider);
-      final activeDb = ref.read(activeDatabaseProvider);
-      if (activeDb == null) {
-        throw StateError('Open a vault before deleting categories');
-      }
-      final selectedGroup = _findGroupByUuid(activeDb.rootGroup, category.uuid);
-      if (selectedGroup != null) {
-        final affectedGroupUuids = selectedGroup
-            .flattenedGroups()
-            .map((g) => g.uuid)
-            .toSet();
-        final entriesToMove = ref
-            .read(vaultVisibleEntriesProvider)
-            .where((e) => affectedGroupUuids.contains(e.groupUuid))
-            .toList(growable: false);
-        final uncategorizedGroupUuid = activeDb.rootGroup.uuid;
-        for (final entry in entriesToMove) {
-          await repository.moveEntryToGroup(
-            entryUuid: entry.uuid,
-            targetGroupUuid: uncategorizedGroupUuid,
-          );
-        }
-      }
-      await repository.deleteGroup(category.uuid);
-      final registry = ref.read(databaseRegistryProvider);
-      final database = await saveAndSyncDatabase(repository, registry);
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultSidebarCategoriesProvider);
-      ref.invalidate(vaultVisibleEntriesProvider);
-      final selected = ref.read(vaultSelectedGroupProvider);
-      if (selected == category.uuid) {
-        ref.read(vaultSelectedGroupProvider.notifier).state =
-            kCategoryFilterAll;
-      }
-      if (!mounted) return;
-      AppSnackBar.success(context, '${category.name} category deleted');
-    } catch (error) {
-      if (!mounted) return;
-      AppSnackBar.error(context, 'Unable to delete category: $error');
-    }
+    setState(() => _openedCategoryUuid = null);
+    await confirmDeleteCategoryDialog(context, ref, category: category);
   }
 }
 
@@ -1115,6 +1307,12 @@ class _CategoryEditorDialog extends ConsumerStatefulWidget {
 }
 
 class _CategoryEditorDialogState extends ConsumerState<_CategoryEditorDialog> {
+  static const _ink = Color(0xFF0A3B48);
+  static const _sheet = Colors.white;
+  static const _text = Color(0xFF163640);
+  static const _muted = Color(0xFF6B858D);
+  static const _border = Color(0xFFE3EAF0);
+
   late final TextEditingController _nameCtrl;
   late String _presetId;
   String _colorId = 'teal';
@@ -1127,143 +1325,375 @@ class _CategoryEditorDialogState extends ConsumerState<_CategoryEditorDialog> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.existing?.name ?? '');
+    _nameCtrl.addListener(_handleNameChanged);
     final decoded = _decodeCategoryVisualPayload(widget.existing?.notes);
     _presetId = decoded?.presetId ?? 'img:1';
     _colorId = decoded?.colorId ?? 'teal';
   }
 
+  void _handleNameChanged() {
+    if (!mounted) return;
+    setState(() {
+      if (_error != null) {
+        _error = null;
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _nameCtrl.removeListener(_handleNameChanged);
     _nameCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    final insets = MediaQuery.viewInsetsOf(context).bottom;
     final imageId = _presetId.startsWith('img:') ? _presetId.substring(4) : '';
     final imagePath = imageId.isEmpty
         ? null
         : 'assets/images/categories/$imageId.png';
+    final canSubmit = !_saving && _nameCtrl.text.trim().isNotEmpty;
 
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 380),
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: insets),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: _sheet,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x290A2F3D),
+              blurRadius: 24,
+              offset: Offset(0, -4),
+            ),
+          ],
+        ),
         child: Stack(
           children: [
             AbsorbPointer(
               absorbing: _saving,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _editing ? 'Edit Category' : 'Create Category',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF213247),
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _saving
-                              ? null
-                              : () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                      border: Border(
+                        bottom: BorderSide(color: Color(0xFFE1EAF0)),
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: _saving ? null : _pickCategoryImage,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: Container(
-                          width: 94,
-                          height: 94,
-                          color: const Color(0xFFE8EEF9),
-                          child: imagePath == null
-                              ? const Icon(
-                                  Icons.folder_outlined,
-                                  size: 38,
-                                  color: Color(0xFF5A78C5),
-                                )
-                              : Image.asset(
-                                  imagePath,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      const Icon(
-                                        Icons.folder_outlined,
-                                        size: 38,
-                                        color: Color(0xFF5A78C5),
-                                      ),
+                    child: Stack(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Center(
+                                child: Container(
+                                  width: 36,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFDCE6EC),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
                                 ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextButton(
-                      onPressed: _saving ? null : _pickCategoryImage,
-                      child: const Text('Choose icon'),
-                    ),
-                    TextField(
-                      controller: _nameCtrl,
-                      enabled: !_saving,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        labelText: 'Category name',
-                        errorText: _error,
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _saving
-                                ? null
-                                : () => Navigator.of(context).pop(),
-                            child: const Text('Cancel'),
+                              ),
+                              const SizedBox(height: 16),
+                              Padding(
+                                padding: const EdgeInsets.only(right: 54),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE5EFF3),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: imagePath == null
+                                          ? const Icon(
+                                              Icons.folder_outlined,
+                                              color: _ink,
+                                              size: 22,
+                                            )
+                                          : Image.asset(
+                                              imagePath,
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (
+                                                    context,
+                                                    error,
+                                                    stackTrace,
+                                                  ) => const Icon(
+                                                    Icons.folder_outlined,
+                                                    color: _ink,
+                                                    size: 22,
+                                                  ),
+                                            ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        _editing
+                                            ? 'Edit category'
+                                            : 'Create category',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              color: _text,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: _saving ? null : _save,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF0A3B48),
+                        Positioned(
+                          top: 12,
+                          right: 16,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x180F172A),
+                                  blurRadius: 12,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            child: _saving
-                                ? Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        _editing ? 'Saving...' : 'Creating...',
-                                      ),
-                                    ],
-                                  )
-                                : Text(_editing ? 'Save' : 'Create'),
+                            child: Material(
+                              color: Colors.white,
+                              shape: const CircleBorder(
+                                side: BorderSide(color: Color(0xFFD7E2E8)),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: InkWell(
+                                onTap: _saving
+                                    ? null
+                                    : () => Navigator.of(context).pop(),
+                                customBorder: const CircleBorder(),
+                                child: const SizedBox(
+                                  width: 38,
+                                  height: 38,
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    color: Color(0xFF5E7180),
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  Flexible(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + bottom),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Center(
+                              child: GestureDetector(
+                                onTap: _saving ? null : _pickCategoryImage,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(999),
+                                  child: SizedBox(
+                                    width: 94,
+                                    height: 94,
+                                    child: ColoredBox(
+                                      color: const Color(0xFFE8EEF9),
+                                      child: imagePath == null
+                                          ? const Icon(
+                                              Icons.folder_outlined,
+                                              size: 38,
+                                              color: Color(0xFF5A78C5),
+                                            )
+                                          : Image.asset(
+                                              imagePath,
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (
+                                                    context,
+                                                    error,
+                                                    stackTrace,
+                                                  ) => const Icon(
+                                                    Icons.folder_outlined,
+                                                    size: 38,
+                                                    color: Color(0xFF5A78C5),
+                                                  ),
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            OutlinedButton.icon(
+                              onPressed: _saving ? null : _pickCategoryImage,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _ink,
+                                side: const BorderSide(color: _border),
+                                minimumSize: const Size(0, 42),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.image_outlined, size: 18),
+                              label: const Text(
+                                'Choose icon',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Category name',
+                                style: TextStyle(
+                                  color: _text.withValues(alpha: 0.88),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: _error == null
+                                      ? _border
+                                      : const Color(0xFFDC2626),
+                                ),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                              child: TextField(
+                                controller: _nameCtrl,
+                                enabled: !_saving,
+                                autofocus: true,
+                                style: const TextStyle(
+                                  color: _text,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'Enter a category name',
+                                  hintStyle: TextStyle(
+                                    color: _muted,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_error != null) ...[
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  _error!,
+                                  style: const TextStyle(
+                                    color: Color(0xFFDC2626),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: _saving
+                                        ? null
+                                        : () => Navigator.of(context).pop(),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: _text,
+                                      side: const BorderSide(
+                                        color: Color(0xFFD7E0E7),
+                                      ),
+                                      minimumSize: const Size.fromHeight(50),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Cancel',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: FilledButton(
+                                    onPressed: canSubmit ? _save : null,
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: _ink,
+                                      minimumSize: const Size.fromHeight(50),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    child: _saving
+                                        ? Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const SizedBox(
+                                                width: 16,
+                                                height: 16,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.white,
+                                                    ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                _editing
+                                                    ? 'Saving...'
+                                                    : 'Creating...',
+                                              ),
+                                            ],
+                                          )
+                                        : Text(_editing ? 'Save' : 'Create'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             if (_saving)
@@ -1275,7 +1705,9 @@ class _CategoryEditorDialogState extends ConsumerState<_CategoryEditorDialog> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.55),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
                       ),
                     ),
                   ),
@@ -1342,10 +1774,7 @@ class _CategoryEditorDialogState extends ConsumerState<_CategoryEditorDialog> {
           notes: '$_kCategoryIconNotesPrefix$_presetId|$_colorId',
         );
       }
-      final registry = ref.read(databaseRegistryProvider);
-      final database = await saveAndSyncDatabase(repository, registry);
-      ref.read(activeDatabaseProvider.notifier).state = database;
-      ref.invalidate(vaultSidebarCategoriesProvider);
+      publishAndScheduleSave(ref, repository);
       if (!mounted) return;
       Navigator.of(
         context,

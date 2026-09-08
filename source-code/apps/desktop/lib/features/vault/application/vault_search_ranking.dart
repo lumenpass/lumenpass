@@ -148,48 +148,61 @@ SearchRanking searchRankFor(
   final url = _norm(entry.url);
   final title = _norm(entry.title);
   final username = _norm(entry.username);
-  final notes = _norm(entry.notes);
-  final otp = _norm(entry.otpAuthUrl);
-  final tagsLower = entry.tags.map(_norm).toList(growable: false);
 
-  // Email-shaped haystack: username (almost always email-like in this app)
-  // plus any custom field whose key or value smells like an email.
-  final emailParts = <String>[];
-  if (username.isNotEmpty &&
-      (_looksLikeEmailValue(username) || username.contains('@'))) {
-    emailParts.add(username);
-  }
-  final extraValuesLower = <String>[];
-  for (final f in entry.extraFields) {
-    final v = _norm(f.value);
-    if (v.isEmpty) continue;
-    extraValuesLower.add(v);
-    if (_looksLikeEmailKey(f.key) || _looksLikeEmailValue(f.value)) {
-      emailParts.add(v);
+  // Lazily-built haystacks. Building the joined email/notes strings allocates
+  // per entry, so for a wide match set (e.g. backspacing to a 1–2 char query)
+  // this dominates. We only build them when a term isn't already satisfied by
+  // the cheap url/title/username checks above.
+  String? notesHaystack;
+  String? emailHaystack;
+
+  String buildEmailHaystack() {
+    final emailParts = <String>[];
+    if (username.isNotEmpty &&
+        (_looksLikeEmailValue(username) || username.contains('@'))) {
+      emailParts.add(username);
     }
+    for (final f in entry.extraFields) {
+      final v = _norm(f.value);
+      if (v.isEmpty) continue;
+      if (_looksLikeEmailKey(f.key) || _looksLikeEmailValue(f.value)) {
+        emailParts.add(v);
+      }
+    }
+    return emailParts.join('\n');
   }
-  final emailHaystack = emailParts.join('\n');
 
-  // "Notes/content" haystack covers everything that's neither URL nor
-  // title nor email. Tags, OTP URLs, and plain (non-email) usernames live
-  // here so they remain matchable without polluting higher tiers.
-  final notesHaystack = <String>[
-    notes,
-    otp,
-    if (username.isNotEmpty) username,
-    ...tagsLower,
-    ...extraValuesLower,
-  ].where((s) => s.isNotEmpty).join('\n');
+  String buildNotesHaystack() {
+    final notes = _norm(entry.notes);
+    final otp = _norm(entry.otpAuthUrl);
+    final parts = <String>[
+      notes,
+      otp,
+      if (username.isNotEmpty) username,
+      ...entry.tags.map(_norm),
+      for (final f in entry.extraFields)
+        if (f.value.isNotEmpty) _norm(f.value),
+    ];
+    return parts.where((s) => s.isNotEmpty).join('\n');
+  }
 
   // Per-term tier evaluation.
   // We require *all* terms to match somewhere; we record the strongest
   // tier achievable across terms (i.e. the minimum ordinal).
   var bestTier = SearchTier.none;
   for (final term in terms) {
+    // Evaluate in tier-priority order (url > email > title > notes) and
+    // short-circuit: once a stronger tier matches we skip the weaker
+    // haystacks, and we only materialize the joined email/notes strings
+    // when a cheaper check hasn't already satisfied this term.
     final inUrl = url.contains(term);
-    final inEmail = emailHaystack.contains(term);
-    final inTitle = title.contains(term);
-    final inNotes = notesHaystack.contains(term);
+    final inEmail =
+        !inUrl && (emailHaystack ??= buildEmailHaystack()).contains(term);
+    final inTitle = !inUrl && !inEmail && title.contains(term);
+    final inNotes = !inUrl &&
+        !inEmail &&
+        !inTitle &&
+        (notesHaystack ??= buildNotesHaystack()).contains(term);
     final matchedAnywhere = inUrl || inEmail || inTitle || inNotes;
     if (!matchedAnywhere) {
       return SearchRanking(
@@ -223,8 +236,7 @@ SearchRanking searchRankFor(
     final touchedRecently =
         reference.difference(entry.lastTouchedAt) <= recentWindow &&
             entry.lastTouchedAt.millisecondsSinceEpoch > 0;
-    if (touchedRecently &&
-        SearchTier.recentlyUsed.ordinal < bestTier.ordinal) {
+    if (touchedRecently && SearchTier.recentlyUsed.ordinal < bestTier.ordinal) {
       bestTier = SearchTier.recentlyUsed;
     }
   }
@@ -254,29 +266,111 @@ List<T> rankSearchResults<T>({
   }
 
   // Pair each survivor with its precomputed ranking so we never re-evaluate
-  // during the sort and we avoid identity-based map lookups (which break when
-  // two distinct entries are `==`-equal under value semantics).
-  final survivors = <(T, SearchRanking)>[];
+  // during the sort. The lowercased title is computed exactly once here (not
+  // inside the comparator) — previously the tie-break called `toLowerCase()`
+  // on every comparison, which allocated tens of thousands of throwaway
+  // strings on the UI thread when the match set was large (e.g. backspacing
+  // down to a 1–2 character query that matches most of the vault). That
+  // allocation storm was the cause of the search freeze on delete.
+  final survivors = <_RankedItem<T>>[];
   for (final e in entries) {
-    final r = searchRankFor(viewOf(e), terms,
-        now: now, recentWindow: recentWindow);
+    final r =
+        searchRankFor(viewOf(e), terms, now: now, recentWindow: recentWindow);
     if (!r.matches) continue;
-    survivors.add((e, r));
+    survivors.add(
+      _RankedItem<T>(
+        item: e,
+        tierOrdinal: r.tier.ordinal,
+        lastTouchedMs: r.lastTouchedAt.millisecondsSinceEpoch,
+        titleLower: titleOf(e).toLowerCase(),
+      ),
+    );
   }
 
-  survivors.sort((a, b) {
-    final byTier = a.$2.tier.ordinal.compareTo(b.$2.tier.ordinal);
-    if (byTier != 0) return byTier;
-    final byDate = b.$2.lastTouchedAt.compareTo(a.$2.lastTouchedAt);
-    if (byDate != 0) return byDate;
-    return titleOf(a.$1).toLowerCase().compareTo(titleOf(b.$1).toLowerCase());
+  // When the caller only wants a small number of results (the suggestion
+  // dropdown asks for ~6), select the top-K directly instead of fully
+  // sorting the entire match set. This turns an O(n log n) sort over
+  // thousands of matches into an O(n * k) scan with a tiny constant k,
+  // which keeps the dropdown responsive no matter how wide the query is.
+  if (limit != null && limit < survivors.length && limit <= 64) {
+    return _selectTopK<T>(survivors, limit);
+  }
+
+  survivors.sort(_compareRanked);
+
+  final effectiveLimit =
+      (limit != null && survivors.length > limit) ? limit : survivors.length;
+  final ordered = List<T>.generate(
+    effectiveLimit,
+    (i) => survivors[i].item,
+    growable: false,
+  );
+  return ordered;
+}
+
+/// A survivor of the match filter, carrying precomputed sort keys so the
+/// comparator does zero allocation.
+class _RankedItem<T> {
+  _RankedItem({
+    required this.item,
+    required this.tierOrdinal,
+    required this.lastTouchedMs,
+    required this.titleLower,
   });
 
-  final ordered = survivors.map((p) => p.$1).toList(growable: false);
-  if (limit != null && ordered.length > limit) {
-    return ordered.sublist(0, limit);
+  final T item;
+  final int tierOrdinal;
+  final int lastTouchedMs;
+  final String titleLower;
+}
+
+/// Total order used everywhere ranked results are sorted: tier first
+/// (ascending ordinal = stronger match), then recency (descending), then
+/// title (ascending) for a stable, deterministic tie-break.
+int _compareRanked<T>(_RankedItem<T> a, _RankedItem<T> b) {
+  final byTier = a.tierOrdinal.compareTo(b.tierOrdinal);
+  if (byTier != 0) return byTier;
+  final byDate = b.lastTouchedMs.compareTo(a.lastTouchedMs);
+  if (byDate != 0) return byDate;
+  return a.titleLower.compareTo(b.titleLower);
+}
+
+/// Returns the [k] highest-ranked items in ranked order without sorting the
+/// whole list. Maintains a small ordered buffer of the current best [k];
+/// each candidate is only inserted when it can beat the current worst, so
+/// the common case (candidate worse than the buffer's tail) is a single
+/// cheap comparison.
+List<T> _selectTopK<T>(List<_RankedItem<T>> survivors, int k) {
+  final top = <_RankedItem<T>>[];
+  for (final candidate in survivors) {
+    if (top.length < k) {
+      _insertSorted(top, candidate);
+      continue;
+    }
+    // Buffer is full: skip anything that can't beat the current worst.
+    if (_compareRanked(candidate, top[top.length - 1]) >= 0) {
+      continue;
+    }
+    top.removeLast();
+    _insertSorted(top, candidate);
   }
-  return ordered;
+  return List<T>.generate(top.length, (i) => top[i].item, growable: false);
+}
+
+/// Inserts [candidate] into the already-sorted [buffer] (ascending by
+/// [_compareRanked]) using a binary search for the insertion point.
+void _insertSorted<T>(List<_RankedItem<T>> buffer, _RankedItem<T> candidate) {
+  var lo = 0;
+  var hi = buffer.length;
+  while (lo < hi) {
+    final mid = (lo + hi) >> 1;
+    if (_compareRanked(candidate, buffer[mid]) < 0) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
+    }
+  }
+  buffer.insert(lo, candidate);
 }
 
 /// Convenience: returns just the top-K ranked items, preserving the

@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class AppRuntimeInfo {
   const AppRuntimeInfo({
@@ -39,13 +40,31 @@ class AppRuntimeInfoService {
   static Future<AppRuntimeInfo?> load() async {
     try {
       final info = await _channel.invokeMapMethod<Object?, Object?>('getInfo');
-      if (info == null) return null;
-      return AppRuntimeInfo.fromMap(info);
+      if (info != null) {
+        return AppRuntimeInfo.fromMap(info);
+      }
     } on MissingPluginException {
-      return null;
+      // Platform did not register the channel — fall back below.
     } on PlatformException catch (error, stackTrace) {
       developer.log(
         'failed to load runtime app info: ${error.message}',
+        name: 'app.runtime_info',
+        stackTrace: stackTrace,
+      );
+    }
+
+    // Cross-platform fallback so the version check works even when the
+    // native method channel is unavailable on a platform.
+    try {
+      final pkg = await PackageInfo.fromPlatform();
+      return AppRuntimeInfo(
+        bundleIdentifier: pkg.packageName,
+        version: pkg.version,
+        buildNumber: pkg.buildNumber,
+      );
+    } catch (error, stackTrace) {
+      developer.log(
+        'failed to load package info: $error',
         name: 'app.runtime_info',
         stackTrace: stackTrace,
       );
