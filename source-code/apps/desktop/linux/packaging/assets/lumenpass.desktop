@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=LumenPass
+GenericName=Password Manager
+Comment=KeePass-compatible password manager
+Exec=/usr/bin/lumenpass %U
+Icon=lumenpass
+Terminal=false
+Type=Application
+StartupNotify=true
+StartupWMClass=tranit.lumenpass.linux
+Categories=Office;Security;Utility;
+Keywords=password;manager;keepass;vault;secure;kdbx;
+MimeType=application/x-keepass2;
+X-Desktop-File-Install-Version=0.26

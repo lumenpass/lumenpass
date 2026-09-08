@@ -1,0 +1,8 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
+#include? "GoogleClient.xcconfig"
+#include "Generated.xcconfig"
+// Override Generated.xcconfig which excludes arm64 from iphonesimulator.
+// Required to target Apple Silicon simulators (e.g. iOS 26.x runtimes which
+// are arm64-only) on Apple Silicon Macs.
+EXCLUDED_ARCHS[sdk=iphonesimulator*] = i386
+

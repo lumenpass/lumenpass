@@ -1,0 +1,10 @@
+{
+  "DROPBOX_APP_KEY": "YOUR_DROPBOX_APP_KEY",
+  "ONEDRIVE_CLIENT_ID": "YOUR_AZURE_APP_CLIENT_ID",
+  "GOOGLE_CLIENT_ID": "YOUR_IOS_CLIENT_ID.apps.googleusercontent.com",
+  "GOOGLE_SERVER_CLIENT_ID": "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com",
+  "REVERSED_GOOGLE_CLIENT_ID": "com.googleusercontent.apps.YOUR_IOS_CLIENT_ID",
+  "BACKEND_API_URL": "http://localhost:14100",
+  "IOS_STORE_URL": "https://apps.apple.com/us/app/lumenpass-password-manager/id6762245861",
+  "ANDROID_STORE_URL": "https://play.google.com/store/apps/details?id=com.tranit.lumenpass.android"
+}

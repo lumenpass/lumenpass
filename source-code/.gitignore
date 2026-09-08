@@ -1,0 +1,35 @@
+.DS_Store
+
+# Private signing and store credentials
+*.p8
+*.p12
+*.jks
+*.keystore
+*.pem
+credentials/
+**/*private-key*.asc
+
+# Local build configuration and project backups
+dart_defines*.json.bk*
+*.bak
+*.bak.*
+
+# Local credential-import fixtures and release artifacts
+testing/Data-Import/
+apps/desktop/releases/
+apps/desktop/rw.*
+apps/desktop/linux/sign-cert/
+lumenpass-extension/builds/
+*.crx
+*.dmg
+*.dmg.sha256
+*.1pux
+*_feedback.pdf
+**/Archive.zip
+
+# Dart / Flutter generated artifacts
+.dart_tool/
+build/
+apps/desktop/linux/packaging/dist/
+# CocoIndex Code (ccc)
+/.cocoindex_code/

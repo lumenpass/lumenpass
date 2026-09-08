@@ -1,0 +1,18 @@
+// Application-level settings for the Runner target.
+//
+// This may be replaced with something auto-generated from metadata (e.g., pubspec.yaml) in the
+// future. If not, the values below would default to using the project name when this becomes a
+// 'flutter create' template.
+
+// The application's name. By default this is also the title of the Flutter window.
+PRODUCT_NAME = LumenPass
+
+// The application's bundle identifier
+PRODUCT_BUNDLE_IDENTIFIER = com.tranit.lumenpass.macos
+
+// Apple Development Team ID — required for keychain access (google_sign_in, etc.)
+// Find yours at developer.apple.com/account (Membership section), e.g. AB12CD34EF
+DEVELOPMENT_TEAM = R3YX83R9RQ
+
+// The copyright displayed in application information
+PRODUCT_COPYRIGHT = Copyright © 2026 com.yourname.lumenpass. All rights reserved.

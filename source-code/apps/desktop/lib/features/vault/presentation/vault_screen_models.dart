@@ -1560,7 +1560,7 @@ String _displayLabelForFieldKey(String key) {
 const List<_MockEntry> _mockEntries = <_MockEntry>[
   _MockEntry(
     title: 'GitHub',
-    subtitle: 'mlserver56@gmail.com',
+    subtitle: 'alex@example.com',
     dateLabel: 'Today',
     initials: 'Mi',
     tileColor: Color(0xFFE5D6A4),

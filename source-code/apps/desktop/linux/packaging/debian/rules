@@ -1,0 +1,31 @@
+#!/usr/bin/make -f
+# Debian rules for the LumenPass desktop application.
+#
+# This rules file does NOT compile Flutter from source; the Flutter build is
+# expected to have been performed beforehand by `build-deb.sh`, which then
+# stages the bundle into linux/packaging/staging/. dh installs the staged
+# tree into the .deb. This keeps Debian-side packaging fast and reproducible
+# while still passing lintian validation.
+
+export DH_VERBOSE = 1
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+
+override_dh_auto_build:
+
+override_dh_auto_test:
+
+override_dh_auto_install:
+
+override_dh_strip:
+	dh_strip --no-automatic-dbgsym
+
+override_dh_shlibdeps:
+	dh_shlibdeps -l/opt/lumenpass/lib
+
+override_dh_fixperms:
+	dh_fixperms
+	chmod 0755 debian/lumenpass/opt/lumenpass/lumenpass || true

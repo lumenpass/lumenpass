@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>tranit.lumenpass.linux</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MPL-2.0</project_license>
+  <name>LumenPass</name>
+  <summary>KeePass-compatible password manager</summary>
+
+  <description>
+    <p>
+      LumenPass is a modern password manager that natively reads and writes
+      the KeePass KDBX 3 and KDBX 4 vault formats. It provides a
+      1Password-style interface for managing logins, passkeys, TOTP codes,
+      SSH keys, identities, secure notes and bank/payment cards.
+    </p>
+    <p>Key capabilities:</p>
+    <ul>
+      <li>Full KDBX 3 and KDBX 4 read/write support.</li>
+      <li>System tray integration, biometric unlock and OS keyring backing.</li>
+      <li>Built-in TOTP generator, password generator and audit reports.</li>
+      <li>Optional cloud sync with Google Drive and Dropbox.</li>
+      <li>Cross-platform with macOS and Windows desktop releases.</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">lumenpass.desktop</launchable>
+
+  <url type="homepage">https://lumenpass.app</url>
+  <url type="bugtracker">https://github.com/lumenpass/lumenpass/issues</url>
+  <url type="help">https://lumenpass.app/docs</url>
+
+  <developer id="app.lumenpass">
+    <name>TranTech Studio</name>
+  </developer>
+
+  <provides>
+    <binary>lumenpass</binary>
+  </provides>
+
+  <categories>
+    <category>Office</category>
+    <category>Security</category>
+    <category>Utility</category>
+  </categories>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="1.0.3" date="2026-05-22">
+      <description>
+        <p>Add release-deb.sh one-shot orchestrator and refreshed release docs.</p>
+      </description>
+    </release>
+    <release version="1.0.2" date="2026-05-20">
+      <description>
+        <p>Initial Debian release of LumenPass for Linux.</p>
+      </description>
+    </release>
+  </releases>
+</component>

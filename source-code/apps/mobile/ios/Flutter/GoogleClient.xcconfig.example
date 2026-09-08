@@ -1,0 +1,10 @@
+// Copy this file to GoogleClient.xcconfig (same folder). That file is gitignored.
+// Use your iOS OAuth 2.0 client ID from Google Cloud Console (APIs & Credentials).
+// REVERSED_GOOGLE_CLIENT_ID is the iOS URL scheme form: com.googleusercontent.apps.<id-without-suffix>
+// (same as REVERSED_CLIENT_ID in GoogleService-Info.plist if you use that download).
+//
+// Also pass the same GOOGLE_CLIENT_ID when building Dart, e.g.:
+//   flutter run --dart-define-from-file=dart_defines.local.json
+//
+GOOGLE_CLIENT_ID = YOUR_IOS_CLIENT_ID.apps.googleusercontent.com
+REVERSED_GOOGLE_CLIENT_ID = com.googleusercontent.apps.YOUR_IOS_CLIENT_ID

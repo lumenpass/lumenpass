@@ -1,0 +1,47 @@
+Source: lumenpass
+Section: utils
+Priority: optional
+Maintainer: TranTech Studio <admin@lumenpass.app>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.13),
+               ninja-build,
+               pkg-config,
+               clang,
+               libgtk-3-dev,
+               liblzma-dev,
+               libstdc++-12-dev | libstdc++-11-dev | libstdc++-10-dev,
+               libsecret-1-dev,
+               libjsoncpp-dev,
+               libssl-dev,
+               libayatana-appindicator3-dev | libappindicator3-dev
+Standards-Version: 4.6.2
+Homepage: https://lumenpass.app
+Vcs-Browser: https://github.com/lumenpass/lumenpass
+Vcs-Git: https://github.com/lumenpass/lumenpass.git
+Rules-Requires-Root: no
+
+Package: lumenpass
+Architecture: amd64 arm64
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libgtk-3-0,
+         libsecret-1-0,
+         libjsoncpp25 | libjsoncpp24 | libjsoncpp1,
+         libssl3 | libssl1.1,
+         libayatana-appindicator3-1 | libappindicator3-1
+Recommends: libnotify4
+Suggests: gnome-keyring | kwalletmanager
+Description: KeePass-compatible password manager
+ LumenPass is a modern password manager that reads and writes
+ KeePass KDBX 3 and KDBX 4 vaults. It provides a 1Password-style user
+ interface for managing logins, passkeys, TOTP codes, SSH keys, identities,
+ secure notes, payment cards and bank accounts.
+ .
+ Features:
+  * KDBX 3 and KDBX 4 read and write support via the official AuthPass kdbx
+    library.
+  * Native system tray integration, biometric unlock, and OS keyring backing.
+  * Built-in TOTP authenticator and password generator with audit reports.
+  * Optional cloud sync (Google Drive, Dropbox) and browser-extension bridge.
+  * Cross-platform: shares a common codebase with the macOS and Windows
+    desktop releases.

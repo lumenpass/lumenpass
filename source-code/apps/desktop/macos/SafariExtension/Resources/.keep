@@ -1,0 +1,2 @@
+This folder is populated by `npm run sync:desktop` from lumenpass-extension/dist-safari/.
+Do not commit the synced files. They are produced from lumenpass-extension/.

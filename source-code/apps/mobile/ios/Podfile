@@ -1,0 +1,79 @@
+# Global iOS target required by mobile_scanner and related pods.
+platform :ios, '15.5'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
+      # Force-override EXCLUDED_ARCHS for iphonesimulator so arm64 is never
+      # excluded. Flutter's Generated.xcconfig still ships the legacy value
+      # `i386 arm64` (intended for Intel Macs) which blocks iOS 26.x
+      # simulators on Apple Silicon. Setting the value directly on each pod
+      # target guarantees the override wins over the inherited xcconfig.
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'i386'
+      # Required by `package:objective_c` / `package:ffi` (used transitively by
+      # google_sign_in_ios). The default strip style removes the
+      # `DOBJC_initializeApi` entry from the Pod frameworks, which makes Dart's
+      # runtime dynamic-library lookup fail ("Unable to load this folder" in
+      # the Google Drive picker). See:
+      # https://docs.flutter.dev/platform-integration/ios/c-interop
+      config.build_settings['STRIP_STYLE'] = 'non-global'
+      config.build_settings['STRIP_INSTALLED_PRODUCT'] = 'NO'
+      config.build_settings['DEAD_CODE_STRIPPING'] = 'NO'
+    end
+  end
+
+  # Patch google_sign_in_ios: remove [e raise] after @catch in
+  # signInWithCompletion: so that native NSExceptions (e.g. missing window)
+  # are forwarded to Dart as FlutterError instead of crashing the process.
+  plugin_dir = File.join(__dir__, '.symlinks', 'plugins', 'google_sign_in_ios')
+  plugin_file = File.join(plugin_dir, 'darwin', 'google_sign_in_ios',
+    'Sources', 'google_sign_in_ios', 'FLTGoogleSignInPlugin.m')
+  if File.exist?(plugin_file)
+    src = File.read(plugin_file)
+    patched = src.gsub(
+      /(\[FlutterError\s+errorWithCode:@"google_sign_in"\s+message:e\.reason\s+details:e\.name\]);\s*\n\s*\[e\s+raise\];/,
+      '\1;'
+    )
+    if patched != src
+      File.write(plugin_file, patched)
+      Pod::UI.puts "Patched google_sign_in_ios: removed [e raise] in signInWithCompletion:"
+    end
+  end
+end

@@ -1,0 +1,10 @@
+# OS and editor state
+.DS_Store
+.idea/
+.vscode/
+
+# Local agent/tool configuration
+.agents/
+.trae/
+# CocoIndex Code (ccc)
+/.cocoindex_code/

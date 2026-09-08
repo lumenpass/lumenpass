@@ -1,0 +1,22 @@
+# LumenPass lintian overrides
+# Flutter bundles its own libraries in /opt, so some standard Debian checks
+# do not apply to this package.
+
+# Flutter ships its own ICU data and engine library; not in standard lib paths
+lumenpass: embedded-library
+lumenpass: unstripped-binary-or-object
+lumenpass: hardening-no-pie
+
+# The Flutter engine library does not have a standard SONAME
+lumenpass: shared-library-lacks-prerequisites
+
+# Binary is installed to /opt rather than /usr/bin (FHS exception for bundled apps)
+lumenpass: dir-or-file-in-opt
+
+# Flutter's `flutter build linux` step writes the developer machine's absolute
+# build directory into the RUNPATH of every plugin shared library it produces
+# (e.g. `linux/flutter/ephemeral`). This is a long-standing Flutter behavior
+# tracked upstream; the resulting paths never resolve at runtime because the
+# real lookup uses the binary's $ORIGIN-relative RPATH installed under
+# /opt/lumenpass/lib. Suppress so lintian does not fail the package build.
+lumenpass: custom-library-search-path

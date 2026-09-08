@@ -1,0 +1,4 @@
+# Synced build output from lumenpass-extension/dist-safari/.
+# Reproduce with: cd ../../../../lumenpass-extension && npm run build:desktop-safari
+Resources/*
+!Resources/.keep
