@@ -21,14 +21,20 @@ import 'sftp_config_dialog.dart';
 import 'webdav_config_dialog.dart';
 import 's3_config_dialog.dart';
 
-// ── Palette (mirrors unlock_screen) ─────────────────────────────────────────
-const Color _kCanvas = Color(0xFFF6F8FB);
-const Color _kBorderSoft = Color(0xFFE1E7F0);
-const Color _kBorderRow = Color(0xFFE6EAF0);
-const Color _kTitle = Color(0xFF22314A);
-const Color _kLabel = Color(0xFF73839D);
-const Color _kIcon = Color(0xFF8A97AC);
-const Color _kBlue = Color(0xFF4B6CFF);
+// ── Vintage palette (mirrors unlock_screen) ─────────────────────────────────
+const Color _kCanvas = Color(0xFFF7F4EC);
+const Color _kPaperBright = Color(0xFFFFFCF5);
+const Color _kBorderSoft = Color(0xFFB8B1A5);
+const Color _kBorderRow = Color(0xFFCAC3B7);
+const Color _kTitle = Color(0xFF191A1B);
+const Color _kLabel = Color(0xFF626560);
+const Color _kIcon = Color(0xFF777A75);
+const Color _kBlue = Color(0xFFFF5B22);
+const Color _kInkBorder = Color(0xFF252628);
+const Color _kMint = Color(0xFF21A98F);
+const Color _kMintSoft = Color(0xFFDFF2EC);
+const Color _kPeach = Color(0xFFF4D7C8);
+const Color _kYellow = Color(0xFFF4E2A4);
 
 TextStyle _uText(
   double size,
@@ -40,13 +46,29 @@ TextStyle _uText(
     fontSize: size,
     color: color,
     fontWeight: fontWeight,
-    fontFamily: 'Inter',
+    fontFamily: 'Ubuntu Sans',
     letterSpacing: letterSpacing,
+  );
+}
+
+TextStyle _serifText(
+  double size,
+  Color color, {
+  FontWeight fontWeight = FontWeight.w700,
+  double? height,
+}) {
+  return TextStyle(
+    fontSize: size,
+    color: color,
+    fontWeight: fontWeight,
+    fontFamily: 'Ubuntu Sans',
+    height: height,
   );
 }
 
 InputDecoration _fieldDecoration({
   required String hint,
+  required IconData prefixIcon,
   Widget? suffix,
 }) {
   return InputDecoration(
@@ -67,6 +89,8 @@ InputDecoration _fieldDecoration({
       borderRadius: BorderRadius.circular(8),
       borderSide: const BorderSide(color: _kBlue, width: 1.5),
     ),
+    prefixIcon: Icon(prefixIcon, size: 17, color: _kIcon),
+    prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
     suffixIcon: suffix,
   );
 }
@@ -262,13 +286,14 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
         insetPadding: const EdgeInsets.symmetric(horizontal: 80, vertical: 40),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            color: _kCanvas,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _kInkBorder, width: 1.5),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: Color(0x22000000),
-                blurRadius: 40,
-                offset: Offset(0, 16),
+                color: Color(0x33252628),
+                blurRadius: 0,
+                offset: Offset(6, 6),
               ),
             ],
           ),
@@ -385,7 +410,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
   Widget _buildDetailsStep() {
     return SingleChildScrollView(
       key: const ValueKey<_WizardStep>(_WizardStep.details),
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -450,13 +475,13 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFEEF3FF),
+        color: _kMintSoft,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFB5C3F8)),
+        border: Border.all(color: _kInkBorder),
       ),
       child: Row(
         children: <Widget>[
-          const Icon(TablerIcons.circle_check, size: 16, color: _kBlue),
+          const Icon(TablerIcons.circle_check, size: 16, color: _kMint),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -478,11 +503,14 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
             ),
           ),
           const SizedBox(width: 8),
-          GestureDetector(
-            onTap: _goToProvider,
-            child: Text(
-              'Change',
-              style: _uText(11, _kBlue, fontWeight: FontWeight.w600),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: _goToProvider,
+              child: Text(
+                'Change',
+                style: _uText(11, _kBlue, fontWeight: FontWeight.w700),
+              ),
             ),
           ),
         ],
@@ -494,9 +522,14 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 16, 14),
+      padding: const EdgeInsets.fromLTRB(20, 17, 16, 14),
       decoration: const BoxDecoration(
+        color: _kPaperBright,
         border: Border(bottom: BorderSide(color: _kBorderSoft)),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(17),
+          topRight: Radius.circular(17),
+        ),
       ),
       child: Row(
         children: <Widget>[
@@ -504,15 +537,15 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[Color(0xFF4B6CFF), Color(0xFF7B52FF)],
-              ),
-              borderRadius: BorderRadius.circular(9),
+              color: _kPeach,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _kInkBorder),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: _kInkBorder, offset: Offset(2, 2)),
+              ],
             ),
-            child: const Icon(TablerIcons.database_plus,
-                size: 16, color: Colors.white),
+            child:
+                const Icon(TablerIcons.database_plus, size: 16, color: _kTitle),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -523,7 +556,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
                   _step == _WizardStep.provider
                       ? 'Choose a Storage Destination'
                       : 'Create New Database',
-                  style: _uText(15, _kTitle, fontWeight: FontWeight.w700),
+                  style: _serifText(17, _kTitle),
                 ),
                 Text(
                   _step == _WizardStep.provider
@@ -537,17 +570,22 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
           const SizedBox(width: 12),
           _buildStepDots(),
           const SizedBox(width: 12),
-          GestureDetector(
-            onTap: _isCreating ? null : () => Navigator.of(context).pop(),
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: _kCanvas,
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(color: _kBorderSoft),
+          MouseRegion(
+            cursor: _isCreating
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: _isCreating ? null : () => Navigator.of(context).pop(),
+              child: Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: _kPaperBright,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _kInkBorder),
+                ),
+                child: const Icon(TablerIcons.x, size: 14, color: _kTitle),
               ),
-              child: const Icon(TablerIcons.x, size: 14, color: _kIcon),
             ),
           ),
         ],
@@ -576,50 +614,114 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
       children: <Widget>[
         Text(
           'Storage Destination',
-          style: _uText(12, _kTitle, fontWeight: FontWeight.w600),
+          style: _serifText(14, _kTitle),
         ),
         const SizedBox(height: 8),
-        _StorageRow(
-          iconChild:
-              Image.asset('assets/images/dir.png', width: 16, height: 16),
-          label: _localDirectory != null
-              ? _shortenPath(_localDirectory!)
-              : 'Local Directory',
-          selected: _storage == _StorageType.local,
-          actionLabel: 'Browse...',
-          onAction: _pickLocalDirectory,
-        ),
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild: Image.asset('assets/images/google-drive.png',
-              width: 16, height: 16),
-          provider: 'Google Drive',
-          selected: _storage == _StorageType.googleDrive,
-          account: _googleAccount,
-          folderName: _googleFolderName,
-          isConnecting: _isConnectingGoogle,
-          onConnect: _connectGoogle,
-          onDisconnect: _disconnectGoogle,
-          onPickFolder: _googleAccount != null ? _pickGoogleFolder : null,
-          onSelect: _googleAccount != null
-              ? () => setState(() => _storage = _StorageType.googleDrive)
-              : null,
-        ),
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild:
-              Image.asset('assets/images/dropbox.png', width: 16, height: 16),
-          provider: 'Dropbox',
-          selected: _storage == _StorageType.dropbox,
-          account: _dropboxAccount,
-          folderName: _dropboxFolderName,
-          isConnecting: _isConnectingDropbox,
-          onConnect: dropboxConfigured ? _connectDropbox : null,
-          onDisconnect: _disconnectDropbox,
-          onPickFolder: _dropboxAccount != null ? _pickDropboxFolder : null,
-          onSelect: _dropboxAccount != null
-              ? () => setState(() => _storage = _StorageType.dropbox)
-              : null,
+        _DestinationGrid(
+          children: <Widget>[
+            _StorageRow(
+              iconChild:
+                  Image.asset('assets/images/dir.png', width: 18, height: 18),
+              label: 'Local Directory',
+              detail: _localDirectory != null
+                  ? _shortenPath(_localDirectory!)
+                  : 'Choose a folder on this Mac',
+              selected: _storage == _StorageType.local,
+              actionLabel: 'Browse',
+              onAction: _pickLocalDirectory,
+            ),
+            _CloudStorageRow(
+              iconChild: Image.asset('assets/images/google-drive.png',
+                  width: 18, height: 18),
+              provider: 'Google Drive',
+              selected: _storage == _StorageType.googleDrive,
+              account: _googleAccount,
+              folderName: _googleFolderName,
+              isConnecting: _isConnectingGoogle,
+              onConnect: _connectGoogle,
+              onDisconnect: _disconnectGoogle,
+              onPickFolder: _googleAccount != null ? _pickGoogleFolder : null,
+              onSelect: _googleAccount != null
+                  ? () => setState(() => _storage = _StorageType.googleDrive)
+                  : null,
+            ),
+            _CloudStorageRow(
+              iconChild: Image.asset('assets/images/dropbox.png',
+                  width: 18, height: 18),
+              provider: 'Dropbox',
+              selected: _storage == _StorageType.dropbox,
+              account: _dropboxAccount,
+              folderName: _dropboxFolderName,
+              isConnecting: _isConnectingDropbox,
+              onConnect: dropboxConfigured ? _connectDropbox : null,
+              onDisconnect: _disconnectDropbox,
+              onPickFolder: _dropboxAccount != null ? _pickDropboxFolder : null,
+              onSelect: _dropboxAccount != null
+                  ? () => setState(() => _storage = _StorageType.dropbox)
+                  : null,
+            ),
+            _CloudStorageRow(
+              iconChild: Image.asset('assets/images/onedrive.png',
+                  width: 18, height: 18),
+              provider: 'OneDrive',
+              selected: _storage == _StorageType.oneDrive,
+              account: _oneDriveAccount,
+              folderName: _oneDriveFolderName,
+              isConnecting: _isConnectingOneDrive,
+              onConnect: _connectOneDrive,
+              onDisconnect: _disconnectOneDrive,
+              onPickFolder:
+                  _oneDriveAccount != null ? _pickOneDriveFolder : null,
+              onSelect: _oneDriveAccount != null
+                  ? () => setState(() => _storage = _StorageType.oneDrive)
+                  : null,
+            ),
+            _CloudStorageRow(
+              iconChild: Image.asset('assets/images/webdav.png',
+                  width: 18, height: 18),
+              provider: 'WebDAV',
+              selected: _storage == _StorageType.webDav,
+              account: _webDavAccount,
+              folderName: _webDavFolderName,
+              isConnecting: _isConnectingWebDav,
+              onConnect: _connectWebDav,
+              onDisconnect: _disconnectWebDav,
+              onPickFolder: _webDavAccount != null ? _pickWebDavFolder : null,
+              onSelect: _webDavAccount != null
+                  ? () => setState(() => _storage = _StorageType.webDav)
+                  : null,
+            ),
+            _CloudStorageRow(
+              iconChild:
+                  Image.asset('assets/images/sftp.png', width: 18, height: 18),
+              provider: 'SFTP',
+              selected: _storage == _StorageType.sftp,
+              account: _sftpAccount,
+              folderName: _sftpFolderName,
+              isConnecting: _isConnectingSftp,
+              onConnect: _connectSftp,
+              onDisconnect: _disconnectSftp,
+              onPickFolder: _sftpAccount != null ? _pickSftpFolder : null,
+              onSelect: _sftpAccount != null
+                  ? () => setState(() => _storage = _StorageType.sftp)
+                  : null,
+            ),
+            _CloudStorageRow(
+              iconChild: Image.asset('assets/images/aws-s3-icon.png',
+                  width: 18, height: 18),
+              provider: 'Amazon S3',
+              selected: _storage == _StorageType.s3,
+              account: _s3Account,
+              folderName: _s3FolderName,
+              isConnecting: _isConnectingS3,
+              onConnect: _connectS3,
+              onDisconnect: _disconnectS3,
+              onPickFolder: _s3Account != null ? _pickS3Folder : null,
+              onSelect: _s3Account != null
+                  ? () => setState(() => _storage = _StorageType.s3)
+                  : null,
+            ),
+          ],
         ),
         if (!dropboxConfigured) ...<Widget>[
           const SizedBox(height: 8),
@@ -628,70 +730,6 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
             style: _uText(11, _kLabel),
           ),
         ],
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild:
-              Image.asset('assets/images/onedrive.png', width: 16, height: 16),
-          provider: 'OneDrive',
-          selected: _storage == _StorageType.oneDrive,
-          account: _oneDriveAccount,
-          folderName: _oneDriveFolderName,
-          isConnecting: _isConnectingOneDrive,
-          onConnect: _connectOneDrive,
-          onDisconnect: _disconnectOneDrive,
-          onPickFolder: _oneDriveAccount != null ? _pickOneDriveFolder : null,
-          onSelect: _oneDriveAccount != null
-              ? () => setState(() => _storage = _StorageType.oneDrive)
-              : null,
-        ),
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild:
-              Image.asset('assets/images/webdav.png', width: 16, height: 16),
-          provider: 'WebDAV',
-          selected: _storage == _StorageType.webDav,
-          account: _webDavAccount,
-          folderName: _webDavFolderName,
-          isConnecting: _isConnectingWebDav,
-          onConnect: _connectWebDav,
-          onDisconnect: _disconnectWebDav,
-          onPickFolder: _webDavAccount != null ? _pickWebDavFolder : null,
-          onSelect: _webDavAccount != null
-              ? () => setState(() => _storage = _StorageType.webDav)
-              : null,
-        ),
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild:
-              Image.asset('assets/images/sftp.png', width: 16, height: 16),
-          provider: 'SFTP',
-          selected: _storage == _StorageType.sftp,
-          account: _sftpAccount,
-          folderName: _sftpFolderName,
-          isConnecting: _isConnectingSftp,
-          onConnect: _connectSftp,
-          onDisconnect: _disconnectSftp,
-          onPickFolder: _sftpAccount != null ? _pickSftpFolder : null,
-          onSelect: _sftpAccount != null
-              ? () => setState(() => _storage = _StorageType.sftp)
-              : null,
-        ),
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild: Image.asset('assets/images/aws-s3-icon.png',
-              width: 16, height: 16),
-          provider: 'Amazon S3',
-          selected: _storage == _StorageType.s3,
-          account: _s3Account,
-          folderName: _s3FolderName,
-          isConnecting: _isConnectingS3,
-          onConnect: _connectS3,
-          onDisconnect: _disconnectS3,
-          onPickFolder: _s3Account != null ? _pickS3Folder : null,
-          onSelect: _s3Account != null
-              ? () => setState(() => _storage = _StorageType.s3)
-              : null,
-        ),
       ],
     );
   }
@@ -1006,11 +1044,16 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
           style: _uText(12, _kTitle, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
-        TextField(
-          controller: _nameController,
-          style: _uText(13, _kTitle),
-          onChanged: (_) => setState(() => _errorMessage = null),
-          decoration: _fieldDecoration(hint: 'e.g. My Vault'),
+        _ShadowedInput(
+          child: TextField(
+            controller: _nameController,
+            style: _uText(13, _kTitle),
+            onChanged: (_) => setState(() => _errorMessage = null),
+            decoration: _fieldDecoration(
+              hint: 'e.g. My Vault',
+              prefixIcon: TablerIcons.database_edit,
+            ),
+          ),
         ),
       ],
     );
@@ -1031,59 +1074,70 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
         const SizedBox(height: 6),
         _LabeledField(
           label: 'Master Password',
-          child: TextField(
-            controller: _passwordController,
-            enabled: !passwordDisabled,
-            obscureText: passwordDisabled ? false : _obscurePassword,
-            enableSuggestions: false,
-            autocorrect: false,
-            style: _uText(13, passwordDisabled ? _kLabel : _kTitle),
-            onChanged: (_) => setState(() => _errorMessage = null),
-            decoration: _fieldDecoration(
-              hint:
-                  passwordDisabled ? 'Empty password enabled' : 'New Password',
-              suffix: passwordDisabled
-                  ? null
-                  : IconButton(
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                      icon: Icon(
-                        _obscurePassword
-                            ? TablerIcons.eye
-                            : TablerIcons.eye_off,
-                        size: 15,
-                        color: _kIcon,
+          child: _ShadowedInput(
+            child: TextField(
+              controller: _passwordController,
+              enabled: !passwordDisabled,
+              obscureText: passwordDisabled ? false : _obscurePassword,
+              enableSuggestions: false,
+              autocorrect: false,
+              style: _uText(13, passwordDisabled ? _kLabel : _kTitle),
+              onChanged: (_) => setState(() => _errorMessage = null),
+              decoration: _fieldDecoration(
+                hint: passwordDisabled
+                    ? 'Empty password enabled'
+                    : 'New Password',
+                prefixIcon: TablerIcons.key,
+                suffix: passwordDisabled
+                    ? null
+                    : IconButton(
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                        icon: Icon(
+                          _obscurePassword
+                              ? TablerIcons.eye
+                              : TablerIcons.eye_off,
+                          size: 15,
+                          color: _kIcon,
+                        ),
                       ),
-                    ),
+              ),
             ),
           ),
         ),
         const SizedBox(height: 8),
         _LabeledField(
           label: 'Confirm',
-          child: TextField(
-            controller: _confirmController,
-            enabled: !passwordDisabled,
-            obscureText: passwordDisabled ? false : _obscureConfirm,
-            enableSuggestions: false,
-            autocorrect: false,
-            style: _uText(13, passwordDisabled ? _kLabel : _kTitle),
-            onChanged: (_) => setState(() => _errorMessage = null),
-            decoration: _fieldDecoration(
-              hint: passwordDisabled
-                  ? 'Confirmation not required'
-                  : 'Confirm New Password',
-              suffix: passwordDisabled
-                  ? null
-                  : IconButton(
-                      onPressed: () =>
-                          setState(() => _obscureConfirm = !_obscureConfirm),
-                      icon: Icon(
-                        _obscureConfirm ? TablerIcons.eye : TablerIcons.eye_off,
-                        size: 15,
-                        color: _kIcon,
+          child: _ShadowedInput(
+            child: TextField(
+              controller: _confirmController,
+              enabled: !passwordDisabled,
+              obscureText: passwordDisabled ? false : _obscureConfirm,
+              enableSuggestions: false,
+              autocorrect: false,
+              style: _uText(13, passwordDisabled ? _kLabel : _kTitle),
+              onChanged: (_) => setState(() => _errorMessage = null),
+              decoration: _fieldDecoration(
+                hint: passwordDisabled
+                    ? 'Confirmation not required'
+                    : 'Confirm New Password',
+                prefixIcon: TablerIcons.lock_check,
+                suffix: passwordDisabled
+                    ? null
+                    : IconButton(
+                        onPressed: () => setState(
+                          () => _obscureConfirm = !_obscureConfirm,
+                        ),
+                        icon: Icon(
+                          _obscureConfirm
+                              ? TablerIcons.eye
+                              : TablerIcons.eye_off,
+                          size: 15,
+                          color: _kIcon,
+                        ),
                       ),
-                    ),
+              ),
             ),
           ),
         ),
@@ -1147,7 +1201,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
               decoration: BoxDecoration(
                 color: const Color(0xFFF6F8FF),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFD8E1FF)),
+                border: Border.all(color: _kBorderRow),
               ),
               child: Row(
                 children: <Widget>[
@@ -1155,7 +1209,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
                     width: 30,
                     height: 30,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEAF0FF),
+                      color: _kPeach,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
@@ -1201,7 +1255,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(7),
-                        border: Border.all(color: const Color(0xFFD8E1FF)),
+                        border: Border.all(color: _kBorderRow),
                       ),
                       child: const Icon(
                         TablerIcons.x,
@@ -1273,10 +1327,11 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: const BoxDecoration(
+        color: _kPaperBright,
         border: Border(top: BorderSide(color: _kBorderSoft)),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(14),
-          bottomRight: Radius.circular(14),
+          bottomLeft: Radius.circular(17),
+          bottomRight: Radius.circular(17),
         ),
       ),
       child: _step == _WizardStep.provider
@@ -1292,10 +1347,11 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
         OutlinedButton(
           onPressed: _isCreating ? null : () => Navigator.of(context).pop(),
           style: OutlinedButton.styleFrom(
-            foregroundColor: _kLabel,
-            side: const BorderSide(color: _kBorderSoft),
+            foregroundColor: _kTitle,
+            side: const BorderSide(color: _kInkBorder),
+            backgroundColor: _kPaperBright,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(22),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
@@ -1306,13 +1362,14 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
         ElevatedButton.icon(
           onPressed: canAdvance ? _goToDetails : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0A3B48),
+            backgroundColor: _kBlue,
             foregroundColor: Colors.white,
-            disabledBackgroundColor: const Color(0xFF6F8991),
-            elevation: 0,
+            disabledBackgroundColor: _kBorderSoft,
+            shadowColor: _kInkBorder,
+            elevation: 2,
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(22),
             ),
             textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
           ),
@@ -1329,10 +1386,11 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
         OutlinedButton.icon(
           onPressed: _isCreating ? null : _goToProvider,
           style: OutlinedButton.styleFrom(
-            foregroundColor: _kLabel,
-            side: const BorderSide(color: _kBorderSoft),
+            foregroundColor: _kTitle,
+            side: const BorderSide(color: _kInkBorder),
+            backgroundColor: _kPaperBright,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(22),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
@@ -1344,13 +1402,14 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
         ElevatedButton(
           onPressed: _isCreating ? null : _submit,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0A3B48),
+            backgroundColor: _kBlue,
             foregroundColor: Colors.white,
-            disabledBackgroundColor: const Color(0xFF6F8991),
-            elevation: 0,
+            disabledBackgroundColor: _kBorderSoft,
+            shadowColor: _kInkBorder,
+            elevation: 2,
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(22),
             ),
             textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
           ),
@@ -1671,10 +1730,101 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
 
 // ── Reusable sub-widgets ─────────────────────────────────────────────────────
 
+class _ShadowedInput extends StatelessWidget {
+  const _ShadowedInput({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x1A252628),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Color(0x14252628),
+            blurRadius: 10,
+            spreadRadius: -2,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: CustomPaint(
+        foregroundPainter: const _InputInnerShadowPainter(),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _InputInnerShadowPainter extends CustomPainter {
+  const _InputInnerShadowPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fieldBounds = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(8),
+    );
+    final outside = Path()
+      ..addRect(
+        Rect.fromLTRB(-12, -12, size.width + 12, size.height + 12),
+      );
+    final inset = Path()
+      ..addRRect(fieldBounds.deflate(0.5).shift(const Offset(0, 0.75)));
+    final innerEdge = Path.combine(PathOperation.difference, outside, inset);
+
+    canvas
+      ..save()
+      ..clipRRect(fieldBounds)
+      ..drawPath(
+        innerEdge,
+        Paint()
+          ..color = const Color(0x18252628)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      )
+      ..restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _InputInnerShadowPainter oldDelegate) => false;
+}
+
+class _DestinationGrid extends StatelessWidget {
+  const _DestinationGrid({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 10.0;
+        final width = (constraints.maxWidth - gap) / 2;
+        final height = (width * 0.50).clamp(148.0, 164.0).toDouble();
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: <Widget>[
+            for (final child in children)
+              SizedBox(width: width, height: height, child: child),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _StorageRow extends StatelessWidget {
   const _StorageRow({
     required this.iconChild,
     required this.label,
+    required this.detail,
     required this.selected,
     required this.actionLabel,
     required this.onAction,
@@ -1682,65 +1832,79 @@ class _StorageRow extends StatelessWidget {
 
   final Widget iconChild;
   final String label;
+  final String detail;
   final bool selected;
   final String actionLabel;
   final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: selected ? const Color(0xFFEEF3FF) : Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        color: selected ? _kMintSoft : _kPaperBright,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: selected ? const Color(0xFFB5C3F8) : _kBorderRow,
-          width: selected ? 1.5 : 1.0,
+          color: selected ? _kInkBorder : _kBorderRow,
+          width: selected ? 1.5 : 1,
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Container(
-            width: 28,
-            height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color:
-                  selected ? const Color(0xFFE8F0FE) : const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: iconChild,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _uText(
-                12,
-                selected ? _kBlue : _kTitle,
-                fontWeight: FontWeight.w500,
+          Row(
+            children: <Widget>[
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? _kYellow : _kPeach,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: iconChild,
               ),
-            ),
-          ),
-          OutlinedButton(
-            onPressed: onAction,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF374151),
-              side: const BorderSide(color: Color(0xFFD1D5DB)),
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _uText(13, _kTitle, fontWeight: FontWeight.w700),
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-              minimumSize: const Size(0, 36),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              if (selected)
+                const Icon(TablerIcons.circle_check_filled,
+                    size: 18, color: _kMint),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            detail,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: _uText(10.5, _kLabel),
+          ),
+          const Spacer(),
+          Align(
+            alignment: Alignment.bottomRight,
+            child: OutlinedButton(
+              onPressed: onAction,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _kTitle,
+                side: const BorderSide(color: _kInkBorder),
+                backgroundColor: _kPaperBright,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                minimumSize: const Size(88, 34),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: _uText(11, _kTitle, fontWeight: FontWeight.w700),
+              ),
+              child: Text(actionLabel),
             ),
-            child: Text(actionLabel),
           ),
         ],
       ),
@@ -1776,102 +1940,141 @@ class _CloudStorageRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool connected = account != null;
-    return GestureDetector(
-      onTap: onSelect,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFEEF3FF) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? const Color(0xFFB5C3F8) : _kBorderRow,
-            width: selected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Container(
-                  width: 28,
-                  height: 28,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? const Color(0xFFE8F0FE)
-                        : const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: iconChild,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        provider,
-                        style: _uText(
-                          12,
-                          selected ? _kBlue : _kTitle,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (connected) Text(account!, style: _uText(10, _kLabel)),
-                    ],
-                  ),
-                ),
-                if (isConnecting)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 1.5),
-                  )
-                else if (!connected)
-                  _FilledButton(label: 'Connect', onPressed: onConnect)
-                else
-                  _TextDestructiveButton(
-                      label: 'Disconnect', onPressed: onDisconnect),
-              ],
+    return MouseRegion(
+      cursor: onSelect == null
+          ? SystemMouseCursors.basic
+          : SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onSelect,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: selected ? _kMintSoft : _kPaperBright,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? _kInkBorder : _kBorderRow,
+              width: selected ? 1.5 : 1,
             ),
-            if (connected) ...<Widget>[
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? _kYellow : _kPeach,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: iconChild,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          provider,
+                          style: _uText(
+                            13,
+                            _kTitle,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (connected)
+                          Text(
+                            account!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: _uText(10, _kLabel),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (isConnecting)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 1.5),
+                    )
+                  else if (selected)
+                    const Icon(TablerIcons.circle_check_filled,
+                        size: 18, color: _kMint),
+                ],
+              ),
               const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
+              Row(
+                children: <Widget>[
+                  Icon(connected ? TablerIcons.folder : TablerIcons.cloud,
+                      size: 12, color: _kIcon),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      connected ? (folderName ?? '/ (root)') : 'Not connected',
+                      style: _uText(10.5, _kLabel),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              if (!isConnecting)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: <Widget>[
-                    const Icon(TablerIcons.folder, size: 12, color: _kIcon),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        folderName ?? '/ (root)',
-                        style: _uText(11, _kLabel),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    if (connected) ...<Widget>[
+                      _TextDestructiveButton(
+                        label: 'Disconnect',
+                        onPressed: onDisconnect,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: onPickFolder ?? () {},
-                      child: Text(
-                        folderName != null ? 'Change' : 'Select Folder',
-                        style: _uText(10, _kBlue, fontWeight: FontWeight.w600),
+                      const SizedBox(width: 8),
+                      _TilePrimaryButton(
+                        label: folderName != null ? 'Change' : 'Select folder',
+                        onPressed: onPickFolder,
                       ),
-                    ),
+                    ] else
+                      _TilePrimaryButton(
+                        label: 'Connect',
+                        onPressed: onConnect,
+                      ),
                   ],
                 ),
-              ),
             ],
-          ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _TilePrimaryButton extends StatelessWidget {
+  const _TilePrimaryButton({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _kBlue,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: _kBorderSoft,
+        elevation: 0,
+        side: const BorderSide(color: _kInkBorder),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        minimumSize: const Size(104, 34),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        textStyle: _uText(10.5, Colors.white, fontWeight: FontWeight.w700),
+      ),
+      child: Text(label),
     );
   }
 }
@@ -2257,7 +2460,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: const BoxDecoration(
-        color: Color(0xFFF8FAFF),
+        color: _kCanvas,
         border: Border(top: BorderSide(color: _kBorderSoft)),
       ),
       child: Column(
@@ -2330,7 +2533,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _kBlue,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: const Color(0xFFB9C6FF),
+                    disabledBackgroundColor: _kBorderSoft,
                     disabledForegroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -2493,7 +2696,8 @@ class _StepDot extends StatelessWidget {
       width: active ? 18 : 7,
       height: 7,
       decoration: BoxDecoration(
-        color: active ? _kBlue : const Color(0xFFD4DBE8),
+        color: active ? _kBlue : _kYellow,
+        border: Border.all(color: _kInkBorder),
         borderRadius: BorderRadius.circular(4),
       ),
     );
@@ -2565,10 +2769,10 @@ class _OutlineButton extends StatelessWidget {
     return OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
-        foregroundColor: const Color(0xFF374151),
-        side: const BorderSide(color: Color(0xFFD1D5DB)),
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        foregroundColor: _kTitle,
+        side: const BorderSide(color: _kInkBorder),
+        backgroundColor: _kPaperBright,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
         minimumSize: const Size(0, 36),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -2583,33 +2787,6 @@ class _OutlineButton extends StatelessWidget {
   }
 }
 
-class _FilledButton extends StatelessWidget {
-  const _FilledButton({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _kBlue,
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: const Color(0xFFB9C6FF),
-        disabledForegroundColor: Colors.white,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        textStyle: _uText(11, Colors.white, fontWeight: FontWeight.w600),
-      ),
-      child: Text(label),
-    );
-  }
-}
-
 class _TextDestructiveButton extends StatelessWidget {
   const _TextDestructiveButton({required this.label, required this.onPressed});
 
@@ -2618,15 +2795,18 @@ class _TextDestructiveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
+    return OutlinedButton(
       onPressed: onPressed,
-      style: TextButton.styleFrom(
-        foregroundColor: const Color(0xFFEF4444),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        minimumSize: Size.zero,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFFB93827),
+        backgroundColor: const Color(0xFFFFE8DF),
+        side: const BorderSide(color: Color(0xFFE36A54)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        minimumSize: const Size(104, 34),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         textStyle:
-            _uText(11, const Color(0xFFEF4444), fontWeight: FontWeight.w500),
+            _uText(10.5, const Color(0xFFB93827), fontWeight: FontWeight.w700),
       ),
       child: Text(label),
     );
@@ -2783,10 +2963,10 @@ class _FormatBadge extends StatelessWidget {
     final Color foregroundColor;
 
     if (subdued) {
-      backgroundColor = const Color(0xFFF3F4F6);
+      backgroundColor = _kCanvas;
       foregroundColor = const Color(0xFF8A97AC);
     } else if (emphasized) {
-      backgroundColor = const Color(0xFFEAF0FF);
+      backgroundColor = _kYellow;
       foregroundColor = _kBlue;
     } else {
       backgroundColor = const Color(0xFFF4F6FA);

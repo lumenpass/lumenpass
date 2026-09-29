@@ -79,7 +79,6 @@ class _DetailPane extends ConsumerStatefulWidget {
 
 class _DetailPaneState extends ConsumerState<_DetailPane> {
   static const double _scrollbarThickness = 6;
-  static const double _scrollbarGutter = 10;
   Timer? _clipboardClearTimer;
 
   late List<_DetailField> _fields;
@@ -615,6 +614,14 @@ class _DetailPaneState extends ConsumerState<_DetailPane> {
     final buildSw = Stopwatch()..start();
     final categoryName = _currentCategoryName();
     final hasWebsite = widget.entry.website.trim().isNotEmpty;
+    final parsedWebsiteHost =
+        hasWebsite ? Uri.tryParse(widget.entry.website)?.host ?? '' : '';
+    final websiteHost = parsedWebsiteHost.isNotEmpty
+        ? parsedWebsiteHost
+        : widget.entry.website.trim();
+    final itemTypeVisual = _newItemTypeForVaultType(widget.entry.itemType);
+    final itemTypeLabel = itemTypeVisual?.label ?? 'Secure item';
+    final itemTypeColor = itemTypeVisual?.iconColor ?? _kPrimaryButtonColor;
     final isSshAgentEnabled = ref.watch(sshAgentEnabledProvider);
     final activeDb = ref.watch(activeDatabaseProvider);
     final isInTrash = activeDb != null &&
@@ -632,63 +639,115 @@ class _DetailPaneState extends ConsumerState<_DetailPane> {
         behavior: HitTestBehavior.translucent,
         onTap: _dismissMenu,
         child: Container(
-          color: const Color(0xFFE7EBF0),
+          color: _VaultColors.surface,
           child: Stack(
             children: <Widget>[
               Column(
                 children: <Widget>[
                   Container(
-                    height: 38,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    height: 92,
+                    padding: const EdgeInsets.fromLTRB(20, 12, 16, 12),
                     decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: <Color>[
-                          Color(0xFFFFFFFF),
-                          Color(0xFFEBF0F7),
-                        ],
-                      ),
+                      color: Color(0xFFFFF6EE),
                       border: Border(
-                        top: BorderSide(color: Color(0xFFFFFFFF)),
                         bottom: BorderSide(
-                          color: Color(0xFFB8C5D6),
-                          width: 1.5,
+                          color: Color(0xFFE7CFC0),
+                          width: 1.2,
                         ),
                       ),
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(
-                          color: Color(0x18000000),
-                          offset: Offset(0, 2),
-                          blurRadius: 4,
-                        ),
-                      ],
                     ),
                     child: Row(
                       children: <Widget>[
-                        const Spacer(),
+                        Container(
+                          width: 52,
+                          height: 52,
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: _VaultColors.surface,
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: _kPrimaryButtonColor.withValues(
+                                alpha: 0.18,
+                              ),
+                            ),
+                            boxShadow: const <BoxShadow>[
+                              BoxShadow(
+                                color: Color(0x14D8673E),
+                                blurRadius: 10,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: _FaviconTile(
+                              entry: widget.entry,
+                              size: 40,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                widget.entry.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: _displayText(
+                                  23,
+                                  _VaultColors.title,
+                                  height: 1,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                websiteHost.isNotEmpty
+                                    ? websiteHost
+                                    : (categoryName ?? 'Secure item'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: _text(
+                                  13,
+                                  _VaultColors.headerLabel,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         if (!isInTrash && _canScanTotp) ...<Widget>[
-                          _HeaderScanButton(onTap: widget.onOpenScanTotp),
-                          const SizedBox(width: 10),
+                          _VaultToolbarIconButton(
+                            icon: TablerIcons.scan,
+                            tooltip: 'Scan 2FA code',
+                            onPressed: widget.onOpenScanTotp,
+                            accentColor: const Color(0xFF6C63D5),
+                          ),
+                          const SizedBox(width: 7),
                         ],
                         if (!isInTrash)
-                          _ActionIcon(
-                            TablerIcons.edit,
-                            onTap: widget.onOpenEditItem,
+                          _VaultToolbarIconButton(
+                            icon: TablerIcons.edit,
                             tooltip: 'Edit item',
+                            onPressed: widget.onOpenEditItem,
+                            accentColor: _kPrimaryButtonColor,
                           ),
                         if (isInTrash)
-                          _ActionIcon(
-                            TablerIcons.restore,
-                            onTap: widget.onRequestRestore,
+                          _VaultToolbarIconButton(
+                            icon: TablerIcons.restore,
                             tooltip: 'Recover item',
+                            onPressed: widget.onRequestRestore,
+                            accentColor: const Color(0xFF168B76),
                           ),
                         if (hasWebsite) ...<Widget>[
-                          const SizedBox(width: 10),
-                          _ActionIcon(
-                            TablerIcons.external_link,
+                          const SizedBox(width: 7),
+                          _VaultToolbarIconButton(
+                            icon: TablerIcons.external_link,
                             tooltip: 'Open website',
-                            onTap: () async {
+                            accentColor: const Color(0xFF2E6EDB),
+                            onPressed: () async {
                               final url = Uri.parse(widget.entry.website);
                               if (await canLaunchUrl(url)) {
                                 await launchUrl(url,
@@ -697,6 +756,14 @@ class _DetailPaneState extends ConsumerState<_DetailPane> {
                             },
                           ),
                         ],
+                        const SizedBox(width: 7),
+                        _DetailMoreMenu(
+                          destructiveLabel:
+                              isInTrash ? 'Delete permanently' : 'Delete item',
+                          onDelete: isInTrash
+                              ? widget.onRequestPermanentDelete
+                              : widget.onRequestDelete,
+                        ),
                       ],
                     ),
                   ),
@@ -704,13 +771,13 @@ class _DetailPaneState extends ConsumerState<_DetailPane> {
                     child: ScrollbarTheme(
                       data: const ScrollbarThemeData(
                         thumbColor: WidgetStatePropertyAll<Color>(
-                          Color(0xFFB7C0CE),
+                          Color(0xFFAAA69F),
                         ),
                         trackColor: WidgetStatePropertyAll<Color>(
-                          Color(0xFFF0F3F8),
+                          _VaultColors.surfaceMuted,
                         ),
                         trackBorderColor: WidgetStatePropertyAll<Color>(
-                          Color(0xFFDCE3EE),
+                          _VaultColors.borderSoft,
                         ),
                       ),
                       child: Scrollbar(
@@ -720,61 +787,36 @@ class _DetailPaneState extends ConsumerState<_DetailPane> {
                         interactive: true,
                         thickness: _scrollbarThickness,
                         radius: const Radius.circular(999),
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                            right: _scrollbarThickness + _scrollbarGutter,
-                          ),
-                          child: ScrollConfiguration(
-                            behavior: ScrollConfiguration.of(
-                              context,
-                            ).copyWith(scrollbars: false),
-                            child: SingleChildScrollView(
-                              controller: _scrollController,
-                              padding: const EdgeInsets.fromLTRB(
-                                22,
-                                18,
-                                22,
-                                18,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Row(
-                                    children: <Widget>[
-                                      _FaviconTile(
-                                          entry: widget.entry, size: 32),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          widget.entry.title,
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                          style: _text(
-                                            19,
-                                            _VaultColors.title,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 18),
-                                  if (categoryName != null) ...<Widget>[
-                                    _CategoryInfoRow(
-                                        categoryName: categoryName),
-                                    const SizedBox(height: 14),
-                                  ],
-                                  if (widget.entry.hasPasskeyChip &&
-                                      !_passkeyBannerIgnored)
-                                    _PasskeyBanner(
+                        child: ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(
+                            context,
+                          ).copyWith(scrollbars: false),
+                          child: SingleChildScrollView(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.only(top: 14, bottom: 18),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                if (widget.entry.hasPasskeyChip &&
+                                    !_passkeyBannerIgnored)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                    ),
+                                    child: _PasskeyBanner(
                                       onRemovePasskey:
                                           widget.onRequestRemovePasskey,
                                     ),
-                                  if (widget.entry.hasPasskeyChip &&
-                                      !_passkeyBannerIgnored)
-                                    const SizedBox(height: 14),
-                                  if (_shouldShowWeakPasswordBanner()) ...<Widget>[
-                                    _WeakPasswordBanner(
+                                  ),
+                                if (widget.entry.hasPasskeyChip &&
+                                    !_passkeyBannerIgnored)
+                                  const SizedBox(height: 14),
+                                if (_shouldShowWeakPasswordBanner()) ...<Widget>[
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                    ),
+                                    child: _WeakPasswordBanner(
                                       onChangePassword: () async {
                                         final url =
                                             Uri.parse(widget.entry.website);
@@ -785,17 +827,27 @@ class _DetailPaneState extends ConsumerState<_DetailPane> {
                                         }
                                       },
                                     ),
-                                    const SizedBox(height: 14),
-                                  ],
-                                  if (widget.entry.itemType ==
-                                      VaultItemType.sshKey) ...<Widget>[
-                                    _SshAgentSetupBanner(
+                                  ),
+                                  const SizedBox(height: 14),
+                                ],
+                                if (widget.entry.itemType ==
+                                    VaultItemType.sshKey) ...<Widget>[
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                    ),
+                                    child: _SshAgentSetupBanner(
                                       enabled: isSshAgentEnabled,
                                       onOpenSettings:
                                           widget.onOpenSshAgentSettings,
                                     ),
-                                    const SizedBox(height: 12),
-                                    _SshDetailPanel(
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                    ),
+                                    child: _SshDetailPanel(
                                       snapshot: _buildSshSnapshot(),
                                       onCopy: _copyToClipboard,
                                       onViewPrivateKey: () {
@@ -811,199 +863,205 @@ class _DetailPaneState extends ConsumerState<_DetailPane> {
                                         );
                                       },
                                     ),
-                                    const SizedBox(height: 12),
-                                    ..._buildStandardFieldRows(
-                                      _fields
-                                          .where((field) =>
-                                              !_isSshCoreField(field))
-                                          .toList(growable: false),
-                                    ),
-                                  ] else ...<Widget>[
-                                    if (widget.entry.totpAuthUrl
-                                        .isNotEmpty) ...<Widget>[
-                                      _LiveTotpRow(
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ..._buildStandardFieldRows(
+                                    _fields
+                                        .where(
+                                            (field) => !_isSshCoreField(field))
+                                        .toList(growable: false),
+                                  ),
+                                ] else ...<Widget>[
+                                  if (widget.entry.totpAuthUrl
+                                      .isNotEmpty) ...<Widget>[
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 18,
+                                      ),
+                                      child: _LiveTotpRow(
                                         entry: widget.entry,
                                         onCopyTotp: _copyToClipboard,
                                       ),
-                                      const SizedBox(height: 12),
-                                    ],
-                                    if (widget.entry.socialProvider
-                                        .isNotEmpty) ...<Widget>[
-                                      _SocialLoginCard(
+                                    ),
+                                    const SizedBox(height: 12),
+                                  ],
+                                  if (widget.entry.socialProvider
+                                      .isNotEmpty) ...<Widget>[
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 18,
+                                      ),
+                                      child: _SocialLoginCard(
                                         providerId: widget.entry.socialProvider,
                                         domain: widget.entry.website,
                                         username: widget.entry.username,
                                       ),
-                                      const SizedBox(height: 12),
-                                    ],
-                                    ..._buildStandardFieldRows(_fields),
+                                    ),
+                                    const SizedBox(height: 12),
                                   ],
-                                  if (widget.entry.itemType ==
-                                          VaultItemType.sshKey &&
-                                      widget.entry.totpAuthUrl
-                                          .isNotEmpty) ...<Widget>[
-                                    const SizedBox(height: 14),
-                                    _LiveTotpRow(
+                                  ..._buildStandardFieldRows(_fields),
+                                ],
+                                if (widget.entry.itemType ==
+                                        VaultItemType.sshKey &&
+                                    widget.entry.totpAuthUrl
+                                        .isNotEmpty) ...<Widget>[
+                                  const SizedBox(height: 14),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                    ),
+                                    child: _LiveTotpRow(
                                       entry: widget.entry,
                                       onCopyTotp: _copyToClipboard,
                                     ),
-                                  ],
-                                  if (widget.entry.notes
-                                      .trim()
-                                      .isNotEmpty) ...<Widget>[
-                                    const SizedBox(height: 10),
-                                    const _SectionLabel(
-                                      icon: TablerIcons.notes,
-                                      label: 'Notes',
-                                      iconColor: Color(0xFFB98A1B),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 12,
+                                  ),
+                                ],
+                                if (widget.entry.notes
+                                    .trim()
+                                    .isNotEmpty) ...<Widget>[
+                                  if (_fields.isNotEmpty)
+                                    const SizedBox(height: 14),
+                                  _DetailCard(
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        14,
+                                        8,
+                                        14,
+                                        12,
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFFF7DF),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: const Color(0xFFF0D68A),
-                                        ),
-                                      ),
-                                      child: Stack(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: <Widget>[
+                                          Row(
+                                            children: <Widget>[
+                                              const Expanded(
+                                                child: _SectionLabel(
+                                                  icon: TablerIcons.notes,
+                                                  label: 'Notes',
+                                                  iconColor: Color(0xFFB98A1B),
+                                                ),
+                                              ),
+                                              _FlatRowAction(
+                                                icon: TablerIcons.copy,
+                                                tooltip: 'Copy notes',
+                                                onTap: () => _copyToClipboard(
+                                                  widget.entry.notes,
+                                                  'Notes',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
                                           Padding(
                                             padding: const EdgeInsets.only(
-                                              right: 28,
+                                              left: 36,
                                             ),
                                             child: SelectableText(
                                               widget.entry.notes,
                                               style: _text(
                                                 14,
-                                                const Color(0xFF6C5831),
+                                                _VaultColors.title,
                                                 fontWeight: FontWeight.w500,
                                                 height: 1.4,
-                                              ),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            top: 0,
-                                            right: 0,
-                                            child: InkWell(
-                                              onTap: () => _copyToClipboard(
-                                                widget.entry.notes,
-                                                'Notes',
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                              child: const Padding(
-                                                padding: EdgeInsets.all(2),
-                                                child: Icon(
-                                                  TablerIcons.copy,
-                                                  size: 15,
-                                                  color: Color(0xFFB98A1B),
-                                                ),
                                               ),
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                  ],
-                                  if (_resolvedAttachments
-                                      .isNotEmpty) ...<Widget>[
-                                    const SizedBox(height: 14),
-                                    _AttachmentsSection(
-                                      attachments: _resolvedAttachments,
-                                      onAttachmentTap: (attachment) {
-                                        _openImagePreview(attachment);
-                                      },
-                                      onAttachmentDownload: (attachment) {
-                                        _downloadAttachment(attachment);
-                                      },
-                                    ),
-                                  ],
+                                  ),
+                                ],
+                                if (_resolvedAttachments
+                                    .isNotEmpty) ...<Widget>[
                                   const SizedBox(height: 14),
-                                  _EntryDateStats(
-                                    createdAt: _formatDateTime(
-                                      widget.entry.createdAt,
-                                    ),
-                                    updatedAt: _formatDateTime(
-                                      widget.entry.updatedAt,
+                                  _DetailCard(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(14),
+                                      child: _AttachmentsSection(
+                                        attachments: _resolvedAttachments,
+                                        onAttachmentTap: (attachment) {
+                                          _openImagePreview(attachment);
+                                        },
+                                        onAttachmentDownload: (attachment) {
+                                          _downloadAttachment(attachment);
+                                        },
+                                      ),
                                     ),
                                   ),
-                                  if (widget.entry.tags.isNotEmpty) ...<Widget>[
-                                    const SizedBox(height: 8),
-                                    _EntryTagsRow(tags: widget.entry.tags),
-                                  ],
                                 ],
-                              ),
+                                if (_fields.isNotEmpty ||
+                                    widget.entry.notes.trim().isNotEmpty ||
+                                    _resolvedAttachments.isNotEmpty)
+                                  const SizedBox(height: 14),
+                                _DetailCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: <Widget>[
+                                      _EntryDateStats(
+                                        createdAt: _formatDateTime(
+                                          widget.entry.createdAt,
+                                        ),
+                                        updatedAt: _formatDateTime(
+                                          widget.entry.updatedAt,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          14,
+                                          12,
+                                          14,
+                                          12,
+                                        ),
+                                        decoration: const BoxDecoration(
+                                          border: Border(
+                                            top: BorderSide(
+                                              color: _kDetailCardBorder,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: <Widget>[
+                                            if (widget.entry.tags
+                                                .isNotEmpty) ...<Widget>[
+                                              _EntryTagsRow(
+                                                tags: widget.entry.tags,
+                                              ),
+                                              const SizedBox(height: 10),
+                                            ],
+                                            Wrap(
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              crossAxisAlignment:
+                                                  WrapCrossAlignment.center,
+                                              children: <Widget>[
+                                                _ItemTypeTag(
+                                                  label: itemTypeLabel,
+                                                  color: itemTypeColor,
+                                                ),
+                                                if (categoryName != null)
+                                                  _CategoryTag(
+                                                    categoryName: categoryName,
+                                                  ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFDDE4EC),
-                      border: Border(
-                        top: BorderSide(color: Color(0xFFCCD4DF)),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: <Widget>[
-                        if (isInTrash) ...<Widget>[
-                          _PrimaryButton(
-                            icon: TablerIcons.restore,
-                            label: 'Recover',
-                            onPressed: widget.onRequestRestore,
-                          ),
-                          const SizedBox(width: 10),
-                          _GhostButton(
-                            icon: TablerIcons.trash,
-                            label: 'Delete Permanently',
-                            iconColor: Colors.white,
-                            textColor: Colors.white,
-                            backgroundColor: _kDangerButtonColor,
-                            borderColor: _kDangerButtonColor,
-                            onPressed: widget.onRequestPermanentDelete,
-                          ),
-                        ] else ...<Widget>[
-                          if (_canScanTotp) ...<Widget>[
-                            _GhostButton(
-                              icon: TablerIcons.scan,
-                              label: 'Scan QR Code',
-                              iconColor: const Color(0xFF3E4B60),
-                              textColor: const Color(0xFF3E4B60),
-                              backgroundColor: const Color(0xFFEBEEF3),
-                              borderColor: const Color(0xFFC0C9D4),
-                              onPressed: widget.onOpenScanTotp,
-                            ),
-                            const SizedBox(width: 10),
-                          ],
-                          _PrimaryButton(
-                            icon: TablerIcons.edit,
-                            label: 'Edit Item',
-                            onPressed: widget.onOpenEditItem,
-                          ),
-                          const SizedBox(width: 10),
-                          _GhostButton(
-                            icon: TablerIcons.trash,
-                            label: 'Delete',
-                            iconColor: Colors.white,
-                            textColor: Colors.white,
-                            backgroundColor: _kDangerButtonColor,
-                            borderColor: _kDangerButtonColor,
-                            onPressed: widget.onRequestDelete,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+                  const _DetailCreditsBar(),
                 ],
               ),
               if (_removePendingId != null)
@@ -1015,6 +1073,36 @@ class _DetailPaneState extends ConsumerState<_DetailPane> {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ItemTypeTag extends StatelessWidget {
+  const _ItemTypeTag({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.11),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: _text(
+          10,
+          color,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0,
+          height: 1,
         ),
       ),
     );
@@ -1059,20 +1147,12 @@ class _SshDetailPanel extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
             child: Row(
               children: <Widget>[
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0F6FF),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFD7E5FB)),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    TablerIcons.key,
-                    size: 20,
-                    color: Color(0xFF2E5ECC),
-                  ),
+                const _CircularDetailIcon(
+                  icon: TablerIcons.key,
+                  color: Color(0xFF2E5ECC),
+                  size: 44,
+                  iconSize: 20,
+                  backgroundColor: Color(0xFFF0F6FF),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1103,17 +1183,10 @@ class _SshDetailPanel extends StatelessWidget {
                   ),
                 ),
                 if (hasFingerprint)
-                  InkWell(
+                  _FlatRowAction(
+                    icon: TablerIcons.copy,
+                    tooltip: 'Copy fingerprint',
                     onTap: () => onCopy(snapshot.fingerprint, 'Fingerprint'),
-                    borderRadius: BorderRadius.circular(999),
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(
-                        TablerIcons.copy,
-                        size: 15,
-                        color: Color(0xFF8A97AC),
-                      ),
-                    ),
                   ),
               ],
             ),
@@ -1218,7 +1291,12 @@ class _SshDetailPanelRow extends StatelessWidget {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.only(top: 1),
-            child: Icon(icon, size: 14, color: iconColor),
+            child: _CircularDetailIcon(
+              icon: icon,
+              color: iconColor,
+              size: 28,
+              iconSize: 14,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1242,7 +1320,7 @@ class _SshDetailPanelRow extends StatelessWidget {
                     fontSize: monospace ? 13 : 15,
                     color: const Color(0xFF1F2937),
                     fontWeight: FontWeight.w500,
-                    fontFamily: monospace ? 'Menlo' : 'Inter',
+                    fontFamily: monospace ? 'Menlo' : 'Ubuntu Sans',
                     height: 1.25,
                   ),
                 ),
@@ -1270,32 +1348,18 @@ class _SshDetailPanelRow extends StatelessWidget {
           ],
           if (onView != null) ...<Widget>[
             const SizedBox(width: 8),
-            InkWell(
-              onTap: onView,
-              borderRadius: BorderRadius.circular(999),
-              child: const Padding(
-                padding: EdgeInsets.all(2),
-                child: Icon(
-                  TablerIcons.maximize,
-                  size: 14,
-                  color: Color(0xFF8A97AC),
-                ),
-              ),
+            _FlatRowAction(
+              icon: TablerIcons.maximize,
+              tooltip: 'View large',
+              onTap: onView!,
             ),
           ],
           if (onCopy != null) ...<Widget>[
             const SizedBox(width: 8),
-            InkWell(
-              onTap: onCopy,
-              borderRadius: BorderRadius.circular(999),
-              child: const Padding(
-                padding: EdgeInsets.all(2),
-                child: Icon(
-                  TablerIcons.copy,
-                  size: 14,
-                  color: Color(0xFF8A97AC),
-                ),
-              ),
+            _FlatRowAction(
+              icon: TablerIcons.copy,
+              tooltip: 'Copy',
+              onTap: onCopy!,
             ),
           ],
         ],
@@ -1304,8 +1368,8 @@ class _SshDetailPanelRow extends StatelessWidget {
   }
 }
 
-class _CategoryInfoRow extends StatelessWidget {
-  const _CategoryInfoRow({
+class _CategoryTag extends StatelessWidget {
+  const _CategoryTag({
     required this.categoryName,
   });
 
@@ -1313,40 +1377,68 @@ class _CategoryInfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        const Icon(
-          TablerIcons.folder,
-          size: 15,
-          color: Color(0xFF5A78C5),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          'Category',
-          style: _text(
-            13,
-            _VaultColors.headerLabel,
-            fontWeight: FontWeight.w500,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: _VaultColors.peachSoft,
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: _VaultColors.borderSoft),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Icon(
+            TablerIcons.folder,
+            size: 12,
+            color: _kPrimaryButtonColor,
           ),
-        ),
-        const SizedBox(width: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5FE),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFFD7E2F6)),
-          ),
-          child: Text(
-            categoryName,
-            style: _text(
-              12,
-              const Color(0xFF47629D),
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              categoryName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _text(
+                10,
+                _VaultColors.title,
+                fontWeight: FontWeight.w600,
+                height: 1,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CircularDetailIcon extends StatelessWidget {
+  const _CircularDetailIcon({
+    required this.icon,
+    required this.color,
+    this.size = 28,
+    this.iconSize = 15,
+    this.backgroundColor,
+  });
+
+  final IconData icon;
+  final Color color;
+  final double size;
+  final double iconSize;
+  final Color? backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: backgroundColor ?? color.withValues(alpha: 0.10),
+        shape: BoxShape.circle,
+        border: Border.all(color: color.withValues(alpha: 0.14)),
+      ),
+      alignment: Alignment.center,
+      child: Icon(icon, size: iconSize, color: color),
     );
   }
 }
@@ -1362,30 +1454,183 @@ class _EntryDateStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labelColor = Color(0xFF98A2B3);
-    const valueColor = Color(0xFFB3BECD);
+    const labelColor = _VaultColors.headerLabel;
+    const valueColor = Color(0xFF908D86);
 
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const _CircularDetailIcon(
+            icon: TablerIcons.clock,
+            color: Color(0xFF168B76),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: _EntryDateStat(
+              label: 'Created',
+              value: createdAt,
+              labelColor: labelColor,
+              valueColor: valueColor,
+            ),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: _EntryDateStat(
+              label: 'Updated',
+              value: updatedAt,
+              labelColor: labelColor,
+              valueColor: valueColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EntryDateStat extends StatelessWidget {
+  const _EntryDateStat({
+    required this.label,
+    required this.value,
+    required this.labelColor,
+    required this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final Color labelColor;
+  final Color valueColor;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        Text(label, style: _text(11, labelColor, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 5),
         Text(
-          'Created: $createdAt',
-          style: _text(
-            11,
-            labelColor,
-            fontWeight: FontWeight.w500,
-          ),
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: _text(14, valueColor, fontWeight: FontWeight.w500),
         ),
-        const SizedBox(height: 2),
-        Text(
-          'Last updated: $updatedAt',
-          style: _text(
-            11,
-            valueColor,
-            fontWeight: FontWeight.w500,
+      ],
+    );
+  }
+}
+
+class _DetailCreditsBar extends StatelessWidget {
+  const _DetailCreditsBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      decoration: const BoxDecoration(
+        color: _VaultColors.surfaceMuted,
+        border: Border(
+          top: BorderSide(color: _VaultColors.borderSoft),
+        ),
+      ),
+      child: const Row(
+        children: <Widget>[
+          _CircularDetailIcon(
+            icon: TablerIcons.info_circle,
+            color: Color(0xFF6C63D5),
+            size: 30,
+            iconSize: 16,
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: _SidebarBuildInfoLabel(),
+          ),
+          SizedBox(width: 20),
+          SizedBox(
+            width: 190,
+            child: _VaultSyncStatusRow(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FlatFieldLabel extends StatelessWidget {
+  const _FlatFieldLabel({
+    required this.icon,
+    required this.label,
+    required this.iconColor,
+    this.labelColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color iconColor;
+  final Color? labelColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        _CircularDetailIcon(
+          icon: icon,
+          color: iconColor,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: _text(
+              11,
+              labelColor ?? _VaultColors.headerLabel,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _FlatRowAction extends StatelessWidget {
+  const _FlatRowAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.color = _kPrimaryButtonColor,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AppTooltip(
+      message: tooltip,
+      child: Material(
+        color: color.withValues(alpha: 0.09),
+        shape: CircleBorder(
+          side: BorderSide(color: color.withValues(alpha: 0.18)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          hoverColor: color.withValues(alpha: 0.16),
+          child: SizedBox(
+            width: 30,
+            height: 30,
+            child: Icon(icon, size: 16, color: color),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1455,9 +1700,9 @@ class _FieldMenuOverlay extends StatelessWidget {
           children: <Widget>[
             CompositedTransformFollower(
               link: link,
-              targetAnchor: Alignment.topRight,
+              targetAnchor: Alignment.bottomRight,
               followerAnchor: Alignment.topRight,
-              offset: const Offset(0, 50),
+              offset: const Offset(0, 4),
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () {},
@@ -1517,58 +1762,60 @@ class _HoverActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 32,
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFD4DDEA)),
-        borderRadius: BorderRadius.circular(7),
-        color: Colors.white,
-      ),
-      child: Row(
-        children: <Widget>[
-          InkWell(
-            onTap: onCopyPressed,
-            borderRadius: const BorderRadius.horizontal(
-              left: Radius.circular(7),
-            ),
-            child: Container(
-              width: 62,
-              alignment: Alignment.center,
-              child: Text(
-                'Copy',
-                style: _text(
-                  11,
-                  const Color(0xFF344054),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        _FlatRowAction(
+          icon: TablerIcons.copy,
+          tooltip: 'Copy',
+          onTap: onCopyPressed,
+          color: const Color(0xFF2E6EDB),
+        ),
+        const SizedBox(width: 2),
+        _NeutralOverflowAction(
+          icon: menuOpen ? TablerIcons.chevron_up : TablerIcons.dots_vertical,
+          tooltip: 'More actions',
+          onTap: onArrowPressed,
+        ),
+      ],
+    );
+  }
+}
+
+class _NeutralOverflowAction extends StatelessWidget {
+  const _NeutralOverflowAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AppTooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          hoverColor: _VaultColors.title.withValues(alpha: 0.06),
+          child: SizedBox(
+            width: 30,
+            height: 30,
+            child: Icon(icon, size: 18, color: _VaultColors.icon),
           ),
-          InkWell(
-            onTap: onArrowPressed,
-            borderRadius: const BorderRadius.horizontal(
-              right: Radius.circular(7),
-            ),
-            child: Container(
-              width: 32,
-              decoration: const BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: Color(0xFFD4DDEA)),
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Icon(
-                menuOpen ? TablerIcons.chevron_up : TablerIcons.chevron_down,
-                size: 16,
-                color: _VaultColors.icon,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
+
+const Color _kDetailCardSurface = Color(0xFFFFF5EE);
+const Color _kDetailCardBorder = Color(0xFFEFD8C9);
 
 class _FieldRowsSection extends StatelessWidget {
   const _FieldRowsSection({
@@ -1579,20 +1826,33 @@ class _FieldRowsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7F9FB),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFD3DCE8)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: children,
-        ),
+    return _DetailCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: children,
       ),
+    );
+  }
+}
+
+class _DetailCard extends StatelessWidget {
+  const _DetailCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.all(1),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: _kDetailCardSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kDetailCardBorder),
+      ),
+      child: child,
     );
   }
 }
@@ -1632,65 +1892,53 @@ class _FieldRow extends StatelessWidget {
       child: InkWell(
         onTap: onCopyPressed,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 70),
+          constraints: const BoxConstraints(minHeight: 54),
           decoration: BoxDecoration(
-            color: hovered ? const Color(0xFFEAF1FA) : Colors.transparent,
+            color: hovered ? _VaultColors.peachSoft : Colors.transparent,
             border: Border(
               bottom: showDivider
-                  ? const BorderSide(color: Color(0xFFDDE5EF))
+                  ? const BorderSide(color: _kDetailCardBorder)
                   : BorderSide.none,
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Icon(icon, size: 15, color: iconColor),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              label,
-                              style: _text(
-                                9,
-                                labelColor ?? const Color(0xFF6D63D6),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _FlatFieldLabel(
+                        icon: icon,
+                        label: label,
+                        iconColor: hovered ? _kPrimaryButtonColor : iconColor,
+                        labelColor: labelColor,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        value,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                        textAlign: TextAlign.left,
-                        style: _text(
-                          14,
-                          const Color(0xFF1F2937),
-                          fontWeight: FontWeight.w500,
-                          height: 1.22,
-                        ),
+                    ),
+                    const SizedBox(width: 10),
+                    Opacity(
+                      opacity: hovered ? 1 : 0.82,
+                      child: _HoverActionButtons(
+                        onCopyPressed: onCopyPressed,
+                        menuOpen: menuOpen,
+                        onArrowPressed: onArrowPressed,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Opacity(
-                  opacity: hovered ? 1 : 0,
-                  child: IgnorePointer(
-                    ignoring: !hovered,
-                    child: _HoverActionButtons(
-                      onCopyPressed: onCopyPressed,
-                      menuOpen: menuOpen,
-                      onArrowPressed: onArrowPressed,
+                const SizedBox(height: 2),
+                Padding(
+                  padding: const EdgeInsets.only(left: 36),
+                  child: Text(
+                    value,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                    style: _text(
+                      16,
+                      _VaultColors.title,
+                      fontWeight: FontWeight.w500,
+                      height: 1.22,
                     ),
                   ),
                 ),
@@ -1795,12 +2043,11 @@ class _SocialLoginCard extends StatelessWidget {
                   height: 32,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(6),
+                    shape: BoxShape.circle,
                     border: Border.all(color: const Color(0xFFE2EAF4)),
                   ),
                   alignment: Alignment.center,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                  child: ClipOval(
                     child: Image.network(
                       faviconUrl,
                       width: 20,
@@ -1934,148 +2181,119 @@ class _SecretFieldRowState extends State<_SecretFieldRow> {
       child: InkWell(
         onTap: widget.onCopyPressed,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 76),
+          constraints: const BoxConstraints(minHeight: 54),
           decoration: BoxDecoration(
-            color:
-                widget.hovered ? const Color(0xFFEAF1FA) : Colors.transparent,
+            color: widget.hovered ? _VaultColors.peachSoft : Colors.transparent,
             border: Border(
               bottom: widget.showDivider
-                  ? const BorderSide(color: Color(0xFFDDE5EF))
+                  ? const BorderSide(color: _kDetailCardBorder)
                   : BorderSide.none,
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Row(
                   children: <Widget>[
-                    Icon(
-                      widget.icon,
-                      size: 15,
-                      color: widget.iconColor,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      widget.label,
-                      style: _text(
-                        9,
-                        const Color(0xFF6D63D6),
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: _FlatFieldLabel(
+                        icon: widget.icon,
+                        label: widget.label,
+                        iconColor: widget.hovered
+                            ? _kPrimaryButtonColor
+                            : const Color(0xFFD08316),
                       ),
                     ),
                     if (widget.showStrength) ...<Widget>[
-                      const SizedBox(width: 8),
-                      Builder(
-                        builder: (context) {
-                          final strength =
-                              _evalPasswordStrength(widget.secretValue);
-                          final (label, score, ringColor, textColor) =
-                              _strengthStyle(strength);
-                          return Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              Text(
-                                label,
-                                style: _text(
-                                  10,
-                                  textColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  value: score,
-                                  strokeWidth: 2.2,
-                                  backgroundColor: const Color(0xFFE4EAF2),
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    ringColor,
-                                  ),
-                                  strokeCap: StrokeCap.round,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
+                      const SizedBox(width: 10),
+                      _PasswordStrengthIndicator(value: widget.secretValue),
                     ],
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: <Widget>[
-                    Expanded(
+                    const SizedBox(width: 10),
+                    Opacity(
+                      opacity: widget.hovered ? 1 : 0.82,
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
                           if (widget.showVisibilityToggle) ...<Widget>[
-                            _AppTooltip(
-                              message:
+                            _FlatRowAction(
+                              icon: _visible
+                                  ? TablerIcons.eye_off
+                                  : TablerIcons.eye,
+                              tooltip:
                                   _visible ? 'Hide password' : 'Show password',
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () =>
-                                      setState(() => _visible = !_visible),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(6),
-                                    child: Icon(
-                                      _visible
-                                          ? TablerIcons.eye_off
-                                          : TablerIcons.eye,
-                                      size: 18,
-                                      color: _VaultColors.icon,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              onTap: () => setState(() => _visible = !_visible),
+                              color: const Color(0xFF168B76),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 4),
                           ],
-                          Expanded(
-                            child: Text(
-                              _visible
-                                  ? widget.secretValue
-                                  : '•' *
-                                      math.max(10, widget.secretValue.length),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                              textAlign: TextAlign.left,
-                              style: _text(
-                                _visible ? 13 : 15,
-                                const Color(0xFF1F2937),
-                                fontWeight: FontWeight.w500,
-                                height: 1.22,
-                              ),
-                            ),
+                          _HoverActionButtons(
+                            onCopyPressed: widget.onCopyPressed,
+                            menuOpen: widget.menuOpen,
+                            onArrowPressed: widget.onArrowPressed,
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Opacity(
-                      opacity: widget.hovered ? 1 : 0,
-                      child: IgnorePointer(
-                        ignoring: !widget.hovered,
-                        child: _HoverActionButtons(
-                          onCopyPressed: widget.onCopyPressed,
-                          menuOpen: widget.menuOpen,
-                          onArrowPressed: widget.onArrowPressed,
-                        ),
-                      ),
-                    ),
                   ],
+                ),
+                const SizedBox(height: 2),
+                Padding(
+                  padding: const EdgeInsets.only(left: 36),
+                  child: Text(
+                    _visible
+                        ? widget.secretValue
+                        : '•' * math.max(10, widget.secretValue.length),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: _text(
+                      _visible ? 16 : 18,
+                      _VaultColors.title,
+                      fontWeight: FontWeight.w500,
+                      height: 1.22,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PasswordStrengthIndicator extends StatelessWidget {
+  const _PasswordStrengthIndicator({required this.value});
+
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final strength = _evalPasswordStrength(value);
+    final (label, score, ringColor, textColor) = _strengthStyle(strength);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Text(
+          label,
+          style: _text(11, textColor, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(width: 5),
+        SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(
+            value: score,
+            strokeWidth: 2.2,
+            backgroundColor: const Color(0xFFE4EAF2),
+            valueColor: AlwaysStoppedAnimation<Color>(ringColor),
+            strokeCap: StrokeCap.round,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2108,13 +2326,11 @@ class _TotpRow extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: countdownColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(TablerIcons.clock, size: 18, color: countdownColor),
+          _CircularDetailIcon(
+            icon: TablerIcons.clock,
+            color: countdownColor,
+            size: 32,
+            iconSize: 17,
           ),
           const SizedBox(width: 10),
           Text(
@@ -2152,16 +2368,25 @@ class _TotpRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          InkWell(
-            onTap: onCopyPressed,
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: countdownColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+          Material(
+            color: countdownColor.withValues(alpha: 0.10),
+            shape: CircleBorder(
+              side: BorderSide(
+                color: countdownColor.withValues(alpha: 0.16),
               ),
-              child: Icon(TablerIcons.copy, size: 18, color: countdownColor),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onCopyPressed,
+              child: SizedBox(
+                width: 32,
+                height: 32,
+                child: Icon(
+                  TablerIcons.copy,
+                  size: 17,
+                  color: countdownColor,
+                ),
+              ),
             ),
           ),
         ],
@@ -2188,9 +2413,11 @@ class _AttachmentsSection extends StatelessWidget {
       children: <Widget>[
         Row(
           children: <Widget>[
-            const Icon(TablerIcons.paperclip,
-                size: 15, color: Color(0xFF5A78C5)),
-            const SizedBox(width: 6),
+            const _CircularDetailIcon(
+              icon: TablerIcons.paperclip,
+              color: Color(0xFF5A78C5),
+            ),
+            const SizedBox(width: 8),
             Text(
               'Attachments',
               style: _text(
@@ -2208,8 +2435,13 @@ class _AttachmentsSection extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(width: 6),
-            const Icon(TablerIcons.upload, size: 15, color: Color(0xFF5A78C5)),
+            const SizedBox(width: 8),
+            const _CircularDetailIcon(
+              icon: TablerIcons.upload,
+              color: Color(0xFF5A78C5),
+              size: 26,
+              iconSize: 14,
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -2247,7 +2479,7 @@ class _AttachmentTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFFFBFCFF),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: const Color(0xFFE2E8F2)),
         ),
         child: Row(
@@ -2259,7 +2491,7 @@ class _AttachmentTile extends StatelessWidget {
                 color: attachment.isImage
                     ? const Color(0xFFDCE5FA)
                     : const Color(0xFFEEF2F8),
-                borderRadius: BorderRadius.circular(6),
+                shape: BoxShape.circle,
               ),
               clipBehavior: Clip.antiAlias,
               alignment: Alignment.center,
@@ -2313,14 +2545,10 @@ class _AttachmentTile extends StatelessWidget {
                 ],
               ),
             ),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
+            _FlatRowAction(
+              icon: TablerIcons.download,
+              tooltip: 'Download attachment',
               onTap: onDownload,
-              child: const Padding(
-                padding: EdgeInsets.all(6),
-                child: Icon(TablerIcons.download,
-                    size: 15, color: _VaultColors.icon),
-              ),
             ),
           ],
         ),
@@ -2344,8 +2572,8 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        Icon(icon, size: 15, color: iconColor),
-        const SizedBox(width: 6),
+        _CircularDetailIcon(icon: icon, color: iconColor),
+        const SizedBox(width: 8),
         Text(
           label,
           style: _text(
@@ -2355,178 +2583,6 @@ class _SectionLabel extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _HeaderScanButton extends StatelessWidget {
-  const _HeaderScanButton({this.onTap});
-
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return _AppTooltip(
-      message: 'Scan 2FA code',
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: const Color(0xFFEEF4FF),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFC7D6F6)),
-          ),
-          alignment: Alignment.center,
-          child: const Icon(
-            TablerIcons.scan,
-            size: 14,
-            color: Color(0xFF2E5ECC),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GhostButton extends StatefulWidget {
-  const _GhostButton({
-    required this.icon,
-    required this.label,
-    required this.iconColor,
-    required this.textColor,
-    required this.backgroundColor,
-    required this.borderColor,
-    this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color iconColor;
-  final Color textColor;
-  final Color backgroundColor;
-  final Color borderColor;
-  final VoidCallback? onPressed;
-
-  @override
-  State<_GhostButton> createState() => _GhostButtonState();
-}
-
-class _GhostButtonState extends State<_GhostButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedScale(
-        scale: _hovered ? 1.02 : 1,
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOutCubic,
-        child: InkWell(
-          onTap: widget.onPressed,
-          borderRadius: BorderRadius.circular(8),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: widget.backgroundColor,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: widget.borderColor),
-              boxShadow: _hovered
-                  ? const <BoxShadow>[
-                      BoxShadow(
-                        color: Color(0x120F172A),
-                        blurRadius: 12,
-                        offset: Offset(0, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              children: <Widget>[
-                Icon(widget.icon, size: 13, color: widget.iconColor),
-                const SizedBox(width: 6),
-                Text(
-                  widget.label,
-                  style:
-                      _text(12, widget.textColor, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrimaryButton extends StatefulWidget {
-  const _PrimaryButton({
-    required this.icon,
-    required this.label,
-    this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  State<_PrimaryButton> createState() => _PrimaryButtonState();
-}
-
-class _PrimaryButtonState extends State<_PrimaryButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: AnimatedScale(
-          scale: _hovered ? 1.02 : 1,
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOutCubic,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color:
-                  _hovered ? _kPrimaryButtonHoverColor : _kPrimaryButtonColor,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: _hovered
-                      ? _kPrimaryButtonColor.withValues(alpha: 0.24)
-                      : _kPrimaryButtonColor.withValues(alpha: 0.14),
-                  blurRadius: _hovered ? 12 : 4,
-                  offset: Offset(0, _hovered ? 4 : 1),
-                ),
-              ],
-            ),
-            child: Row(
-              children: <Widget>[
-                Icon(widget.icon, size: 13, color: Colors.white),
-                const SizedBox(width: 6),
-                Text(
-                  widget.label,
-                  style: _text(12, Colors.white, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -2936,7 +2992,7 @@ class _AppTooltip extends StatelessWidget {
         fontSize: 12,
         color: Colors.white,
         fontWeight: FontWeight.w500,
-        fontFamily: 'Inter',
+        fontFamily: 'Ubuntu Sans',
       ),
       child: child,
     );
@@ -2971,108 +3027,171 @@ class _ActionIcon extends StatelessWidget {
   }
 }
 
+class _DetailMoreMenu extends StatelessWidget {
+  const _DetailMoreMenu({
+    required this.destructiveLabel,
+    required this.onDelete,
+  });
+
+  final String destructiveLabel;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: 'More actions',
+      color: _VaultColors.surface,
+      surfaceTintColor: _VaultColors.surface,
+      elevation: 8,
+      position: PopupMenuPosition.under,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: _VaultColors.borderSoft),
+      ),
+      onSelected: (value) {
+        if (value == 'delete') onDelete();
+      },
+      itemBuilder: (context) => <PopupMenuEntry<String>>[
+        PopupMenuItem<String>(
+          value: 'delete',
+          child: Row(
+            children: <Widget>[
+              const Icon(
+                TablerIcons.trash,
+                size: 16,
+                color: _kDangerButtonColor,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                destructiveLabel,
+                style: _text(
+                  11,
+                  _kDangerButtonColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+      child: Container(
+        width: 38,
+        height: 38,
+        alignment: Alignment.center,
+        child: const Icon(
+          TablerIcons.dots_vertical,
+          size: 19,
+          color: _VaultColors.icon,
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyDetailPane extends StatelessWidget {
   const _EmptyDetailPane();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFFBFCFF),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            // Icon tile with gradient fill and glow
-            Container(
-              width: 76,
-              height: 76,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: <Color>[Color(0xFFEEF4FF), Color(0xFFD8E6FF)],
-                ),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: const Color(0xFFC3D5F5),
-                ),
-                boxShadow: const <BoxShadow>[
-                  BoxShadow(
-                    color: Color(0x1A0A67FF),
-                    blurRadius: 28,
-                    offset: Offset(0, 10),
+      color: _VaultColors.canvas,
+      child: Column(
+        children: <Widget>[
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      color: _VaultColors.peachSoft,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: _VaultColors.borderSoft,
+                      ),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x17000000),
+                          blurRadius: 18,
+                          offset: Offset(0, 7),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      TablerIcons.shield_lock,
+                      size: 34,
+                      color: _kPrimaryButtonColor,
+                    ),
+                  ),
+
+                  const SizedBox(height: 22),
+
+                  Text(
+                    'Your vault is empty',
+                    style: _text(
+                      15,
+                      _VaultColors.title,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Text(
+                    'Add your first item using the\n"+ New Item" button above.',
+                    textAlign: TextAlign.center,
+                    style: _text(
+                      12,
+                      _VaultColors.headerLabel,
+                      fontWeight: FontWeight.w400,
+                      height: 1.65,
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // Item type pills
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: const <Widget>[
+                      _EmptyTypePill(
+                        icon: TablerIcons.key,
+                        label: 'SSH Keys',
+                        iconColor: Color(0xFF2E5ECC),
+                      ),
+                      _EmptyTypePill(
+                        icon: TablerIcons.notebook,
+                        label: 'Secure Notes',
+                        iconColor: Color(0xFF6B5FC0),
+                      ),
+                      _EmptyTypePill(
+                        icon: TablerIcons.fingerprint,
+                        label: 'Passkeys',
+                        iconColor: Color(0xFF0891B2),
+                      ),
+                      _EmptyTypePill(
+                        icon: TablerIcons.id_badge_2,
+                        label: 'Identities',
+                        iconColor: Color(0xFF059669),
+                      ),
+                      _EmptyTypePill(
+                        icon: TablerIcons.clock,
+                        label: 'TOTP Codes',
+                        iconColor: Color(0xFFD97706),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              alignment: Alignment.center,
-              child: const Icon(
-                TablerIcons.shield_lock,
-                size: 34,
-                color: Color(0xFF2651B6),
-              ),
             ),
-
-            const SizedBox(height: 22),
-
-            Text(
-              'Your vault is empty',
-              style: _text(
-                15,
-                const Color(0xFF1A2740),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              'Add your first item using the\n"+ New Item" button above.',
-              textAlign: TextAlign.center,
-              style: _text(
-                12,
-                const Color(0xFF8A97AC),
-                fontWeight: FontWeight.w400,
-                height: 1.65,
-              ),
-            ),
-
-            const SizedBox(height: 28),
-
-            // Item type pills
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: const <Widget>[
-                _EmptyTypePill(
-                  icon: TablerIcons.key,
-                  label: 'SSH Keys',
-                  iconColor: Color(0xFF2E5ECC),
-                ),
-                _EmptyTypePill(
-                  icon: TablerIcons.notebook,
-                  label: 'Secure Notes',
-                  iconColor: Color(0xFF6B5FC0),
-                ),
-                _EmptyTypePill(
-                  icon: TablerIcons.fingerprint,
-                  label: 'Passkeys',
-                  iconColor: Color(0xFF0891B2),
-                ),
-                _EmptyTypePill(
-                  icon: TablerIcons.id_badge_2,
-                  label: 'Identities',
-                  iconColor: Color(0xFF059669),
-                ),
-                _EmptyTypePill(
-                  icon: TablerIcons.clock,
-                  label: 'TOTP Codes',
-                  iconColor: Color(0xFFD97706),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+          const _DetailCreditsBar(),
+        ],
       ),
     );
   }
@@ -3094,9 +3213,9 @@ class _EmptyTypePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _VaultColors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE3ECF6)),
+        border: Border.all(color: _VaultColors.borderSoft),
         boxShadow: const <BoxShadow>[
           BoxShadow(
             color: Color(0x080F172A),
@@ -3114,7 +3233,7 @@ class _EmptyTypePill extends StatelessWidget {
             label,
             style: _text(
               11,
-              const Color(0xFF3A4E6B),
+              _VaultColors.title,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -3812,9 +3931,8 @@ class _SshAgentSetupBanner extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              const Icon(
-                TablerIcons.sparkles,
-                size: 16,
+              const _CircularDetailIcon(
+                icon: TablerIcons.sparkles,
                 color: Colors.white,
               ),
               const SizedBox(width: 8),
@@ -3892,9 +4010,8 @@ class _PasskeyBanner extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              const Icon(
-                TablerIcons.chevron_down,
-                size: 16,
+              const _CircularDetailIcon(
+                icon: TablerIcons.chevron_down,
                 color: _textMain,
               ),
               const SizedBox(width: 8),
@@ -3909,15 +4026,19 @@ class _PasskeyBanner extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
+                width: 28,
+                height: 28,
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
+                  shape: BoxShape.circle,
                 ),
-                child: Image.asset(
-                  'assets/images/passkey_icon.png',
-                  width: 20,
-                  height: 20,
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/passkey_icon.png',
+                    width: 20,
+                    height: 20,
+                  ),
                 ),
               ),
             ],
@@ -4027,9 +4148,8 @@ class _WeakPasswordBanner extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              const Icon(
-                TablerIcons.chevron_down,
-                size: 16,
+              const _CircularDetailIcon(
+                icon: TablerIcons.chevron_down,
                 color: _textMain,
               ),
               const SizedBox(width: 8),
@@ -4043,10 +4163,11 @@ class _WeakPasswordBanner extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(
-                TablerIcons.alert_circle,
-                size: 20,
+              const _CircularDetailIcon(
+                icon: TablerIcons.alert_circle,
                 color: _textMain,
+                size: 30,
+                iconSize: 17,
               ),
             ],
           ),

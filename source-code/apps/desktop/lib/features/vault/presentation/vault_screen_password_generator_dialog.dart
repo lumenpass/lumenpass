@@ -114,12 +114,7 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
     Color color, {
     FontWeight weight = FontWeight.w500,
   }) {
-    return TextStyle(
-      fontSize: size,
-      color: color,
-      fontWeight: weight,
-      fontFamily: currentFontFamily,
-    );
+    return _text(size, color, fontWeight: weight);
   }
 
   void _useThisPassword() {
@@ -138,26 +133,26 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
         child: Container(
           width: 570,
           decoration: BoxDecoration(
-            color: const Color(0xFFE7EBF0),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFC9D2DE)),
+            color: _VaultColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _VaultColors.borderPane),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: Color(0x33172033),
-                blurRadius: 32,
-                offset: Offset(0, 14),
+                color: Color(0x295B4638),
+                blurRadius: 36,
+                offset: Offset(0, 16),
               ),
             ],
           ),
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          padding: const EdgeInsets.all(22),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               _buildHeader(),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
               _buildContent(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
               _buildActionButtons(),
               if (_toastMessage != null) ...<Widget>[
                 const SizedBox(height: 10),
@@ -177,64 +172,58 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F9FB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF8BA9D8), width: 2),
-      ),
-      child: Row(
-        children: <Widget>[
-          const Icon(
+    return Row(
+      children: <Widget>[
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: _VaultColors.peachSoft,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: const Icon(
             TablerIcons.shield_lock,
-            color: Color(0xFF1F2937),
-            size: 16,
+            color: _kPrimaryButtonColor,
+            size: 21,
           ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              'Generate Password',
-              style: _genText(
-                13,
-                const Color(0xFF1F2937),
-                weight: FontWeight.w600,
-              ),
-              overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'Generate Password',
+            style: _genText(
+              18,
+              _VaultColors.title,
+              weight: FontWeight.w700,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        IconButton(
+          tooltip: 'Close',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(TablerIcons.x, size: 20),
+          color: _VaultColors.icon,
+          style: IconButton.styleFrom(
+            hoverColor: _VaultColors.peachSoft,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
-          Tooltip(
-            message: 'Close',
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => Navigator.of(context).pop(),
-                borderRadius: BorderRadius.circular(6),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
-                  child: Icon(
-                    TablerIcons.x,
-                    size: 16,
-                    color: Color(0xFF5E6B7D),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildContent() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFE2E7ED),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD0D8E2)),
+        color: _VaultColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _VaultColors.borderSoft),
       ),
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -247,26 +236,27 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                   button: true,
                   selected: active,
                   label: '${_genTypeLabel(t)} preset',
-                  child: GestureDetector(
+                  child: InkWell(
                     onTap: () => _applyGenType(t),
+                    borderRadius: BorderRadius.circular(7),
                     child: Container(
-                      height: 26,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      height: 32,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         color: active
-                            ? const Color(0xFF0F67D6)
-                            : const Color(0xFFDDE4EC),
-                        borderRadius: BorderRadius.circular(6),
+                            ? _kPrimaryButtonColor
+                            : _VaultColors.surface,
+                        borderRadius: BorderRadius.circular(7),
                         border: active
                             ? null
-                            : Border.all(color: const Color(0xFFCCD4DF)),
+                            : Border.all(color: _VaultColors.borderSoft),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         _genTypeLabel(t),
                         style: _genText(
-                          10,
-                          active ? Colors.white : const Color(0xFF3A4A5C),
+                          12,
+                          active ? Colors.white : _VaultColors.title,
                           weight: FontWeight.w600,
                         ),
                       ),
@@ -276,14 +266,14 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 12),
           Container(
-            height: 42,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFF7F9FB),
+              color: _VaultColors.surface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFD0D8E2)),
+              border: Border.all(color: _VaultColors.borderSoft),
             ),
             child: Row(
               children: <Widget>[
@@ -296,8 +286,8 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                         ? Text(
                             'Generating...',
                             style: _genText(
-                              11,
-                              const Color(0xFF8A9BB0),
+                              12,
+                              _VaultColors.icon,
                             ),
                           )
                         : SingleChildScrollView(
@@ -306,17 +296,17 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                               children: _generatedPassword.split('').map((c) {
                                 final Color col;
                                 if (RegExp(r'[0-9]').hasMatch(c)) {
-                                  col = const Color(0xFF0F67D6);
+                                  col = _kPrimaryButtonColor;
                                 } else if (RegExp(r'[^A-Za-z0-9]')
                                     .hasMatch(c)) {
-                                  col = const Color(0xFFEA8C00);
+                                  col = const Color(0xFFAA6E16);
                                 } else {
-                                  col = const Color(0xFF252C35);
+                                  col = _VaultColors.title;
                                 }
                                 return Text(
                                   c,
                                   style: _genText(
-                                    12,
+                                    14,
                                     col,
                                     weight: FontWeight.w600,
                                   ),
@@ -327,50 +317,35 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                Tooltip(
-                  message: _genCopied ? 'Copied' : 'Copy password',
-                  child: Semantics(
-                    button: true,
-                    label: 'Copy generated password',
-                    child: GestureDetector(
-                      onTap: _copyGen,
-                      child: Icon(
-                        _genCopied ? TablerIcons.check : TablerIcons.copy,
-                        size: 15,
-                        color: _genCopied
-                            ? const Color(0xFF16A34A)
-                            : const Color(0xFF8A9BB0),
-                      ),
-                    ),
+                IconButton(
+                  tooltip: _genCopied ? 'Copied' : 'Copy password',
+                  onPressed: _copyGen,
+                  icon: Icon(
+                    _genCopied ? TablerIcons.check : TablerIcons.copy,
+                    size: 18,
                   ),
+                  color:
+                      _genCopied ? const Color(0xFF168B76) : _VaultColors.icon,
+                  visualDensity: VisualDensity.compact,
                 ),
-                const SizedBox(width: 8),
-                Tooltip(
-                  message: 'Regenerate',
-                  child: Semantics(
-                    button: true,
-                    label: 'Regenerate password',
-                    child: GestureDetector(
-                      onTap: _doRegen,
-                      child: const Icon(
-                        TablerIcons.refresh,
-                        size: 15,
-                        color: Color(0xFF8A9BB0),
-                      ),
-                    ),
-                  ),
+                IconButton(
+                  tooltip: 'Regenerate password',
+                  onPressed: _doRegen,
+                  icon: const Icon(TablerIcons.refresh, size: 18),
+                  color: _VaultColors.icon,
+                  visualDensity: VisualDensity.compact,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 10),
           Row(
             children: <Widget>[
               Text(
                 'Length',
                 style: _genText(
-                  10,
-                  const Color(0xFF5E6B7D),
+                  12,
+                  _VaultColors.headerLabel,
                   weight: FontWeight.w600,
                 ),
               ),
@@ -378,8 +353,8 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
               Text(
                 '$_genLength',
                 style: _genText(
-                  10,
-                  const Color(0xFF252C35),
+                  12,
+                  _VaultColors.title,
                   weight: FontWeight.w700,
                 ),
               ),
@@ -390,10 +365,10 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
               trackHeight: 3,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-              activeTrackColor: const Color(0xFF0F67D6),
-              inactiveTrackColor: const Color(0xFFCCD4DF),
-              thumbColor: const Color(0xFF0F67D6),
-              overlayColor: const Color(0x220F67D6),
+              activeTrackColor: _kPrimaryButtonColor,
+              inactiveTrackColor: _VaultColors.borderSoft,
+              thumbColor: _kPrimaryButtonColor,
+              overlayColor: _VaultColors.peach,
             ),
             child: Slider(
               value: _genLength.toDouble(),
@@ -435,12 +410,12 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
     bool last = false,
   }) {
     return Container(
-      height: 30,
+      height: 36,
       decoration: last
           ? null
           : const BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: Color(0xFFCCD4DF), width: 0.5),
+                bottom: BorderSide(color: _VaultColors.borderSoft, width: 0.5),
               ),
             ),
       child: Row(
@@ -449,43 +424,20 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
             child: Text(
               label,
               style: _genText(
-                11,
-                const Color(0xFF3A4A5C),
+                12,
+                _VaultColors.title,
                 weight: FontWeight.w500,
               ),
             ),
           ),
-          Semantics(
-            toggled: value,
-            label: '$label toggle',
-            child: GestureDetector(
-              onTap: () => onChanged(!value),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                width: 34,
-                height: 18,
-                decoration: BoxDecoration(
-                  color: value
-                      ? const Color(0xFF0F67D6)
-                      : const Color(0xFFCCD4DF),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: AnimatedAlign(
-                  alignment:
-                      value ? Alignment.centerRight : Alignment.centerLeft,
-                  duration: const Duration(milliseconds: 140),
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: Colors.white,
+            activeTrackColor: _kPrimaryButtonColor,
+            inactiveThumbColor: _VaultColors.surface,
+            inactiveTrackColor: _VaultColors.borderPane,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ],
       ),
@@ -496,55 +448,36 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
     return Row(
       children: <Widget>[
         Expanded(
-          child: Semantics(
-            button: true,
-            label: 'Cancel',
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFCCD4DF)),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Cancel',
-                  style: _genText(
-                    12,
-                    const Color(0xFF3A4A5C),
-                    weight: FontWeight.w600,
-                  ),
-                ),
+          child: OutlinedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(42),
+              foregroundColor: _VaultColors.title,
+              backgroundColor: _VaultColors.surface,
+              side: const BorderSide(color: _VaultColors.borderPane),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
+            child: Text('Cancel',
+                style:
+                    _genText(13, _VaultColors.title, weight: FontWeight.w600)),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
         Expanded(
-          child: Semantics(
-            button: true,
-            label: 'Use this password',
-            child: GestureDetector(
-              onTap: _useThisPassword,
-              child: Container(
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F67D6),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Use Password',
-                  style: _genText(
-                    12,
-                    Colors.white,
-                    weight: FontWeight.w600,
-                  ),
-                ),
+          child: FilledButton(
+            onPressed: _useThisPassword,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(42),
+              backgroundColor: _kPrimaryButtonColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
+            child: Text('Use Password',
+                style: _genText(13, Colors.white, weight: FontWeight.w600)),
           ),
         ),
       ],

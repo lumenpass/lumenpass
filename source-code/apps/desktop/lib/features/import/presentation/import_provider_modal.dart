@@ -161,16 +161,17 @@ class _ImportProviderModalState extends ConsumerState<ImportProviderModal> {
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
         child: Container(
-          width: 560,
+          width: 620,
           padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            color: const Color(0xFFFFFCF6),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFCEC7BB)),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: Color(0x22172033),
-                blurRadius: 40,
-                offset: Offset(0, 16),
+                color: Color(0x295B4638),
+                blurRadius: 32,
+                offset: Offset(0, 14),
               ),
             ],
           ),
@@ -195,7 +196,7 @@ class _ImportProviderModalState extends ConsumerState<ImportProviderModal> {
                 ),
               ),
               const SizedBox(height: 20),
-              Container(height: 1, color: const Color(0xFFE5E7EB)),
+              Container(height: 1, color: const Color(0xFFCEC7BB)),
               const SizedBox(height: 16),
               _buildFooter(),
             ],
@@ -285,25 +286,24 @@ class _ImportProviderModalState extends ConsumerState<ImportProviderModal> {
           _FooterButton(
             label: 'Back',
             backgroundColor: Colors.transparent,
-            textColor: const Color(0xFF6B7280),
-            borderColor: const Color(0xFFD1D5DB),
+            textColor: const Color(0xFF74766F),
+            borderColor: const Color(0xFFCEC7BB),
             onTap: _handleBack,
           ),
         const Spacer(),
         _FooterButton(
           label: 'Cancel',
           backgroundColor: Colors.transparent,
-          textColor: const Color(0xFF6B7280),
-          borderColor: const Color(0xFFD1D5DB),
+          textColor: const Color(0xFF74766F),
+          borderColor: const Color(0xFFCEC7BB),
           onTap: widget.onClose,
         ),
         const SizedBox(width: 10),
         _FooterButton(
           label: 'Next',
-          backgroundColor: _canGoNext
-              ? const Color(0xFF0A3B48)
-              : const Color(0xFFE5E7EB),
-          textColor: _canGoNext ? Colors.white : const Color(0xFF9CA3AF),
+          backgroundColor:
+              _canGoNext ? const Color(0xFFFF5B22) : const Color(0xFFD8D2C7),
+          textColor: _canGoNext ? Colors.white : const Color(0xFFA09D95),
           onTap: _canGoNext ? _handleNext : null,
         ),
       ],
@@ -326,14 +326,14 @@ class _Header extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: const Color(0xFFF0F4FF),
+            color: const Color(0xFFFAEDE5),
             borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,
           child: const Icon(
             TablerIcons.file_import,
             size: 20,
-            color: Color(0xFF0A3B48),
+            color: Color(0xFFFF5B22),
           ),
         ),
         const SizedBox(width: 14),
@@ -346,7 +346,7 @@ class _Header extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1D23),
+                  color: Color(0xFF1E2021),
                 ),
               ),
               const SizedBox(height: 4),
@@ -355,7 +355,7 @@ class _Header extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w400,
-                  color: Colors.grey.shade600,
+                  color: const Color(0xFF74766F),
                 ),
               ),
             ],
@@ -375,8 +375,8 @@ class _Stepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isStep2 = currentStep == _ImportStep.uploadFile;
-    const Color accent = Color(0xFF0A3B48);
-    const Color mutedText = Color(0xFF94A3B8);
+    const Color accent = Color(0xFFFF5B22);
+    const Color mutedText = Color(0xFF908D86);
     return Row(
       children: <Widget>[
         _StepBadge(
@@ -389,7 +389,7 @@ class _Stepper extends StatelessWidget {
           child: Container(
             height: 2,
             margin: const EdgeInsets.symmetric(horizontal: 12),
-            color: isStep2 ? accent : const Color(0xFFE2E8F0),
+            color: isStep2 ? accent : const Color(0xFFD8D2C7),
           ),
         ),
         _StepBadge(
@@ -421,7 +421,7 @@ class _StepBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color accent = Color(0xFF0A3B48);
+    const Color accent = Color(0xFFFF5B22);
     final bool filled = isActive || isDone;
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -433,7 +433,7 @@ class _StepBadge extends StatelessWidget {
             shape: BoxShape.circle,
             color: filled ? accent : Colors.white,
             border: Border.all(
-              color: filled ? accent : const Color(0xFFCBD5E1),
+              color: filled ? accent : const Color(0xFFCEC7BB),
               width: 1.5,
             ),
           ),
@@ -445,7 +445,7 @@ class _StepBadge extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: filled ? Colors.white : const Color(0xFF94A3B8),
+                    color: filled ? Colors.white : const Color(0xFF908D86),
                   ),
                 ),
         ),
@@ -476,15 +476,15 @@ class _InfoBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFEEF2FF),
+        color: const Color(0xFFFFF3E8),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFC7D2FE)),
+        border: Border.all(color: const Color(0xFFE7CFC0)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Icon(TablerIcons.info_circle,
-              size: 16, color: Color(0xFF3730A3)),
+              size: 16, color: Color(0xFF168B76)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -493,7 +493,7 @@ class _InfoBanner extends StatelessWidget {
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
                 height: 1.4,
-                color: Color(0xFF3730A3),
+                color: Color(0xFF4F524E),
               ),
             ),
           ),
@@ -523,9 +523,9 @@ class _ProviderSummary extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: const Color(0xFFF8F3EA),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFCEC7BB)),
       ),
       child: Row(
         children: <Widget>[
@@ -553,7 +553,7 @@ class _ProviderSummary extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1F2937),
+                    color: Color(0xFF1E2021),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -562,7 +562,7 @@ class _ProviderSummary extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFF64748B),
+                    color: Color(0xFF74766F),
                   ),
                 ),
               ],
@@ -587,21 +587,20 @@ class _DropZoneShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color accent = Color(0xFF0A3B48);
-    final Color borderColor =
-        isDragOver ? accent : const Color(0xFFCBD5E1);
+    const Color accent = Color(0xFFFF5B22);
+    final Color borderColor = isDragOver ? accent : const Color(0xFFCEC7BB);
     final double borderWidth = isDragOver ? 1.8 : 1.4;
 
     final LinearGradient background = isDragOver
         ? const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFFEDF5F7), Color(0xFFDCEBF0)],
+            colors: <Color>[Color(0xFFFFF3E8), Color(0xFFF3E4D6)],
           )
         : const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFFFBFCFE), Color(0xFFF3F6FB)],
+            colors: <Color>[Color(0xFFFFFCF6), Color(0xFFF8F3EA)],
           );
 
     return AnimatedContainer(
@@ -717,18 +716,17 @@ class _DropAreaPrompt extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1F2937),
+                  color: Color(0xFF1E2021),
                   letterSpacing: -0.1,
                 ),
               ),
               const SizedBox(width: 12),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: const Color(0xFFD8D2C7)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -736,7 +734,7 @@ class _DropAreaPrompt extends StatelessWidget {
                     const Icon(
                       TablerIcons.file_type_csv,
                       size: 12,
-                      color: Color(0xFF64748B),
+                      color: Color(0xFF74766F),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -744,7 +742,7 @@ class _DropAreaPrompt extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
+                        color: Color(0xFF74766F),
                         letterSpacing: 0.1,
                       ),
                     ),
@@ -759,7 +757,7 @@ class _DropAreaPrompt extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: Colors.grey.shade500,
+              color: const Color(0xFFA09D95),
               letterSpacing: 0.4,
             ),
           ),
@@ -778,7 +776,7 @@ class _DropIconStack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color accent = Color(0xFF0A3B48);
+    const Color accent = Color(0xFFFF5B22);
     return SizedBox(
       width: 56,
       height: 56,
@@ -816,8 +814,8 @@ class _DropIconStack extends StatelessWidget {
                 colors: <Color>[
                   isDragOver ? const Color(0xFF0F5060) : Colors.white,
                   isDragOver
-                      ? const Color(0xFF0A3B48)
-                      : const Color(0xFFF1F5F9),
+                      ? const Color(0xFFFF5B22)
+                      : const Color(0xFFF3EDE4),
                 ],
               ),
               boxShadow: <BoxShadow>[
@@ -864,13 +862,13 @@ class _BrowseButtonState extends State<_BrowseButton> {
           borderRadius: BorderRadius.circular(10),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              color: _hovered ? const Color(0xFFEFF6FF) : Colors.white,
+              color:
+                  _hovered ? const Color(0xFFFFF0E7) : const Color(0xFFFFFCF6),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: const Color(0xFF0A3B48),
+                color: const Color(0xFFFF5B22),
                 width: 1.2,
               ),
             ),
@@ -878,14 +876,14 @@ class _BrowseButtonState extends State<_BrowseButton> {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 const Icon(TablerIcons.folder_open,
-                    size: 16, color: Color(0xFF0A3B48)),
+                    size: 16, color: Color(0xFFFF5B22)),
                 const SizedBox(width: 8),
                 const Text(
                   'Browse files',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF0A3B48),
+                    color: Color(0xFFFF5B22),
                   ),
                 ),
               ],
@@ -929,14 +927,14 @@ class _DropAreaSelectedFile extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: const BoxDecoration(
-              color: Color(0xFFEDF4F6),
+              color: Color(0xFFFFF3E8),
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
             child: const Icon(
               TablerIcons.file_check,
               size: 26,
-              color: Color(0xFF0A3B48),
+              color: Color(0xFFFF5B22),
             ),
           ),
           const SizedBox(height: 10),
@@ -949,15 +947,14 @@ class _DropAreaSelectedFile extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1F2937),
+                    color: Color(0xFF1E2021),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(5),
@@ -997,9 +994,9 @@ class _ProviderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderColor =
-        isSelected ? const Color(0xFF0A3B48) : const Color(0xFFE5E7EB);
+        isSelected ? const Color(0xFFFF5B22) : const Color(0xFFD8D2C7);
     final bgColor =
-        isSelected ? const Color(0xFFF0FDF6) : const Color(0xFFF9FAFB);
+        isSelected ? const Color(0xFFFFF0E7) : const Color(0xFFF8F3EA);
 
     return Material(
       color: Colors.transparent,
@@ -1050,7 +1047,7 @@ class _ProviderCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF1F2937),
+                        color: Color(0xFF1E2021),
                       ),
                     ),
                   ],
@@ -1076,10 +1073,10 @@ class _ProviderCheckbox extends StatelessWidget {
       width: 18,
       height: 18,
       decoration: BoxDecoration(
-        color: checked ? const Color(0xFF0A3B48) : Colors.white,
+        color: checked ? const Color(0xFFFF5B22) : Colors.white,
         borderRadius: BorderRadius.circular(5),
         border: Border.all(
-          color: checked ? const Color(0xFF0A3B48) : const Color(0xFFCBD5E1),
+          color: checked ? const Color(0xFFFF5B22) : const Color(0xFFCEC7BB),
           width: 1.5,
         ),
       ),
@@ -1151,17 +1148,19 @@ class _IconButtonState extends State<_IconButton> {
         color: Colors.transparent,
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(999),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            width: 32,
-            height: 32,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: _hovered ? const Color(0xFFF3F4F6) : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
+              color:
+                  _hovered ? const Color(0xFFFAEDE5) : const Color(0xFFF8F3EA),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFD8D2C7)),
             ),
             alignment: Alignment.center,
-            child: Icon(widget.icon, size: 16, color: const Color(0xFF9CA3AF)),
+            child: Icon(widget.icon, size: 17, color: const Color(0xFF686B67)),
           ),
         ),
       ),

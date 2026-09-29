@@ -1,19 +1,23 @@
 part of 'vault_screen.dart';
 
 class _VaultColors {
-  static const Color canvas = Color(0xFFF6F8FB);
-  static const Color sidebar = Color(0xFFF2F5FA);
-  static const Color title = Color(0xFF22314A);
-  static const Color headerLabel = Color(0xFF73839D);
+  static const Color canvas = Color(0xFFF5F1E8);
+  static const Color sidebar = Color(0xFFE8DED0);
+  static const Color surface = Color(0xFFFFFCF6);
+  static const Color surfaceMuted = Color(0xFFF8F3EA);
+  static const Color peach = Color(0xFFF3D4C5);
+  static const Color peachSoft = Color(0xFFFAEDE5);
+  static const Color title = Color(0xFF1E2021);
+  static const Color headerLabel = Color(0xFF686B67);
 
-  static const Color icon = Color(0xFF8A97AC);
-  static const Color borderSoft = Color(0xFFE1E7F0);
-  static const Color borderPane = Color(0xFFE8EDF5);
+  static const Color icon = Color(0xFF777A75);
+  static const Color borderSoft = Color(0xFFD8D2C7);
+  static const Color borderPane = Color(0xFFCEC7BB);
 }
 
-const Color _kPrimaryButtonColor = Color(0xFF0A3B48);
-const Color _kPrimaryButtonHoverColor = Color(0xFF0D4A59);
-const Color _kDangerButtonColor = Color(0xFFDC2626);
+const Color _kPrimaryButtonColor = Color(0xFFFF5B22);
+const Color _kPrimaryButtonHoverColor = Color(0xFFE94A13);
+const Color _kDangerButtonColor = Color(0xFFCF3E32);
 
 TextStyle _text(
   double size,
@@ -23,12 +27,30 @@ TextStyle _text(
   double? letterSpacing,
 }) {
   return TextStyle(
-    fontSize: size + 2 + currentTextSizeDelta,
+    // Match the picker/unlock type scale: callers get the size they request.
+    // The previous unconditional +2 made every home-screen label feel like a
+    // separate, oversized type system.
+    fontSize: size + currentTextSizeDelta,
     color: color,
     fontWeight: fontWeight,
     height: height,
     letterSpacing: letterSpacing,
     fontFamily: currentFontFamily,
+  );
+}
+
+TextStyle _displayText(
+  double size,
+  Color color, {
+  double? height,
+}) {
+  return TextStyle(
+    fontSize: size,
+    color: color,
+    fontWeight: FontWeight.w700,
+    fontFamily: currentFontFamily,
+    letterSpacing: -0.45,
+    height: height,
   );
 }
 

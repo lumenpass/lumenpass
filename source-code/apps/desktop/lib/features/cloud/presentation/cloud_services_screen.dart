@@ -13,33 +13,37 @@ import '../../unlock/presentation/webdav_config_dialog.dart';
 import '../application/cloud_disconnect.dart';
 import '../application/cloud_service_provider.dart';
 
-// ── Palette (mirrors the unlock screen's light theme) ───────────────────────
-const Color _kCanvas = Color(0xFFF6F8FB);
-const Color _kBorderSoft = Color(0xFFE1E7F0);
-const Color _kBorderHover = Color(0xFFD4DDEA);
-const Color _kHoverBg = Color(0xFFEAF0FB);
-const Color _kTitle = Color(0xFF22314A);
-const Color _kLabel = Color(0xFF73839D);
-const Color _kIcon = Color(0xFF8A97AC);
-const Color _kActionDark = Color(0xFF0A3B48);
-const Color _kPrimaryHover = Color(0xFF0D4A59);
+// ── Vintage palette (mirrors the database picker) ───────────────────────────
+const Color _kCanvas = Color(0xFFF7F4EC);
+const Color _kPaperBright = Color(0xFFFFFCF5);
+const Color _kBorderSoft = Color(0xFFB8B1A5);
+const Color _kBorderHover = Color(0xFF252628);
+const Color _kHoverBg = Color(0xFFF4E2A4);
+const Color _kTitle = Color(0xFF191A1B);
+const Color _kLabel = Color(0xFF626560);
+const Color _kIcon = Color(0xFF777A75);
+const Color _kActionDark = Color(0xFFFF5B22);
+const Color _kPrimaryHover = Color(0xFFE94A13);
+const Color _kInkBorder = Color(0xFF252628);
+const Color _kPeach = Color(0xFFF4D7C8);
+const Color _kYellow = Color(0xFFF4E2A4);
+const Color _kMintSoft = Color(0xFFDFF2EC);
 
-const Color _kOkBg = Color(0xFFE7F6EC);
-const Color _kOkBorder = Color(0xFFB7E2C5);
-const Color _kOkText = Color(0xFF1B7A3D);
-const Color _kWarnBg = Color(0xFFFDECEC);
-const Color _kWarnBorder = Color(0xFFF3C2C2);
-const Color _kWarnText = Color(0xFFC0392B);
-const Color _kAmberBg = Color(0xFFFEF6E7);
-const Color _kAmberBorder = Color(0xFFF3DFB0);
-const Color _kAmberText = Color(0xFFB7791F);
+const Color _kOkBg = _kMintSoft;
+const Color _kOkBorder = Color(0xFF21A98F);
+const Color _kOkText = Color(0xFF146C5C);
+const Color _kWarnBg = Color(0xFFF9E1D8);
+const Color _kWarnBorder = Color(0xFFC9402D);
+const Color _kWarnText = Color(0xFF9F2F21);
+const Color _kAmberBg = _kYellow;
+const Color _kAmberBorder = Color(0xFFC09B28);
+const Color _kAmberText = Color(0xFF765E10);
 const double _kServiceGridGap = 12;
-const double _kServiceCardRadius = 4;
+const double _kServiceCardRadius = 14;
 const List<BoxShadow> _kServiceCardShadow = <BoxShadow>[
   BoxShadow(
-    color: Color.fromRGBO(0, 0, 0, 0.08),
-    offset: Offset(0, 2),
-    blurRadius: 6,
+    color: Color(0x33252628),
+    offset: Offset(4, 4),
   ),
 ];
 
@@ -53,7 +57,22 @@ TextStyle _t(
     fontSize: size,
     color: color,
     fontWeight: fontWeight,
-    fontFamily: 'Inter',
+    fontFamily: 'Ubuntu Sans',
+    height: height,
+  );
+}
+
+TextStyle _serif(
+  double size,
+  Color color, {
+  FontWeight fontWeight = FontWeight.w700,
+  double? height,
+}) {
+  return TextStyle(
+    fontSize: size,
+    color: color,
+    fontWeight: fontWeight,
+    fontFamily: 'Ubuntu Sans',
     height: height,
   );
 }
@@ -244,48 +263,46 @@ class _CloudServicesScreenState extends ConsumerState<CloudServicesScreen> {
     return Theme(
       data: AppTheme.light(),
       child: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              _buildHeader(),
-              const Divider(height: 1, color: _kBorderSoft),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            'Connected services',
-                            style: _t(
-                              13,
-                              _kLabel,
-                              fontWeight: FontWeight.w600,
+        backgroundColor: _kCanvas,
+        body: _VintageGridSurface(
+          child: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                _buildHeader(),
+                const Divider(height: 1, color: _kBorderSoft),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              'Connected services',
+                              style: _serif(17, _kTitle),
                             ),
                           ),
-                        ),
-                        _LayoutToggle(
-                          layout: _layout,
-                          onChanged: (layout) =>
-                              setState(() => _layout = layout),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Manage where LumenPass syncs your vaults. Connections '
-                      'are checked automatically when you open this screen.',
-                      style: _t(12.5, _kLabel, height: 1.4),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildServicesLayout(),
-                  ],
+                          _LayoutToggle(
+                            layout: _layout,
+                            onChanged: (layout) =>
+                                setState(() => _layout = layout),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'Manage where LumenPass syncs your vaults. Connections '
+                        'are checked automatically when you open this screen.',
+                        style: _t(12.5, _kLabel, height: 1.4),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildServicesLayout(),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -359,8 +376,15 @@ class _CloudServicesScreenState extends ConsumerState<CloudServicesScreen> {
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 20, 12),
+    final double topPadding =
+        Theme.of(context).platform == TargetPlatform.macOS ? 28 : 14;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(14, topPadding, 20, 13),
+      decoration: const BoxDecoration(
+        color: _kPaperBright,
+        border: Border(bottom: BorderSide(color: _kInkBorder)),
+      ),
       child: Row(
         children: <Widget>[
           _BackButton(onTap: () => Navigator.of(context).maybePop()),
@@ -369,11 +393,14 @@ class _CloudServicesScreenState extends ConsumerState<CloudServicesScreen> {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: _kCanvas,
-              borderRadius: BorderRadius.circular(9),
-              border: Border.all(color: _kBorderSoft),
+              color: _kPeach,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _kInkBorder),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: _kInkBorder, offset: Offset(2, 2)),
+              ],
             ),
-            child: const Icon(TablerIcons.cloud, size: 18, color: _kActionDark),
+            child: const Icon(TablerIcons.cloud, size: 18, color: _kTitle),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -382,7 +409,7 @@ class _CloudServicesScreenState extends ConsumerState<CloudServicesScreen> {
               children: <Widget>[
                 Text(
                   'Cloud Services',
-                  style: _t(16, _kTitle, fontWeight: FontWeight.w700),
+                  style: _serif(18, _kTitle),
                 ),
                 Text(
                   'Centralized cloud connection management',
@@ -424,10 +451,10 @@ class _BackButtonState extends State<_BackButton> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: _hovered ? _kHoverBg : Colors.white,
-              borderRadius: BorderRadius.circular(10),
+              color: _hovered ? _kYellow : _kPaperBright,
+              shape: BoxShape.circle,
               border: Border.all(
-                color: _hovered ? _kBorderHover : _kBorderSoft,
+                color: _kInkBorder,
               ),
             ),
             child: const Icon(TablerIcons.arrow_left, size: 18, color: _kTitle),
@@ -452,9 +479,9 @@ class _LayoutToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: _kCanvas,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _kBorderSoft),
+        color: _kPaperBright,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _kInkBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -511,16 +538,16 @@ class _LayoutToggleButton extends StatelessWidget {
               height: 28,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: selected ? Colors.white : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
+                color: selected ? _kYellow : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: selected ? _kBorderSoft : Colors.transparent,
+                  color: selected ? _kInkBorder : Colors.transparent,
                 ),
               ),
               child: Icon(
                 icon,
                 size: 16,
-                color: selected ? _kActionDark : _kIcon,
+                color: selected ? _kTitle : _kIcon,
               ),
             ),
           ),
@@ -566,9 +593,9 @@ class _CloudServiceCard extends StatelessWidget {
         layout == _CloudServicesLayout.grid ? 16 : 14,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _kPaperBright,
         borderRadius: BorderRadius.circular(_kServiceCardRadius),
-        border: Border.all(color: _kBorderSoft),
+        border: Border.all(color: _kInkBorder),
         boxShadow: _kServiceCardShadow,
       ),
       child: layout == _CloudServicesLayout.grid
@@ -626,9 +653,9 @@ class _CloudServiceCard extends StatelessWidget {
       height: 40,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: _kCanvas,
+        color: _kPeach,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _kBorderSoft),
+        border: Border.all(color: _kInkBorder),
       ),
       child: Image.asset(
         provider.assetPath,
@@ -649,7 +676,7 @@ class _CloudServiceCard extends StatelessWidget {
             Flexible(
               child: Text(
                 provider.label,
-                style: _t(14.5, _kTitle, fontWeight: FontWeight.w700),
+                style: _serif(15.5, _kTitle),
               ),
             ),
           ],
@@ -803,11 +830,11 @@ class _SmallButtonState extends State<_SmallButton> {
       fg = Colors.white;
       borderColor = Colors.transparent;
     } else if (widget.danger) {
-      bg = _hovered ? _kWarnBg : Colors.white;
+      bg = _hovered ? _kWarnBg : _kPaperBright;
       fg = _kWarnText;
       borderColor = _kWarnBorder;
     } else {
-      bg = _hovered ? _kHoverBg : Colors.white;
+      bg = _hovered ? _kHoverBg : _kPaperBright;
       fg = _kTitle;
       borderColor = _hovered ? _kBorderHover : _kBorderSoft;
     }
@@ -871,7 +898,7 @@ class _StatusBanner extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: border),
         ),
         child: Row(
@@ -883,13 +910,13 @@ class _StatusBanner extends StatelessWidget {
             ),
             if (action != null && actionLabel != null) ...<Widget>[
               const SizedBox(width: 10),
-              GestureDetector(
-                onTap: action,
-                child: Text(
-                  actionLabel!,
-                  style: _t(12.5, fg, fontWeight: FontWeight.w800).copyWith(
-                    decoration: TextDecoration.underline,
-                    decorationColor: fg,
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: action,
+                  child: Text(
+                    actionLabel!,
+                    style: _t(12.5, fg, fontWeight: FontWeight.w800),
                   ),
                 ),
               ),
@@ -899,4 +926,39 @@ class _StatusBanner extends StatelessWidget {
       ),
     );
   }
+}
+
+class _VintageGridSurface extends StatelessWidget {
+  const _VintageGridSurface({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: const _VintageGridPainter(),
+      child: child,
+    );
+  }
+}
+
+class _VintageGridPainter extends CustomPainter {
+  const _VintageGridPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0x10252628)
+      ..strokeWidth = 1;
+    const spacing = 28.0;
+    for (double x = 0; x <= size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y <= size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

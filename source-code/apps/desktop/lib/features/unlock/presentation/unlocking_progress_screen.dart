@@ -2,10 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-const _kBackground = Color(0xFFF6F8FB);
-const _kInk = Color(0xFF22314A);
-const _kMuted = Color(0xFF73839D);
-const _kAccent = Color(0xFF4B6CFF);
+const _kBackground = Color(0xFFF7F4EC);
+const _kPaperBright = Color(0xFFFFFCF5);
+const _kInk = Color(0xFF191A1B);
+const _kMuted = Color(0xFF626560);
+const _kLine = Color(0xFF252628);
+const _kSoftLine = Color(0xFFC9CBC8);
+const _kAccent = Color(0xFFFF5B22);
+const _kPeach = Color(0xFFF4D7C8);
+const _kMint = Color(0xFF21A98F);
+const _kMintSoft = Color(0xFFDFF2EC);
 
 TextStyle _uText(
   double size,
@@ -17,7 +23,18 @@ TextStyle _uText(
     fontSize: size,
     color: color,
     fontWeight: fontWeight,
-    fontFamily: 'Inter',
+    fontFamily: 'Ubuntu Sans',
+    height: height,
+  );
+}
+
+TextStyle _displayText(double size, Color color, {double? height}) {
+  return TextStyle(
+    fontSize: size,
+    color: color,
+    fontWeight: FontWeight.w700,
+    fontFamily: 'Ubuntu Sans',
+    letterSpacing: -0.45,
     height: height,
   );
 }
@@ -108,76 +125,186 @@ class _UnlockingProgressScreenState extends State<UnlockingProgressScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _kBackground,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 200,
-              height: 200,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  RotationTransition(
-                    turns: _spinCtrl,
-                    child: CustomPaint(
-                      size: const Size(200, 200),
-                      painter: _ArcPainter(),
+      body: Stack(
+        children: <Widget>[
+          const Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(painter: _ProgressGridPainter()),
+            ),
+          ),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 28),
+                padding: const EdgeInsets.fromLTRB(40, 30, 40, 32),
+                decoration: BoxDecoration(
+                  color: _kPaperBright,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: _kSoftLine, width: 1.1),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x2B191A1B),
+                      blurRadius: 0,
+                      offset: Offset(0, 7),
                     ),
-                  ),
-                  ScaleTransition(
-                    scale: Tween<double>(begin: 0.92, end: 1.0)
-                        .animate(CurvedAnimation(
-                      parent: _pulseCtrl,
-                      curve: Curves.easeInOut,
-                    )),
-                    child: Container(
-                      width: 132,
-                      height: 132,
+                    BoxShadow(
+                      color: Color(0x18191A1B),
+                      blurRadius: 24,
+                      spreadRadius: -8,
+                      offset: Offset(0, 14),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: _kAccent.withValues(alpha: 0.18),
-                            blurRadius: 28,
-                            spreadRadius: 2,
+                        color: _kInk,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'SECURE VAULT',
+                        style: _uText(
+                          8.5,
+                          Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ).copyWith(letterSpacing: 1.1),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: 144,
+                      height: 144,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: <Widget>[
+                          RotationTransition(
+                            turns: _spinCtrl,
+                            child: CustomPaint(
+                              size: const Size(144, 144),
+                              painter: _ArcPainter(),
+                            ),
+                          ),
+                          ScaleTransition(
+                            scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                              CurvedAnimation(
+                                parent: _pulseCtrl,
+                                curve: Curves.easeInOut,
+                              ),
+                            ),
+                            child: Container(
+                              width: 88,
+                              height: 88,
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: _kPeach,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: _kSoftLine),
+                                boxShadow: const <BoxShadow>[
+                                  BoxShadow(
+                                    color: Color(0x26191A1B),
+                                    blurRadius: 0,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Image.asset(
+                                'assets/images/lock_vault.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.all(24),
-                      child: Image.asset(
-                        'assets/images/lock_vault.png',
-                        fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Unlocking your vault',
+                      style: _displayText(27, _kInk, height: 1.05),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 9),
+                    Text(
+                      widget.vaultName == null
+                          ? 'Decrypting your secure data. This takes just a moment.'
+                          : 'Decrypting “${widget.vaultName}”. This takes just a moment.',
+                      textAlign: TextAlign.center,
+                      style: _uText(
+                        11.5,
+                        _kMuted,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _kMintSoft,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: _kSoftLine),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const Icon(
+                            Icons.shield_outlined,
+                            size: 13,
+                            color: _kMint,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'VERIFYING CREDENTIALS',
+                            style: _uText(
+                              8.5,
+                              _kInk,
+                              fontWeight: FontWeight.w800,
+                            ).copyWith(letterSpacing: 0.75),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const _DotsIndicator(),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 40),
-            Text(
-              'Unlocking your vault',
-              style: _uText(22, _kInk, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 48),
-              child: Text(
-                widget.vaultName == null
-                    ? 'Decrypting your secure data. This takes just a moment.'
-                    : 'Decrypting “${widget.vaultName}”. This takes just a moment.',
-                textAlign: TextAlign.center,
-                style: _uText(14, _kMuted, fontWeight: FontWeight.w500, height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 32),
-            const _DotsIndicator(),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _ProgressGridPainter extends CustomPainter {
+  const _ProgressGridPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = _kLine.withValues(alpha: 0.055)
+      ..strokeWidth = 1;
+    const step = 34.0;
+    for (double x = 0; x <= size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y <= size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _ArcPainter extends CustomPainter {

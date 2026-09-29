@@ -7,15 +7,19 @@ const Set<String> _hiddenSidebarCategoryIds = <String>{
   'wifi-password',
   'passport',
 };
-const Color _sidebarBackgroundColor = Color(0xFF0A3B48);
-const Color _sidebarBorderColor = Color(0xFF145163);
-const Color _sidebarTextPrimary = Color(0xFFE3EEF3);
-const Color _sidebarTextSecondary = Color(0xFFA7BBC6);
-const Color _sidebarSelectedText = Color(0xFFF4FAFD);
-const Color _sidebarSelectedItemBackground = Color(0x335E8A9D);
+const Color _sidebarBackgroundColor = _VaultColors.sidebar;
+const Color _sidebarBorderColor = _VaultColors.borderPane;
+const Color _sidebarTextPrimary = Color(0xFF292B2A);
+const Color _sidebarTextSecondary = Color(0xFF74766F);
+const Color _sidebarSelectedText = Color(0xFF1D1F1E);
+const Color _sidebarSelectedItemBackground = Color(0xFFD4CEC6);
+const Color _sidebarHoverItemBackground = Color(0xFFDDD7D0);
+
+enum _SidebarVaultMenuAction { switchVault, import }
 
 class _SidebarPane extends ConsumerWidget {
   const _SidebarPane({
+    required this.width,
     required this.onLockVault,
     required this.onOpenImport,
     required this.onOpenAddCategoryModal,
@@ -23,6 +27,7 @@ class _SidebarPane extends ConsumerWidget {
     required this.onDeleteCategory,
   });
 
+  final double width;
   final VoidCallback onLockVault;
   final VoidCallback onOpenImport;
   final VoidCallback onOpenAddCategoryModal;
@@ -73,7 +78,7 @@ class _SidebarPane extends ConsumerWidget {
                 : 'Vault';
 
     return Container(
-      width: 230,
+      width: width,
       decoration: const BoxDecoration(
         color: _sidebarBackgroundColor,
         border: Border(
@@ -83,63 +88,29 @@ class _SidebarPane extends ConsumerWidget {
       child: Column(
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-            child: Row(
-              children: <Widget>[
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: _VaultStorageIcon(record: record),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    databaseName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: _text(
-                      12,
-                      _sidebarTextPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                _AppTooltip(
-                  message: 'Switch Vault',
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(4),
-                    onTap: () => _showSwitchVaultModal(context),
-                    child: const Padding(
-                      padding: EdgeInsets.all(2),
-                      child: Icon(
-                        TablerIcons.switch_horizontal,
-                        size: 16,
-                        color: _sidebarTextSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                _AppTooltip(
-                  message: 'Import',
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(4),
-                    onTap: onOpenImport,
-                    child: const Padding(
-                      padding: EdgeInsets.all(2),
-                      child: Icon(
-                        TablerIcons.file_import,
-                        size: 16,
-                        color: _sidebarTextSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            padding: EdgeInsets.fromLTRB(
+              16,
+              Platform.isMacOS ? 38 : 12,
+              16,
+              8,
+            ),
+            child: _SidebarVaultDropdown(
+              record: record,
+              databaseName: databaseName,
+              onSwitchVault: () => _showSwitchVaultModal(context),
+              onImport: onOpenImport,
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: _sidebarBorderColor,
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
             child: _SidebarItemTypeDropdown(
               totalCount: totalCount,
               itemTypes: visibleItemTypes,
@@ -150,7 +121,7 @@ class _SidebarPane extends ConsumerWidget {
           // ── Scrollable middle section ──────────────────────────────
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: 8),
               children: <Widget>[
                 // — Categories header —
                 _SidebarSectionHeader(
@@ -162,7 +133,7 @@ class _SidebarPane extends ConsumerWidget {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.only(bottom: 1),
                   child: _SidebarItem(
                     icon: TablerIcons.layout_grid,
                     iconColor: const Color(0xFF5E6C7E),
@@ -179,7 +150,7 @@ class _SidebarPane extends ConsumerWidget {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.only(bottom: 1),
                   child: _SidebarItem(
                     icon: TablerIcons.inbox,
                     iconColor: const Color(0xFF5E6C7E),
@@ -202,7 +173,7 @@ class _SidebarPane extends ConsumerWidget {
                     final imageAsset =
                         _categoryImagePathForNotes(category.notes);
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.only(bottom: 1),
                       child: _SidebarCategoryItem(
                         icon: visual.icon,
                         iconColor: visual.iconColor,
@@ -225,7 +196,7 @@ class _SidebarPane extends ConsumerWidget {
                       ),
                     );
                   }(),
-                const SizedBox(height: 22),
+                const SizedBox(height: 10),
 
                 // — Quick Access header —
                 const _SidebarSectionHeader(label: 'Quick Access'),
@@ -278,7 +249,7 @@ class _SidebarPane extends ConsumerWidget {
                   },
                 ),
 
-                const SizedBox(height: 22),
+                const SizedBox(height: 10),
 
                 const _SidebarSectionHeader(label: 'Tags'),
 
@@ -297,28 +268,28 @@ class _SidebarPane extends ConsumerWidget {
                           null;
                     },
                   ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
-
-          // ── Bottom bar ─────────────────────────────────────────────
           Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
             decoration: const BoxDecoration(
+              color: _sidebarBackgroundColor,
               border: Border(
                 top: BorderSide(color: _sidebarBorderColor),
               ),
             ),
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                _SidebarItem(
+                _SidebarFooterAction(
                   icon: TablerIcons.trash,
-                  iconColor: _VaultColors.icon,
-                  title: 'Trash ($trashCount)',
-                  dense: true,
-                  danger: true,
+                  label: 'Trash ($trashCount)',
+                  color: const Color(0xFFD84B45),
                   selected: selectedGroupUuid == kGroupFilterTrash,
-                  onTap: () {
+                  onPressed: () {
                     ref.read(vaultSelectedGroupProvider.notifier).state =
                         kGroupFilterTrash;
                     ref.read(vaultSelectedItemTypeIdProvider.notifier).state =
@@ -326,48 +297,252 @@ class _SidebarPane extends ConsumerWidget {
                     ref.read(vaultSelectedTagProvider.notifier).state = null;
                   },
                 ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: onLockVault,
-                    icon: const Icon(TablerIcons.lock, size: 14),
-                    label: const Text('Lock Vault'),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD94A4A),
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Color(0xFFD94A4A)),
-                      minimumSize: const Size.fromHeight(34),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      textStyle: _text(
-                        13,
-                        Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 6),
+                _SidebarFooterAction(
+                  icon: TablerIcons.lock,
+                  label: 'Lock vault',
+                  color: const Color(0xFF0F766E),
+                  filled: true,
+                  onPressed: onLockVault,
+                ),
+                const SizedBox(height: 5),
                 const _SidebarAutoLockCountdownLabel(),
-                const SizedBox(height: 10),
-                const Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: _sidebarBorderColor,
-                ),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: _SidebarBuildInfoLabel(),
-                ),
-                const SizedBox(height: 4),
-                const _VaultSyncStatusRow(),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SidebarVaultDropdown extends StatelessWidget {
+  const _SidebarVaultDropdown({
+    required this.record,
+    required this.databaseName,
+    required this.onSwitchVault,
+    required this.onImport,
+  });
+
+  final DatabaseRecord? record;
+  final String databaseName;
+  final VoidCallback onSwitchVault;
+  final VoidCallback onImport;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_SidebarVaultMenuAction>(
+      tooltip: 'Current vault menu',
+      position: PopupMenuPosition.under,
+      offset: const Offset(0, 5),
+      color: _VaultColors.surface,
+      surfaceTintColor: Colors.transparent,
+      menuPadding: const EdgeInsets.all(6),
+      elevation: 10,
+      shadowColor: const Color(0x245B4638),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: _VaultColors.borderSoft),
+      ),
+      onSelected: (action) {
+        switch (action) {
+          case _SidebarVaultMenuAction.switchVault:
+            onSwitchVault();
+            break;
+          case _SidebarVaultMenuAction.import:
+            onImport();
+            break;
+        }
+      },
+      itemBuilder: (context) => <PopupMenuEntry<_SidebarVaultMenuAction>>[
+        const PopupMenuItem<_SidebarVaultMenuAction>(
+          value: _SidebarVaultMenuAction.switchVault,
+          height: 44,
+          child: _SidebarVaultMenuRow(
+            icon: TablerIcons.switch_horizontal,
+            label: 'Switch vault',
+          ),
+        ),
+        const PopupMenuItem<_SidebarVaultMenuAction>(
+          value: _SidebarVaultMenuAction.import,
+          height: 44,
+          child: _SidebarVaultMenuRow(
+            icon: TablerIcons.download,
+            label: 'Import items',
+          ),
+        ),
+      ],
+      child: Semantics(
+        button: true,
+        label: 'Current vault: $databaseName',
+        child: SizedBox(
+          height: 52,
+          child: Row(
+            children: <Widget>[
+              _VaultStorageIcon(
+                record: record,
+                size: 38,
+                iconSize: 27,
+                borderRadius: 10,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  databaseName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _text(
+                    16,
+                    _sidebarTextPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                TablerIcons.chevron_down,
+                size: 18,
+                color: _sidebarTextSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarVaultMenuRow extends StatelessWidget {
+  const _SidebarVaultMenuRow({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 206,
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: _VaultColors.peachSoft,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 17, color: _kPrimaryButtonColor),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: _text(
+              13,
+              _sidebarTextPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SidebarFooterAction extends StatefulWidget {
+  const _SidebarFooterAction({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onPressed,
+    this.selected = false,
+    this.filled = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onPressed;
+  final bool selected;
+  final bool filled;
+
+  @override
+  State<_SidebarFooterAction> createState() => _SidebarFooterActionState();
+}
+
+class _SidebarFooterActionState extends State<_SidebarFooterAction> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final useSolidFill = widget.filled;
+    final foreground = useSolidFill ? Colors.white : widget.color;
+    final background = useSolidFill
+        ? (_hovered ? widget.color.withValues(alpha: 0.88) : widget.color)
+        : widget.color.withValues(
+            alpha: widget.selected ? 0.16 : (_hovered ? 0.12 : 0.07),
+          );
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Semantics(
+        button: true,
+        selected: widget.selected,
+        label: widget.label,
+        child: InkWell(
+          onTap: widget.onPressed,
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 130),
+            width: double.infinity,
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 11),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: useSolidFill
+                    ? widget.color
+                    : widget.color.withValues(alpha: 0.24),
+              ),
+              boxShadow: useSolidFill
+                  ? <BoxShadow>[
+                      BoxShadow(
+                        color: widget.color.withValues(alpha: 0.18),
+                        blurRadius: 7,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              children: <Widget>[
+                Icon(widget.icon, size: 15, color: foreground),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    style: _text(
+                      13,
+                      foreground,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(
+                  TablerIcons.chevron_right,
+                  size: 14,
+                  color: foreground.withValues(alpha: 0.72),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -400,7 +575,7 @@ class _SidebarAutoLockCountdownLabel extends ConsumerWidget {
           formatVaultAutoLockCountdown(remaining),
           textAlign: TextAlign.center,
           style: _text(
-            9,
+            11,
             _sidebarTextSecondary,
             fontWeight: FontWeight.w600,
             height: 1.3,
@@ -453,7 +628,7 @@ class _SidebarBuildInfoLabel extends StatelessWidget {
         return Text(
           'LumenPass v$version (build $build)\n$dateLine',
           style: _text(
-            9,
+            11,
             _sidebarTextSecondary,
             fontWeight: FontWeight.w500,
             height: 1.45,
@@ -466,7 +641,7 @@ class _SidebarBuildInfoLabel extends StatelessWidget {
 
 /// Compact "Last synced" line with a circular-arrow refresh button.
 ///
-/// Lives in the sidebar directly below the Build date. Watches
+/// Lives in the detail footer beside the build information. Watches
 /// [vaultAutoSyncControllerProvider] for state and re-renders the
 /// human-readable timestamp every second so "X seconds ago" stays fresh.
 class _VaultSyncStatusRow extends ConsumerStatefulWidget {
@@ -547,7 +722,7 @@ class _VaultSyncStatusRowState extends ConsumerState<_VaultSyncStatusRow>
 
     final disabled = state.isSyncing;
     final labelColor =
-        state.hasError ? const Color(0xFFFCA5A5) : _sidebarTextSecondary;
+        state.hasError ? _kDangerButtonColor : _sidebarTextSecondary;
 
     return Padding(
       padding: const EdgeInsets.only(top: 2, bottom: 2),
@@ -567,7 +742,7 @@ class _VaultSyncStatusRowState extends ConsumerState<_VaultSyncStatusRow>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: _text(
-                    9,
+                    11,
                     labelColor,
                     fontWeight: FontWeight.w500,
                     height: 1.3,
@@ -588,8 +763,8 @@ class _VaultSyncStatusRowState extends ConsumerState<_VaultSyncStatusRow>
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: disabled ? null : _onPressed,
-                  hoverColor: const Color(0x335E8A9D),
-                  highlightColor: const Color(0x225E8A9D),
+                  hoverColor: _VaultColors.peachSoft,
+                  highlightColor: _VaultColors.peach,
                   child: Center(
                     child: RotationTransition(
                       turns: _spin,
@@ -597,7 +772,7 @@ class _VaultSyncStatusRowState extends ConsumerState<_VaultSyncStatusRow>
                         TablerIcons.refresh,
                         size: 14,
                         color: disabled
-                            ? const Color(0xFF6B8390)
+                            ? const Color(0xFFA09D95)
                             : _sidebarTextPrimary,
                       ),
                     ),
@@ -632,6 +807,7 @@ class _SidebarItemTypeDropdownState
     extends ConsumerState<_SidebarItemTypeDropdown> {
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
+  bool _hovered = false;
 
   @override
   void dispose() {
@@ -655,84 +831,87 @@ class _SidebarItemTypeDropdownState
     final selectedCount = isAllItemsSelected
         ? widget.totalCount
         : (widget.sidebarCounts[resolvedItem.id] ?? 0);
-    const backgroundColor = Colors.white;
-    final borderColor =
-        isExpanded ? const Color(0xFF9FB4C3) : const Color(0xFFD2DFE8);
-    const primaryTextColor = Color(0xFF1E3341);
-    const secondaryTextColor = Color(0xFF5E7382);
+    final backgroundColor = isExpanded || _hovered
+        ? _sidebarHoverItemBackground
+        : Colors.transparent;
+    const primaryTextColor = _VaultColors.title;
+    const secondaryTextColor = _VaultColors.headerLabel;
 
     return CompositedTransformTarget(
       link: _layerLink,
-      child: InkWell(
-        onTap: _toggleMenu,
-        borderRadius: BorderRadius.circular(14),
-        overlayColor: const WidgetStatePropertyAll<Color>(Colors.transparent),
-        hoverColor: Colors.transparent,
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        splashFactory: NoSplash.splashFactory,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOut,
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: borderColor,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: InkWell(
+          onTap: _toggleMenu,
+          borderRadius: BorderRadius.circular(10),
+          overlayColor: const WidgetStatePropertyAll<Color>(Colors.transparent),
+          hoverColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          splashFactory: NoSplash.splashFactory,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            curve: Curves.easeOut,
+            height: 46,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(10),
             ),
-          ),
-          child: Row(
-            children: <Widget>[
-              _SidebarItemTypeGlyph(
-                icon: isAllItemsSelected
-                    ? Icons.grid_view_rounded
-                    : resolvedItem.icon!,
-                iconColor: isAllItemsSelected
-                    ? const Color(0xFF63BAF2)
-                    : resolvedItem.iconColor,
-                backgroundColor: isAllItemsSelected
-                    ? const Color(0x1F63BAF2)
-                    : const Color(0x00000000),
-                size: 22,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        isAllItemsSelected ? 'All Items' : resolvedItem.label,
+            child: Row(
+              children: <Widget>[
+                _SidebarItemTypeGlyph(
+                  icon: isAllItemsSelected
+                      ? TablerIcons.layout_grid
+                      : resolvedItem.icon!,
+                  iconColor: isAllItemsSelected
+                      ? _kPrimaryButtonColor
+                      : resolvedItem.iconColor,
+                  backgroundColor: isAllItemsSelected
+                      ? _VaultColors.peachSoft
+                      : const Color(0x00000000),
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          isAllItemsSelected ? 'All Items' : resolvedItem.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: _text(
+                            15,
+                            primaryTextColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '($selectedCount)',
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: _text(
-                          13,
+                          15,
                           primaryTextColor,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '($selectedCount)',
-                      maxLines: 1,
-                      style: _text(
-                        13,
-                        primaryTextColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Icon(
-                isExpanded ? TablerIcons.chevron_up : TablerIcons.chevron_down,
-                size: 17,
-                color: secondaryTextColor,
-              ),
-            ],
+                const SizedBox(width: 6),
+                Icon(
+                  isExpanded
+                      ? TablerIcons.chevron_up
+                      : TablerIcons.chevron_down,
+                  size: 17,
+                  color: secondaryTextColor,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -770,20 +949,20 @@ class _SidebarItemTypeDropdownState
               child: Material(
                 color: Colors.transparent,
                 child: Container(
-                  width: 224,
+                  width: 264,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: _VaultColors.surface,
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: const Color(0xFFD9E2EF)),
+                    border: Border.all(color: _VaultColors.borderSoft),
                     boxShadow: const <BoxShadow>[
                       BoxShadow(
-                        color: Color(0x16172033),
-                        blurRadius: 30,
-                        offset: Offset(0, 16),
+                        color: Color(0x1F000000),
+                        blurRadius: 22,
+                        offset: Offset(0, 10),
                       ),
                     ],
                   ),
@@ -793,8 +972,8 @@ class _SidebarItemTypeDropdownState
                       _SidebarItemTypeMenuOption(
                         label: 'All Items',
                         count: widget.totalCount,
-                        icon: Icons.grid_view_rounded,
-                        iconColor: const Color(0xFF63BAF2),
+                        icon: TablerIcons.layout_grid,
+                        iconColor: _kPrimaryButtonColor,
                         selected: selectedItemTypeId == null,
                         onTap: () => _selectItemType(null),
                       ),
@@ -803,7 +982,7 @@ class _SidebarItemTypeDropdownState
                         child: Divider(
                           height: 1,
                           thickness: 1,
-                          color: Color(0xFFE8EEF6),
+                          color: _VaultColors.borderSoft,
                         ),
                       ),
                       for (final item in widget.itemTypes)
@@ -872,8 +1051,9 @@ class _SidebarItemTypeMenuOptionState
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor =
-        widget.selected ? const Color(0xFFF2F7FF) : Colors.transparent;
+    final backgroundColor = widget.selected
+        ? _sidebarSelectedItemBackground
+        : (_hovered ? _sidebarHoverItemBackground : Colors.transparent);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -900,8 +1080,8 @@ class _SidebarItemTypeMenuOptionState
               _SidebarItemTypeGlyph(
                 icon: widget.icon,
                 iconColor: widget.iconColor,
-                backgroundColor: widget.icon == Icons.grid_view_rounded
-                    ? const Color(0x1F63BAF2)
+                backgroundColor: widget.icon == TablerIcons.layout_grid
+                    ? _VaultColors.peachSoft
                     : const Color(0x00000000),
                 size: 22,
               ),
@@ -915,8 +1095,8 @@ class _SidebarItemTypeMenuOptionState
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: _text(
-                          13,
-                          const Color(0xFF2A3445),
+                          15,
+                          _VaultColors.title,
                           fontWeight: widget.selected || _hovered
                               ? FontWeight.w700
                               : FontWeight.w500,
@@ -928,8 +1108,8 @@ class _SidebarItemTypeMenuOptionState
                       '(${widget.count})',
                       maxLines: 1,
                       style: _text(
-                        13,
-                        const Color(0xFF425269),
+                        15,
+                        _VaultColors.headerLabel,
                         fontWeight: widget.selected || _hovered
                             ? FontWeight.w700
                             : FontWeight.w500,
@@ -943,7 +1123,7 @@ class _SidebarItemTypeMenuOptionState
                 const Icon(
                   TablerIcons.check,
                   size: 18,
-                  color: Color(0xFF2F80FF),
+                  color: _kPrimaryButtonColor,
                 ),
               ],
             ],
@@ -1000,17 +1180,21 @@ class _SidebarSectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 5),
       child: Row(
         children: <Widget>[
           Expanded(
             child: Text(
               label.toUpperCase(),
               style: _text(
-                9,
+                11,
                 _sidebarTextSecondary,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.6,
+              ).copyWith(
+                decoration: TextDecoration.underline,
+                decorationColor: _sidebarTextSecondary,
+                decorationThickness: 1.15,
               ),
             ),
           ),
@@ -1051,7 +1235,7 @@ class _SidebarHeaderButtonState extends State<_SidebarHeaderButton> {
           width: 22,
           height: 22,
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0x337FA7B8) : Colors.transparent,
+            color: _hovered ? _VaultColors.peachSoft : Colors.transparent,
             borderRadius: BorderRadius.circular(5),
           ),
           alignment: Alignment.center,
@@ -1104,8 +1288,8 @@ class _SidebarCategoryItemState extends State<_SidebarCategoryItem> {
     final isHovered = _hovered && !isSelected;
     final hasBadge = widget.iconBadgeColor != null;
     final hasImage = widget.imageAsset != null;
-    final iconBoxSize = (hasBadge || hasImage) ? 28.0 : 22.0;
-    final iconSize = hasBadge ? 17.0 : 15.0;
+    final iconBoxSize = (hasBadge || hasImage) ? 24.0 : 20.0;
+    final iconSize = hasBadge ? 15.0 : 14.0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1118,12 +1302,14 @@ class _SidebarCategoryItemState extends State<_SidebarCategoryItem> {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 130),
             curve: Curves.easeOut,
-            constraints: const BoxConstraints(minHeight: 28),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
+            constraints: const BoxConstraints(minHeight: 26),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
               color: isSelected
                   ? _sidebarSelectedItemBackground
-                  : Colors.transparent,
+                  : isHovered
+                      ? _sidebarHoverItemBackground
+                      : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1168,18 +1354,11 @@ class _SidebarCategoryItemState extends State<_SidebarCategoryItem> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: _text(
-                        hasBadge ? 12 : 11,
+                        hasBadge ? 14 : 13,
                         isSelected ? _sidebarSelectedText : _sidebarTextPrimary,
                         fontWeight:
                             isSelected ? FontWeight.w600 : FontWeight.w500,
                         height: 1.18,
-                      ).copyWith(
-                        decoration: isHovered
-                            ? TextDecoration.underline
-                            : TextDecoration.none,
-                        decorationColor: isSelected
-                            ? _sidebarSelectedText
-                            : _sidebarTextPrimary,
                       ),
                     ),
                   ),
@@ -1272,22 +1451,16 @@ class _SidebarItem extends StatefulWidget {
     required this.icon,
     required this.iconColor,
     required this.title,
-    this.iconBadgeColor,
     this.imageAsset,
     this.selected = false,
-    this.dense = false,
-    this.danger = false,
     this.onTap,
   });
 
   final IconData icon;
   final Color iconColor;
   final String title;
-  final Color? iconBadgeColor;
   final String? imageAsset;
   final bool selected;
-  final bool dense;
-  final bool danger;
   final VoidCallback? onTap;
 
   @override
@@ -1301,115 +1474,81 @@ class _SidebarItemState extends State<_SidebarItem> {
   Widget build(BuildContext context) {
     final isSelected = widget.selected;
     final isHovered = _hovered && !isSelected;
-    final hasBadge = widget.iconBadgeColor != null;
     final hasImage = widget.imageAsset != null;
-    final iconBoxSize = widget.dense
-        ? 20.0
-        : (hasBadge || hasImage)
-            ? 28.0
-            : 22.0;
-    final iconSize = widget.dense
-        ? 13.0
-        : hasBadge
-            ? 17.0
-            : 15.0;
+    final iconBoxSize = hasImage ? 24.0 : 20.0;
+    const iconSize = 14.0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
-        child: AnimatedScale(
-          scale: isHovered ? 1.018 : 1,
-          duration: const Duration(milliseconds: 130),
-          curve: Curves.easeOutCubic,
-          child: InkWell(
-            onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(8),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 130),
-              curve: Curves.easeOut,
-              constraints: BoxConstraints(
-                minHeight: widget.dense ? 18 : 28,
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: widget.dense ? 0 : 1,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? _sidebarSelectedItemBackground
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: <Widget>[
-                  Container(
-                    width: iconBoxSize,
-                    height: iconBoxSize,
-                    decoration: hasImage
-                        ? BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                          )
-                        : widget.iconBadgeColor == null
-                            ? null
-                            : BoxDecoration(
-                                color: widget.iconBadgeColor,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                    alignment: Alignment.center,
-                    child: hasImage
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.asset(
-                              widget.imageAsset!,
-                              width: iconBoxSize,
-                              height: iconBoxSize,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : Icon(
-                            widget.icon,
-                            size: iconSize,
-                            color: widget.danger
-                                ? const Color(0xFFD94A4A)
-                                : widget.iconColor,
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 130),
+            curve: Curves.easeOut,
+            constraints: const BoxConstraints(minHeight: 26),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 0,
+            ),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? _sidebarSelectedItemBackground
+                  : isHovered
+                      ? _sidebarHoverItemBackground
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  width: iconBoxSize,
+                  height: iconBoxSize,
+                  decoration: hasImage
+                      ? BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                        )
+                      : null,
+                  alignment: Alignment.center,
+                  child: hasImage
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            widget.imageAsset!,
+                            width: iconBoxSize,
+                            height: iconBoxSize,
+                            fit: BoxFit.cover,
                           ),
-                  ),
-                  SizedBox(width: (hasBadge || hasImage) ? 12 : 10),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        widget.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: _text(
-                          hasBadge ? 12 : 11,
-                          widget.danger
-                              ? const Color(0xFFD94A4A)
-                              : isSelected
-                                  ? _sidebarSelectedText
-                                  : _sidebarTextPrimary,
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.w500,
-                          height: 1.18,
-                        ).copyWith(
-                          decoration: isHovered
-                              ? TextDecoration.underline
-                              : TextDecoration.none,
-                          decorationColor: widget.danger
-                              ? const Color(0xFFD94A4A)
-                              : isSelected
-                                  ? _sidebarSelectedText
-                                  : _sidebarTextPrimary,
+                        )
+                      : Icon(
+                          widget.icon,
+                          size: iconSize,
+                          color: widget.iconColor,
                         ),
+                ),
+                SizedBox(width: hasImage ? 12 : 10),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      widget.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: _text(
+                        13,
+                        isSelected ? _sidebarSelectedText : _sidebarTextPrimary,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w500,
+                        height: 1.18,
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -1437,52 +1576,64 @@ class _SwitchVaultModal extends ConsumerWidget {
     final activePath = activeDatabase?.path;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      backgroundColor: Colors.white,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460, maxHeight: 420),
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 460,
+        constraints: const BoxConstraints(maxHeight: 420),
+        padding: const EdgeInsets.fromLTRB(22, 22, 22, 16),
+        decoration: BoxDecoration(
+          color: _VaultColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _VaultColors.borderPane),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x295B4638),
+              blurRadius: 36,
+              offset: Offset(0, 16),
+            ),
+          ],
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: Row(
-                children: <Widget>[
-                  const Icon(TablerIcons.switch_horizontal,
-                      size: 20, color: Color(0xFF0F172A)),
-                  const SizedBox(width: 10),
-                  Text(
+            Row(
+              children: <Widget>[
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _VaultColors.peachSoft,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(TablerIcons.switch_horizontal,
+                      size: 21, color: _kPrimaryButtonColor),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
                     'Switch Vault',
-                    style: _text(16, const Color(0xFF0F172A),
+                    style: _text(18, _VaultColors.title,
                         fontWeight: FontWeight.w700),
                   ),
-                  const Spacer(),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(6),
-                    onTap: () => Navigator.of(context).pop(),
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(TablerIcons.x,
-                          size: 18, color: Color(0xFF64748B)),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(TablerIcons.x, size: 20),
+                  color: _VaultColors.icon,
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'Select a vault to switch to',
-                style: _text(12, const Color(0xFF64748B)),
-              ),
+            const SizedBox(height: 10),
+            Text(
+              'Select a vault to switch to',
+              style: _text(13, _VaultColors.headerLabel),
             ),
-            const SizedBox(height: 16),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
-            ),
+            const SizedBox(height: 18),
+            const Divider(
+                height: 1, thickness: 1, color: _VaultColors.borderSoft),
             Flexible(
               child: registry.isEmpty
                   ? Padding(
@@ -1490,12 +1641,12 @@ class _SwitchVaultModal extends ConsumerWidget {
                       child: Center(
                         child: Text(
                           'No other vaults available',
-                          style: _text(13, const Color(0xFF64748B)),
+                          style: _text(13, _VaultColors.headerLabel),
                         ),
                       ),
                     )
                   : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      padding: const EdgeInsets.fromLTRB(0, 14, 0, 0),
                       shrinkWrap: true,
                       itemCount: registry.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 6),
@@ -1509,7 +1660,8 @@ class _SwitchVaultModal extends ConsumerWidget {
                           isActive: isActive,
                           onSelect: () {
                             Navigator.of(context).pop();
-                            unawaited(_performSwitchVault(context, ref, record));
+                            unawaited(
+                                _performSwitchVault(context, ref, record));
                           },
                         );
                       },
@@ -1567,92 +1719,101 @@ class _SwitchVaultItemState extends State<_SwitchVaultItem> {
   @override
   Widget build(BuildContext context) {
     final bg = widget.isActive
-        ? const Color(0xFFEFF6FF)
+        ? _VaultColors.peachSoft
         : _hovered
-            ? const Color(0xFFF8FAFC)
-            : Colors.white;
+            ? _VaultColors.surfaceMuted
+            : _VaultColors.surface;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: bg,
+      child: Semantics(
+        button: !widget.isActive,
+        selected: widget.isActive,
+        child: InkWell(
+          onTap: widget.isActive ? null : widget.onSelect,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: widget.isActive
-                ? const Color(0xFF3B82F6)
-                : const Color(0xFFE2E8F0),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: widget.isActive
+                    ? _kPrimaryButtonColor
+                    : _VaultColors.borderSoft,
+              ),
+            ),
+            child: Row(
+              children: <Widget>[
+                SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: _VaultStorageIcon(
+                    record: widget.record,
+                    size: 40,
+                    iconSize: 24,
+                    borderRadius: 8,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        widget.record.nickname.isNotEmpty
+                            ? widget.record.nickname
+                            : p.basenameWithoutExtension(
+                                widget.record.databasePath),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _text(13, _VaultColors.title,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _switchVaultLocationLabel(widget.record),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _text(11, _VaultColors.headerLabel),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (widget.isActive)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _kPrimaryButtonColor,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Active',
+                      style:
+                          _text(11, Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  )
+                else
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _VaultColors.surfaceMuted,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: _VaultColors.borderSoft),
+                    ),
+                    child: Text(
+                      'Select',
+                      style: _text(11, _VaultColors.title,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-        child: Row(
-          children: <Widget>[
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: _VaultStorageIcon(
-                record: widget.record,
-                size: 40,
-                iconSize: 24,
-                borderRadius: 8,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    widget.record.nickname.isNotEmpty
-                        ? widget.record.nickname
-                        : p.basenameWithoutExtension(
-                            widget.record.databasePath),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: _text(13, const Color(0xFF0F172A),
-                        fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _switchVaultLocationLabel(widget.record),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: _text(11, const Color(0xFF64748B)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (widget.isActive)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'Active',
-                  style: _text(11, Colors.white, fontWeight: FontWeight.w600),
-                ),
-              )
-            else
-              GestureDetector(
-                onTap: widget.onSelect,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Select',
-                    style: _text(11, Colors.white, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-          ],
         ),
       ),
     );

@@ -6,6 +6,7 @@ import Vision
 
 class MainFlutterWindow: NSWindow {
     private var windowChannel: FlutterMethodChannel?
+    private var embedsWindowControls = false
     private var quickSearchHotKeyRef: EventHotKeyRef?
     private var lockVaultHotKeyRef: EventHotKeyRef?
     private var hotKeyEventHandler: EventHandlerRef?
@@ -21,6 +22,11 @@ class MainFlutterWindow: NSWindow {
     private var quickSearchViewController: FlutterViewController?
     private var quickSearchPanel: QuickSearchPanel?
     private var quickSearchPanelVisible = false
+    private var quickSearchEngineReady = false
+    private var pendingQuickSearchOpenGenerator: Bool?
+    private var quickSearchIdleShutdown: DispatchWorkItem?
+    private var quickSearchRequestGeneration = 0
+    private static let quickSearchIdleTimeout: TimeInterval = 60
 
     // Legacy in-window transform state (no longer used on macOS now that the
     // panel is isolated, but retained as a defensive fallback).
@@ -40,6 +46,8 @@ class MainFlutterWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 
     deinit {
+        quickSearchIdleShutdown?.cancel()
+        NotificationCenter.default.removeObserver(self)
         if let ref = quickSearchHotKeyRef { UnregisterEventHotKey(ref) }
         if let ref = lockVaultHotKeyRef { UnregisterEventHotKey(ref) }
         if let handler = hotKeyEventHandler { RemoveEventHandler(handler) }
@@ -57,6 +65,67 @@ class MainFlutterWindow: NSWindow {
                     arguments: nil
                 )
             }
+        }
+    }
+
+    @objc private func repositionEmbeddedWindowControls() {
+        guard embedsWindowControls, styleMask.contains(.fullSizeContentView) else {
+            return
+        }
+        guard
+            let closeButton = standardWindowButton(.closeButton),
+            let minimizeButton = standardWindowButton(.miniaturizeButton),
+            let zoomButton = standardWindowButton(.zoomButton),
+            let buttonContainer = closeButton.superview,
+            minimizeButton.superview === buttonContainer,
+            zoomButton.superview === buttonContainer
+        else {
+            return
+        }
+
+        buttonContainer.layoutSubtreeIfNeeded()
+        let buttons = [closeButton, minimizeButton, zoomButton]
+        let currentMinX = buttons.map(\.frame.minX).min() ?? 0
+        let targetMinXInWindow: CGFloat = 14
+        let targetPointInContainer = buttonContainer.convert(
+            NSPoint(x: targetMinXInWindow, y: 0),
+            from: nil
+        )
+        let offsetX = targetPointInContainer.x - currentMinX
+
+        for button in buttons {
+            button.isHidden = false
+            button.autoresizingMask = [.maxXMargin]
+            button.setFrameOrigin(
+                NSPoint(x: button.frame.origin.x + offsetX, y: button.frame.origin.y)
+            )
+        }
+    }
+
+    private func embedNativeWindowControls() {
+        embedsWindowControls = true
+        title = ""
+        titlebarAppearsTransparent = true
+        titleVisibility = .hidden
+        styleMask.insert(.fullSizeContentView)
+        isMovableByWindowBackground = true
+        if #available(macOS 11.0, *) {
+            titlebarSeparatorStyle = .none
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.repositionEmbeddedWindowControls()
+        }
+    }
+
+    private func restoreNativeTitleBar(title: String) {
+        embedsWindowControls = false
+        styleMask.remove(.fullSizeContentView)
+        titlebarAppearsTransparent = false
+        titleVisibility = .visible
+        isMovableByWindowBackground = false
+        self.title = title
+        if #available(macOS 11.0, *) {
+            titlebarSeparatorStyle = .automatic
         }
     }
 
@@ -111,8 +180,7 @@ class MainFlutterWindow: NSWindow {
     private static let kQuickSearchDefaultWidth: CGFloat = 640
     private static let kQuickSearchDefaultHeight: CGFloat = 178
 
-    /// Lazily boots the second Flutter engine + its hosting panel. Called once
-    /// during `awakeFromNib` so the first hotkey press is instant.
+    /// Boots the second engine only when Quick Search is first requested.
     private func setupQuickSearchEngine() {
         guard quickSearchEngine == nil else { return }
 
@@ -138,8 +206,10 @@ class MainFlutterWindow: NSWindow {
             }
             switch call.method {
             case "ready":
-                // Engine booted. Nothing to do until the user opens the panel; the
-                // snapshot is pulled fresh on each open.
+                self.quickSearchEngineReady = true
+                if let openGenerator = self.pendingQuickSearchOpenGenerator {
+                    self.requestQuickSearchSnapshot(openGenerator: openGenerator)
+                }
                 result(nil)
             case "close":
                 DispatchQueue.main.async { self.hideQuickSearchPanel() }
@@ -171,6 +241,17 @@ class MainFlutterWindow: NSWindow {
                     ?? Double(MainFlutterWindow.kQuickSearchDefaultHeight)
                 DispatchQueue.main.async { self.setQuickSearchPanelHeight(CGFloat(height)) }
                 result(nil)
+            case "getEntry":
+                guard let uuid = call.arguments as? String,
+                      let windowChannel = self.windowChannel else {
+                    result(nil)
+                    return
+                }
+                windowChannel.invokeMethod(
+                    "quickSearchRequestEntry", arguments: uuid
+                ) { entry in
+                    result(entry as? String)
+                }
             default:
                 result(FlutterMethodNotImplemented)
             }
@@ -249,20 +330,36 @@ class MainFlutterWindow: NSWindow {
     }
 
     private func showQuickSearchPanel(openGenerator: Bool) {
+        quickSearchIdleShutdown?.cancel()
+        quickSearchIdleShutdown = nil
+        pendingQuickSearchOpenGenerator = openGenerator
         setupQuickSearchEngine()
+        if quickSearchEngineReady {
+            requestQuickSearchSnapshot(openGenerator: openGenerator)
+        }
+    }
+
+    private func requestQuickSearchSnapshot(openGenerator: Bool) {
         guard let panel = quickSearchPanel, let channel = quickSearchChannel else {
             return
         }
+        quickSearchRequestGeneration += 1
+        let requestGeneration = quickSearchRequestGeneration
         // Pull a fresh snapshot from the main engine, then reveal the panel.
         windowChannel?.invokeMethod(
             "quickSearchRequestSnapshot",
             arguments: ["openGenerator": openGenerator]
         ) { [weak self] snapshot in
             guard let self = self else { return }
+            guard requestGeneration == self.quickSearchRequestGeneration else { return }
             if let json = snapshot as? String {
                 channel.invokeMethod("setSnapshot", arguments: json)
+            } else {
+                self.shutDownQuickSearchEngine()
+                return
             }
             DispatchQueue.main.async {
+                guard requestGeneration == self.quickSearchRequestGeneration else { return }
                 if let baseWidth = self.frameWidthForPanel() {
                     let target = max(560, min(floor(baseWidth * 0.70), 900))
                     panel.setContentSize(
@@ -276,6 +373,7 @@ class MainFlutterWindow: NSWindow {
                 // other frontmost app) completely undisturbed.
                 panel.makeKeyAndOrderFront(nil)
                 self.quickSearchPanelVisible = true
+                self.pendingQuickSearchOpenGenerator = nil
             }
         }
     }
@@ -286,15 +384,55 @@ class MainFlutterWindow: NSWindow {
     }
 
     private func hideQuickSearchPanel() {
-        guard quickSearchPanelVisible, let panel = quickSearchPanel else { return }
+        guard quickSearchPanelVisible || pendingQuickSearchOpenGenerator != nil else {
+            return
+        }
+        quickSearchRequestGeneration += 1
+        pendingQuickSearchOpenGenerator = nil
+        guard let panel = quickSearchPanel else { return }
+        let wasVisible = quickSearchPanelVisible
         quickSearchPanelVisible = false
         panel.orderOut(nil)
-        // Let the main engine reset any generator-open state.
-        windowChannel?.invokeMethod("quickSearchPanelClosed", arguments: nil)
+        quickSearchChannel?.invokeMethod("clearSnapshot", arguments: nil)
+        if wasVisible {
+            windowChannel?.invokeMethod("quickSearchPanelClosed", arguments: nil)
+        }
+        scheduleQuickSearchShutdown()
+    }
+
+    private func scheduleQuickSearchShutdown() {
+        quickSearchIdleShutdown?.cancel()
+        let task = DispatchWorkItem { [weak self] in
+            guard let self = self, !self.quickSearchPanelVisible else { return }
+            self.shutDownQuickSearchEngine()
+        }
+        quickSearchIdleShutdown = task
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + MainFlutterWindow.quickSearchIdleTimeout,
+            execute: task
+        )
+    }
+
+    private func shutDownQuickSearchEngine() {
+        quickSearchIdleShutdown?.cancel()
+        quickSearchIdleShutdown = nil
+        quickSearchRequestGeneration += 1
+        pendingQuickSearchOpenGenerator = nil
+        quickSearchEngineReady = false
+        quickSearchPanelVisible = false
+        quickSearchPanel?.orderOut(nil)
+        quickSearchChannel?.setMethodCallHandler(nil)
+        quickSearchPanel?.contentViewController = nil
+        quickSearchViewController = nil
+        quickSearchPanel?.close()
+        quickSearchPanel = nil
+        quickSearchChannel = nil
+        quickSearchEngine?.shutDownEngine()
+        quickSearchEngine = nil
     }
 
     private func toggleQuickSearchPanel() {
-        if quickSearchPanelVisible {
+        if quickSearchPanelVisible || pendingQuickSearchOpenGenerator != nil {
             hideQuickSearchPanel()
         } else {
             showQuickSearchPanel(openGenerator: false)
@@ -497,11 +635,15 @@ class MainFlutterWindow: NSWindow {
         let flutterViewController = FlutterViewController()
         self.contentViewController = flutterViewController
 
-        // Start with native title bar for the unlock screen
-        self.title = "LumenPass \u{2014} Choose Your Vault"
-        self.titlebarAppearsTransparent = false
-        self.titleVisibility = .visible
-        self.isMovableByWindowBackground = false
+        // Render Flutter edge-to-edge from first paint while preserving the
+        // native macOS traffic-light controls inside the application surface.
+        self.embedNativeWindowControls()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(repositionEmbeddedWindowControls),
+            name: NSWindow.didResizeNotification,
+            object: self
+        )
 
         let channel = FlutterMethodChannel(
             name: "lumenpass/window",
@@ -517,10 +659,24 @@ class MainFlutterWindow: NSWindow {
                     let h = args["height"] as? Double
                 {
                     DispatchQueue.main.async {
+                        let requestedWidth = CGFloat(w)
+                        let requestedHeight = CGFloat(h)
+                        let visibleFrame = self.screen?.visibleFrame
+                            ?? NSScreen.main?.visibleFrame
+                        let maxWidth = max(
+                            (visibleFrame?.width ?? requestedWidth) - 24, 480)
+                        let maxHeight = max(
+                            (visibleFrame?.height ?? requestedHeight) - 24, 320)
+                        let targetWidth = min(requestedWidth, maxWidth)
+                        let targetHeight = min(requestedHeight, maxHeight)
                         self.setFrameAutosaveName("")
-                        self.setContentSize(NSSize(width: w, height: h))
-                        self.minSize = NSSize(width: max(w - 60, 480), height: max(h - 60, 320))
+                        self.setContentSize(
+                            NSSize(width: targetWidth, height: targetHeight))
+                        self.minSize = NSSize(
+                            width: min(max(requestedWidth - 60, 480), targetWidth),
+                            height: min(max(requestedHeight - 60, 320), targetHeight))
                         self.centerOnActiveScreen()
+                        self.repositionEmbeddedWindowControls()
                     }
                     result(nil)
                 } else {
@@ -531,19 +687,12 @@ class MainFlutterWindow: NSWindow {
                     (call.arguments as? [String: Any])?["title"] as? String
                     ?? "LumenPass - Password Manager"
                 DispatchQueue.main.async {
-                    self.styleMask.remove(.fullSizeContentView)
-                    self.titlebarAppearsTransparent = false
-                    self.titleVisibility = .visible
-                    self.isMovableByWindowBackground = false
-                    self.title = title
+                    self.restoreNativeTitleBar(title: title)
                 }
                 result(nil)
             case "hideNativeTitleBar":
                 DispatchQueue.main.async {
-                    self.titlebarAppearsTransparent = true
-                    self.titleVisibility = .hidden
-                    self.styleMask.insert(.fullSizeContentView)
-                    self.isMovableByWindowBackground = true
+                    self.embedNativeWindowControls()
                 }
                 result(nil)
             case "scanScreen":
@@ -784,6 +933,13 @@ class MainFlutterWindow: NSWindow {
                 }
                 result(nil)
 
+            case "clearQuickSearchData":
+                DispatchQueue.main.async {
+                    self.hideQuickSearchPanel()
+                    self.shutDownQuickSearchEngine()
+                    result(nil)
+                }
+
             case "enterQuickSearchMode":
                 let args = call.arguments as? [String: Any]
                 let width = args?["width"] as? Double ?? 0
@@ -926,10 +1082,6 @@ class MainFlutterWindow: NSWindow {
 
         super.awakeFromNib()
         registerQuickSearchHotKey()
-
-        // Boot the isolated Quick Search engine up front so the first hotkey
-        // press shows the panel with no cold-start delay.
-        setupQuickSearchEngine()
 
         // Override any autosaved frame — compact size for unlock screen
         self.setFrameAutosaveName("")

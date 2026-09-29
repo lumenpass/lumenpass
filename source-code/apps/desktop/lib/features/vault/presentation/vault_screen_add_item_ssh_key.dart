@@ -516,7 +516,6 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
           return StatefulBuilder(
             builder: (context, setDialogState) {
               final isRsa = selectedType == _SshKeyGenerationType.rsa;
-              final keyTypeLabel = isRsa ? 'RSA' : 'Ed25519';
               final helperText = isRsa
                   ? 'RSA keys are slower than Ed25519 keys, but work with older SSH servers.'
                   : 'Ed25519 is the fastest and most modern SSH key type.';
@@ -524,24 +523,25 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                 data: Theme.of(dialogContext).copyWith(
                   brightness: Brightness.light,
                   colorScheme: const ColorScheme.light(
-                    primary: Color(0xFF2F6BFF),
+                    primary: _kPrimaryButtonColor,
                     onPrimary: Colors.white,
-                    surface: Colors.white,
-                    onSurface: Color(0xFF1F2937),
+                    surface: _VaultColors.surface,
+                    onSurface: _VaultColors.title,
                   ),
-                  canvasColor: Colors.white,
-                  splashColor: const Color(0x1A2F6BFF),
-                  highlightColor: const Color(0x1A2F6BFF),
-                  hoverColor: const Color(0x0F2F6BFF),
+                  canvasColor: _VaultColors.surface,
+                  splashColor: Color(0x2BFF5B22),
+                  highlightColor: Color(0x2BFF5B22),
+                  hoverColor: const Color(0x1FFF5B22),
                 ),
                 child: Dialog(
-                  backgroundColor: Colors.white,
+                  backgroundColor: _VaultColors.surface,
                   insetPadding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 28,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(10),
+                    side: const BorderSide(color: _VaultColors.borderPane),
                   ),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 620),
@@ -551,31 +551,9 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              _LoginFooterButton(
-                                label: 'Cancel',
-                                backgroundColor: const Color(0xFFEBEEF3),
-                                textColor: const Color(0xFF3E4B60),
-                                borderColor: const Color(0xFFC0C9D4),
-                                onTap: () => Navigator.of(dialogContext).pop(),
-                              ),
-                              const Spacer(),
-                              _LoginFooterButton(
-                                label: 'Generate',
-                                backgroundColor: _kPrimaryButtonColor,
-                                textColor: Colors.white,
-                                onTap: () {
-                                  Navigator.of(dialogContext).pop(
-                                    _SshKeyGenerationConfig(
-                                      type: selectedType,
-                                      rsaBits: rsaBits.round(),
-                                      passphrase: passphraseController.text,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
+                          Text(
+                            'Generate SSH key',
+                            style: _displayText(18, _VaultColors.title),
                           ),
                           const SizedBox(height: 16),
                           Row(
@@ -585,7 +563,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                   'Key Type',
                                   style: _text(
                                     13,
-                                    const Color(0xFF6B7280),
+                                    _VaultColors.headerLabel,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -595,25 +573,25 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 12),
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
-                                      color: const Color(0xFF98A2B3)),
+                                      color: _VaultColors.borderSoft),
                                 ),
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<_SshKeyGenerationType>(
                                     value: selectedType,
-                                    dropdownColor: Colors.white,
+                                    dropdownColor: _VaultColors.surface,
                                     menuMaxHeight: 220,
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(6),
                                     style: _text(
                                       13,
-                                      const Color(0xFF2E3138),
+                                      _VaultColors.title,
                                       fontWeight: FontWeight.w600,
                                     ),
                                     icon: const Icon(
                                       TablerIcons.chevron_down,
                                       size: 16,
-                                      color: Color(0xFF6B7280),
+                                      color: _VaultColors.headerLabel,
                                     ),
                                     items: <DropdownMenuItem<
                                         _SshKeyGenerationType>>[
@@ -623,7 +601,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                           'Ed25519',
                                           style: _text(
                                             13,
-                                            const Color(0xFF2E3138),
+                                            _VaultColors.title,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -634,7 +612,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                           'RSA',
                                           style: _text(
                                             13,
-                                            const Color(0xFF2E3138),
+                                            _VaultColors.title,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -661,7 +639,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                   'Bit Length',
                                   style: _text(
                                     13,
-                                    const Color(0xFF6B7280),
+                                    _VaultColors.headerLabel,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -669,11 +647,11 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                 Expanded(
                                   child: SliderTheme(
                                     data: SliderTheme.of(context).copyWith(
-                                      activeTrackColor: const Color(0xFF2F6BFF),
+                                      activeTrackColor: _kPrimaryButtonColor,
                                       inactiveTrackColor:
-                                          const Color(0xFFDDE3EC),
+                                          _VaultColors.borderSoft,
                                       thumbColor: Colors.white,
-                                      overlayColor: const Color(0x1F2F6BFF),
+                                      overlayColor: Color(0x33FF5B22),
                                       thumbShape: const RoundSliderThumbShape(
                                         enabledThumbRadius: 13,
                                       ),
@@ -698,15 +676,15 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                   height: 40,
                                   alignment: Alignment.center,
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                        color: const Color(0xFFD1D5DB)),
+                                        color: _VaultColors.borderSoft),
                                   ),
                                   child: Text(
                                     rsaBits.round().toString(),
                                     style: _text(
                                       13,
-                                      const Color(0xFF2E3138),
+                                      _VaultColors.title,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -719,7 +697,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                             'Passphrase',
                             style: _text(
                               13,
-                              const Color(0xFF6B7280),
+                              _VaultColors.headerLabel,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -728,9 +706,9 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                             height: 44,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(6),
                               border:
-                                  Border.all(color: const Color(0xFF98A2B3)),
+                                  Border.all(color: _VaultColors.borderSoft),
                             ),
                             child: Row(
                               children: <Widget>[
@@ -743,7 +721,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                     textAlignVertical: TextAlignVertical.center,
                                     style: _text(
                                       13,
-                                      const Color(0xFF2E3138),
+                                      _VaultColors.title,
                                       fontWeight: FontWeight.w500,
                                     ),
                                     decoration: InputDecoration(
@@ -751,7 +729,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                       hintText: 'Leave blank for no passphrase',
                                       hintStyle: _text(
                                         13,
-                                        const Color(0xFF98A2B3),
+                                        _VaultColors.icon,
                                         fontWeight: FontWeight.w400,
                                       ),
                                       border: InputBorder.none,
@@ -774,20 +752,11 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                           ? TablerIcons.eye_off
                                           : TablerIcons.eye,
                                       size: 16,
-                                      color: const Color(0xFF6B7280),
+                                      color: _VaultColors.headerLabel,
                                     ),
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            width: double.infinity,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF22C55E),
-                              borderRadius: BorderRadius.circular(999),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -795,19 +764,43 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                             helperText,
                             style: _text(
                               13,
-                              const Color(0xFF374151),
+                              _VaultColors.headerLabel,
                               fontWeight: FontWeight.w500,
                               height: 1.35,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Selected: $keyTypeLabel',
-                            style: _text(
-                              11,
-                              const Color(0xFF6B7280),
-                              fontWeight: FontWeight.w500,
-                            ),
+                          const SizedBox(height: 18),
+                          const Divider(
+                            height: 1,
+                            color: _VaultColors.borderSoft,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: <Widget>[
+                              _LoginFooterButton(
+                                label: 'Cancel',
+                                backgroundColor: _VaultColors.surfaceMuted,
+                                textColor: _VaultColors.headerLabel,
+                                borderColor: _VaultColors.borderPane,
+                                onTap: () => Navigator.of(dialogContext).pop(),
+                              ),
+                              const SizedBox(width: 10),
+                              _LoginFooterButton(
+                                label: 'Generate',
+                                backgroundColor: _kPrimaryButtonColor,
+                                textColor: Colors.white,
+                                onTap: () {
+                                  Navigator.of(dialogContext).pop(
+                                    _SshKeyGenerationConfig(
+                                      type: selectedType,
+                                      rsaBits: rsaBits.round(),
+                                      passphrase: passphraseController.text,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -1144,9 +1137,9 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                     contentPadding: EdgeInsets.zero,
                   ),
                   textSelectionTheme: const TextSelectionThemeData(
-                    cursorColor: Color(0xFF2F6BFF),
-                    selectionColor: Color(0x1F2F6BFF),
-                    selectionHandleColor: Color(0xFF2F6BFF),
+                    cursorColor: _kPrimaryButtonColor,
+                    selectionColor: Color(0x33FF5B22),
+                    selectionHandleColor: _kPrimaryButtonColor,
                   ),
                 ),
                 child: Dialog(
@@ -1160,8 +1153,9 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                     constraints: const BoxConstraints(maxWidth: 520),
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
+                      color: _VaultColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _VaultColors.borderPane),
                       boxShadow: const <BoxShadow>[
                         BoxShadow(
                           color: Color(0x140F172A),
@@ -1178,7 +1172,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                           'Enter SSH Key Passphrase',
                           style: _text(
                             18,
-                            const Color(0xFF202939),
+                            _VaultColors.title,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -1187,7 +1181,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                           '$fileName is encrypted. Enter a valid passphrase to add this key.',
                           style: _text(
                             14,
-                            const Color(0xFF4B5565),
+                            _VaultColors.headerLabel,
                             fontWeight: FontWeight.w500,
                             height: 1.45,
                           ),
@@ -1197,9 +1191,9 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                           height: 56,
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFD6E1F5)),
+                            color: _VaultColors.surfaceMuted,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: _VaultColors.borderSoft),
                           ),
                           child: Row(
                             children: <Widget>[
@@ -1217,7 +1211,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                   },
                                   style: _text(
                                     14,
-                                    const Color(0xFF111827),
+                                    _VaultColors.title,
                                     fontWeight: FontWeight.w500,
                                   ),
                                   decoration: InputDecoration(
@@ -1226,7 +1220,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                     hintText: 'Passphrase',
                                     hintStyle: _text(
                                       14,
-                                      const Color(0xFF98A2B3),
+                                      _VaultColors.icon,
                                       fontWeight: FontWeight.w500,
                                     ),
                                     border: InputBorder.none,
@@ -1253,7 +1247,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                         ? TablerIcons.eye_off
                                         : TablerIcons.eye,
                                     size: 18,
-                                    color: const Color(0xFF0B63E5),
+                                    color: _kPrimaryButtonColor,
                                   ),
                                 ),
                               ),
@@ -1266,8 +1260,8 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                           children: <Widget>[
                             _LoginFooterButton(
                               label: 'Cancel Add',
-                              backgroundColor: const Color(0xFFF4F6FA),
-                              textColor: const Color(0xFF374151),
+                              backgroundColor: _VaultColors.surfaceMuted,
+                              textColor: _VaultColors.headerLabel,
                               onTap: () => Navigator.of(dialogContext).pop(),
                             ),
                             const SizedBox(width: 10),
@@ -1869,9 +1863,9 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
             contentPadding: EdgeInsets.zero,
           ),
           textSelectionTheme: const TextSelectionThemeData(
-            cursorColor: Color(0xFF2F6BFF),
-            selectionColor: Color(0x1F2F6BFF),
-            selectionHandleColor: Color(0xFF2F6BFF),
+            cursorColor: _kPrimaryButtonColor,
+            selectionColor: Color(0x33FF5B22),
+            selectionHandleColor: _kPrimaryButtonColor,
           ),
         );
 
@@ -1885,9 +1879,9 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                 constraints: BoxConstraints(maxHeight: modalHeight),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE7EBF0),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: const Color(0xFFD0D8E2)),
+                  color: _VaultColors.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _VaultColors.borderSoft),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
                       color: Color(0x1C172033),
@@ -1914,7 +1908,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                             textAlign: TextAlign.center,
                             style: _text(
                               20,
-                              const Color(0xFF2E3138),
+                              _VaultColors.title,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -1929,26 +1923,9 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                     Row(
                       children: <Widget>[
                         if (_isEditing)
-                          Container(
-                            width: 58,
-                            height: 58,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2D3F55),
-                              borderRadius: BorderRadius.circular(14),
-                              border:
-                                  Border.all(color: const Color(0xFFBFC8D5)),
-                            ),
-                            alignment: Alignment.center,
-                            child: Image.asset(
-                              'assets/images/item_type_ssh.png',
-                              width: 36,
-                              height: 36,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                TablerIcons.prompt,
-                                size: 28,
-                                color: Colors.white,
-                              ),
-                            ),
+                          const _AddItemTypeIcon(
+                            icon: TablerIcons.prompt,
+                            color: Color(0xFF1D6570),
                           )
                         else
                           _SshKeyHeroIcon(
@@ -1961,13 +1938,13 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                             decoration: BoxDecoration(
                               color: _isEditing
-                                  ? const Color(0xFFF7F8FB)
+                                  ? _VaultColors.surfaceMuted
                                   : Colors.white,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: _isEditing
-                                    ? const Color(0xFFE8ECF3)
-                                    : const Color(0xFF9CB8EE),
+                                    ? _VaultColors.borderSoft
+                                    : _VaultColors.peach,
                                 width: _isEditing ? 1 : 3,
                               ),
                             ),
@@ -1976,12 +1953,10 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                               controller: _titleController,
                               maxLines: 1,
                               textAlignVertical: TextAlignVertical.center,
-                              style: const TextStyle(
-                                fontSize: 22,
+                              style: _displayText(
+                                22,
+                                _VaultColors.title,
                                 height: 1,
-                                color: Color(0xFF2E3138),
-                                fontWeight: FontWeight.w700,
-                                fontFamily: 'Inter',
                               ),
                               decoration: const InputDecoration(
                                 filled: false,
@@ -2043,7 +2018,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                     horizontal: 12,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF5F7FB),
+                                    color: _VaultColors.surfaceMuted,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
@@ -2052,7 +2027,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                         '+ add more',
                                         style: _text(
                                           12,
-                                          const Color(0xFF0B63E5),
+                                          _kPrimaryButtonColor,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -2062,7 +2037,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                             ? TablerIcons.chevron_up
                                             : TablerIcons.chevron_down,
                                         size: 14,
-                                        color: const Color(0xFF6A7282),
+                                        color: _VaultColors.icon,
                                       ),
                                     ],
                                   ),
@@ -2084,7 +2059,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                               maxLines: 4,
                               minLines: 4,
                               icon: TablerIcons.notes,
-                              iconColor: const Color(0xFF6D63D6),
+                              iconColor: _kPrimaryButtonColor,
                               hintText: 'Add any notes about this item here.',
                             ),
                             if (!_isEditing) ...<Widget>[
@@ -2110,7 +2085,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                 'tags',
                                 style: _text(
                                   12,
-                                  const Color(0xFF6D63D6),
+                                  _kPrimaryButtonColor,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -2132,7 +2107,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                     const SizedBox(height: 16),
                     Container(
                       height: 1,
-                      color: const Color(0xFFCCD4DF),
+                      color: _VaultColors.borderSoft,
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -2140,9 +2115,9 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                       children: <Widget>[
                         _LoginFooterButton(
                           label: 'Cancel',
-                          backgroundColor: const Color(0xFFEBEEF3),
-                          textColor: const Color(0xFF3E4B60),
-                          borderColor: const Color(0xFFC0C9D4),
+                          backgroundColor: _VaultColors.surfaceMuted,
+                          textColor: _VaultColors.headerLabel,
+                          borderColor: _VaultColors.borderPane,
                           onTap: _isSaving ? null : _confirmClose,
                         ),
                         const SizedBox(width: 10),
@@ -2294,52 +2269,17 @@ class _SshKeyHeroIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 72,
-      height: 72,
+      height: 58,
       child: Stack(
         clipBehavior: Clip.none,
         children: <Widget>[
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2D3F55),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFBFC8D5)),
-            ),
-            alignment: Alignment.center,
-            child: Image.asset(
-              'assets/images/item_type_ssh.png',
-              width: 36,
-              height: 36,
-              errorBuilder: (_, __, ___) => const Icon(
-                TablerIcons.prompt,
-                size: 28,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          Positioned(
-            left: -2,
-            bottom: 0,
-            child: Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFFFD38A),
-                border: Border.all(color: const Color(0xFFFFA629), width: 2),
-              ),
-              alignment: Alignment.center,
-              child: const Icon(
-                TablerIcons.key,
-                size: 16,
-                color: Color(0xFF8A5600),
-              ),
-            ),
+          const _AddItemTypeIcon(
+            icon: TablerIcons.prompt,
+            color: Color(0xFF1D6570),
           ),
           Positioned(
             right: 0,
-            bottom: 2,
+            bottom: 0,
             child: InkWell(
               onTap: onTap,
               borderRadius: BorderRadius.circular(8),
@@ -2347,14 +2287,14 @@ class _SshKeyHeroIcon extends StatelessWidget {
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEF2F7),
+                  color: _VaultColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,
                 child: const Icon(
                   TablerIcons.chevron_down,
                   size: 14,
-                  color: Color(0xFF667085),
+                  color: _VaultColors.headerLabel,
                 ),
               ),
             ),
@@ -2523,7 +2463,7 @@ class _SshKeyLoadedPreviewShort extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: _text(
               16,
-              const Color(0xFF101828),
+              _VaultColors.title,
               fontWeight: FontWeight.w700,
               height: 1.2,
             ),
@@ -2540,9 +2480,7 @@ class _SshKeyLoadedPreviewShort extends StatelessWidget {
             style: TextStyle(
               fontSize: (9 + 2 + currentTextSizeDelta).toDouble(),
               height: 1.35,
-              color: hasSubtitle
-                  ? const Color(0xFF667085)
-                  : const Color(0xFF98A2B3),
+              color: hasSubtitle ? _VaultColors.headerLabel : _VaultColors.icon,
               fontWeight: FontWeight.w500,
               fontFamily: 'Menlo',
               letterSpacing: hasSubtitle ? 0.08 : 0.0,
@@ -2596,9 +2534,9 @@ class _SshKeyImportSection extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE1E7F0)),
+        color: _VaultColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: _VaultColors.borderSoft),
       ),
       child: Column(
         children: <Widget>[
@@ -2611,7 +2549,7 @@ class _SshKeyImportSection extends StatelessWidget {
                   height: 26,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.4,
-                    color: Color(0xFF2F6BFF),
+                    color: _kPrimaryButtonColor,
                   ),
                 ),
               ),
@@ -2629,8 +2567,7 @@ class _SshKeyImportSection extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 width: double.infinity,
-                color:
-                    isDragOver ? const Color(0xFFF2F7FF) : Colors.transparent,
+                color: isDragOver ? _VaultColors.peachSoft : Colors.transparent,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
                   vertical: 28,
@@ -2660,13 +2597,13 @@ class _SshKeyImportSection extends StatelessWidget {
                   height: 140,
                   decoration: BoxDecoration(
                     color: isDragOver
-                        ? const Color(0xFFF2F7FF)
-                        : const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(16),
+                        ? _VaultColors.peachSoft
+                        : _VaultColors.surface,
+                    borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: isDragOver
-                          ? const Color(0xFF9CB8EE)
-                          : const Color(0xFFD4D9E2),
+                          ? _VaultColors.peach
+                          : _VaultColors.borderSoft,
                       style: BorderStyle.solid,
                       width: isDragOver ? 1.6 : 1.2,
                     ),
@@ -2683,7 +2620,7 @@ class _SshKeyImportSection extends StatelessWidget {
                         errorBuilder: (_, __, ___) => const Icon(
                           TablerIcons.key,
                           size: 34,
-                          color: Color(0xFFC4C7CE),
+                          color: _VaultColors.icon,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -2692,7 +2629,7 @@ class _SshKeyImportSection extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: _text(
                           14,
-                          const Color(0xFFB8B8B8),
+                          _VaultColors.icon,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -2701,7 +2638,8 @@ class _SshKeyImportSection extends StatelessWidget {
                 ),
               ),
             ),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFE6EBF2)),
+          const Divider(
+              height: 1, thickness: 1, color: _VaultColors.borderSoft),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             child: Row(
@@ -2715,7 +2653,7 @@ class _SshKeyImportSection extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    color: Colors.white,
+                    color: _VaultColors.surface,
                     onSelected: (action) async {
                       switch (action) {
                         case _SshPrivateKeyAction.generateNewKey:
@@ -2787,8 +2725,8 @@ class _SshKeyImportSection extends StatelessWidget {
                           style: _text(
                             12,
                             isImporting
-                                ? const Color(0xFF9CB8EE)
-                                : const Color(0xFF0B63E5),
+                                ? _VaultColors.peach
+                                : _kPrimaryButtonColor,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -2797,8 +2735,8 @@ class _SshKeyImportSection extends StatelessWidget {
                           TablerIcons.chevron_down,
                           size: 14,
                           color: isImporting
-                              ? const Color(0xFFA8B4C8)
-                              : const Color(0xFF667085),
+                              ? _VaultColors.icon
+                              : _VaultColors.headerLabel,
                         ),
                       ],
                     ),
@@ -2817,8 +2755,8 @@ class _SshKeyImportSection extends StatelessWidget {
                           TablerIcons.copy,
                           size: 16,
                           color: isImporting
-                              ? const Color(0xFFD0D5DD)
-                              : const Color(0xFF475467),
+                              ? _VaultColors.borderSoft
+                              : _VaultColors.headerLabel,
                         ),
                       ),
                     ),
@@ -2834,8 +2772,8 @@ class _SshKeyImportSection extends StatelessWidget {
                           TablerIcons.download,
                           size: 16,
                           color: isImporting
-                              ? const Color(0xFFD0D5DD)
-                              : const Color(0xFF475467),
+                              ? _VaultColors.borderSoft
+                              : _VaultColors.headerLabel,
                         ),
                       ),
                     ),
@@ -2854,8 +2792,8 @@ class _SshKeyImportSection extends StatelessWidget {
                           TablerIcons.trash,
                           size: 16,
                           color: isImporting
-                              ? const Color(0xFFD0D5DD)
-                              : const Color(0xFF98A2B3),
+                              ? _VaultColors.borderSoft
+                              : _VaultColors.icon,
                         ),
                       ),
                     ),
@@ -2883,13 +2821,13 @@ class _SshKeyActionMenuItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        Icon(icon, size: 18, color: const Color(0xFF6B7280)),
+        Icon(icon, size: 18, color: _VaultColors.headerLabel),
         const SizedBox(width: 10),
         Text(
           label,
           style: _text(
             13,
-            const Color(0xFF2E3138),
+            _VaultColors.title,
             fontWeight: FontWeight.w500,
           ),
         ),

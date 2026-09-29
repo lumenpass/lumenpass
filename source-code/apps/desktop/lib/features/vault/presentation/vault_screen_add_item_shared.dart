@@ -32,10 +32,11 @@ void _showDiscardDialog(BuildContext context, VoidCallback onDiscard) {
       backgroundColor: Colors.transparent,
       child: Container(
         width: 360,
-        padding: const EdgeInsets.all(28),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          color: _VaultColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _VaultColors.borderPane),
           boxShadow: const <BoxShadow>[
             BoxShadow(
               color: Color(0x22172033),
@@ -51,14 +52,13 @@ void _showDiscardDialog(BuildContext context, VoidCallback onDiscard) {
             Text(
               'Discard your changes?',
               textAlign: TextAlign.center,
-              style: _text(17, const Color(0xFF1A1D23),
-                  fontWeight: FontWeight.w700),
+              style: _text(17, _VaultColors.title, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 10),
             Text(
               "You'll lose your changes to this item. Keep editing to go back and save.",
               textAlign: TextAlign.center,
-              style: _text(13, const Color(0xFF6B7280),
+              style: _text(13, _VaultColors.headerLabel,
                   fontWeight: FontWeight.w400),
             ),
             const SizedBox(height: 22),
@@ -70,8 +70,8 @@ void _showDiscardDialog(BuildContext context, VoidCallback onDiscard) {
               child: Container(
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFCC2929),
-                  borderRadius: BorderRadius.circular(10),
+                  color: _kDangerButtonColor,
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -86,14 +86,14 @@ void _showDiscardDialog(BuildContext context, VoidCallback onDiscard) {
               child: Container(
                 height: 44,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF2F6BFF), width: 2),
+                  color: _VaultColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: _VaultColors.borderPane),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   'Keep Editing',
-                  style: _text(14, const Color(0xFF2F6BFF),
+                  style: _text(14, _VaultColors.title,
                       fontWeight: FontWeight.w600),
                 ),
               ),
@@ -120,12 +120,12 @@ class _CategoryDropdownField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const itemTextColor = Color(0xFF111827);
-    const labelColor = Color(0xFF344054);
-    const fieldBackgroundColor = Color(0xFFF7F9FB);
-    const fieldBorderColor = Color(0xFFD0D8E2);
-    const hintColor = Color(0xFF98A2B3);
-    const dropdownBackgroundColor = Colors.white;
+    const itemTextColor = _VaultColors.title;
+    const labelColor = _VaultColors.headerLabel;
+    const fieldBackgroundColor = _VaultColors.surfaceMuted;
+    const fieldBorderColor = _VaultColors.borderSoft;
+    const hintColor = _VaultColors.icon;
+    const dropdownBackgroundColor = _VaultColors.surface;
     final options = <DropdownMenuItem<String>>[];
     if (rootGroupUuid != null) {
       options.add(
@@ -166,7 +166,7 @@ class _CategoryDropdownField extends StatelessWidget {
             const Icon(
               TablerIcons.folder,
               size: 14,
-              color: Color(0xFF5A78C5),
+              color: _kPrimaryButtonColor,
             ),
             const SizedBox(width: 6),
             Text(
@@ -185,7 +185,7 @@ class _CategoryDropdownField extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: fieldBackgroundColor,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(color: fieldBorderColor),
           ),
           child: DropdownButtonHideUnderline(
@@ -201,7 +201,7 @@ class _CategoryDropdownField extends StatelessWidget {
               icon: const Icon(
                 TablerIcons.chevron_down,
                 size: 14,
-                color: Color(0xFF6B7280),
+                color: _VaultColors.icon,
               ),
               hint: Text(
                 'Select category',
@@ -385,9 +385,9 @@ class _TagEditorState extends State<_TagEditor> {
                         child: Container(
                           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFDDE3EC)),
+                            color: _VaultColors.surface,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: _VaultColors.borderSoft),
                             boxShadow: const <BoxShadow>[
                               BoxShadow(
                                 color: Color(0x14172033),
@@ -406,7 +406,7 @@ class _TagEditorState extends State<_TagEditor> {
                                     : 'Matching tags',
                                 style: _text(
                                   11,
-                                  const Color(0xFF667085),
+                                  _VaultColors.headerLabel,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -440,12 +440,12 @@ class _TagEditorState extends State<_TagEditor> {
                 height: 38,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F9FB),
-                  borderRadius: BorderRadius.circular(10),
+                  color: _VaultColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: _focusNode.hasFocus
-                        ? const Color(0xFF8BA9D8)
-                        : const Color(0xFFD0D8E2),
+                        ? _kPrimaryButtonColor
+                        : _VaultColors.borderSoft,
                     width: _focusNode.hasFocus ? 2 : 1,
                   ),
                 ),
@@ -454,7 +454,7 @@ class _TagEditorState extends State<_TagEditor> {
                     const Icon(
                       TablerIcons.tag,
                       size: 14,
-                      color: Color(0xFF6D63D6),
+                      color: _kPrimaryButtonColor,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -467,14 +467,14 @@ class _TagEditorState extends State<_TagEditor> {
                         onSubmitted: (_) => _commitTagInput(),
                         style: _text(
                           12,
-                          const Color(0xFF111827),
+                          _VaultColors.title,
                           fontWeight: FontWeight.w500,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Add a tag and press Enter',
                           hintStyle: _text(
                             12,
-                            const Color(0xFF98A2B3),
+                            _VaultColors.icon,
                             fontWeight: FontWeight.w500,
                           ),
                           border: InputBorder.none,
@@ -494,14 +494,14 @@ class _TagEditorState extends State<_TagEditor> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEAF1FF),
-                          borderRadius: BorderRadius.circular(8),
+                          color: _VaultColors.peachSoft,
+                          borderRadius: BorderRadius.circular(5),
                         ),
                         child: Text(
                           'Add',
                           style: _text(
                             11,
-                            const Color(0xFF3B6FD3),
+                            _kPrimaryButtonColor,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -541,20 +541,20 @@ class _TagSuggestionChipState extends State<_TagSuggestionChip> {
       onExit: (_) => setState(() => _hovered = false),
       child: InkWell(
         onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(5),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           curve: Curves.easeOut,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFDDE8FF) : const Color(0xFFEAF1FF),
-            borderRadius: BorderRadius.circular(999),
+            color: _hovered ? _VaultColors.peach : _VaultColors.peachSoft,
+            borderRadius: BorderRadius.circular(5),
           ),
           child: Text(
             '#${widget.label}',
             style: _text(
               11,
-              const Color(0xFF2E4D8B),
+              _kPrimaryButtonHoverColor,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -578,8 +578,8 @@ class _TagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.only(left: 10, right: 6, top: 6, bottom: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF1FF),
-        borderRadius: BorderRadius.circular(999),
+        color: _VaultColors.peachSoft,
+        borderRadius: BorderRadius.circular(5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -588,7 +588,7 @@ class _TagChip extends StatelessWidget {
             label,
             style: _text(
               11,
-              const Color(0xFF2E4D8B),
+              _kPrimaryButtonHoverColor,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -599,7 +599,7 @@ class _TagChip extends StatelessWidget {
             child: const Icon(
               TablerIcons.x,
               size: 12,
-              color: Color(0xFF5E6676),
+              color: _VaultColors.icon,
             ),
           ),
         ],
@@ -612,12 +612,10 @@ class _NewItemTypeRow extends StatefulWidget {
   const _NewItemTypeRow({
     required this.option,
     required this.onTap,
-    required this.selected,
   });
 
   final _NewItemType option;
   final VoidCallback onTap;
-  final bool selected;
 
   @override
   State<_NewItemTypeRow> createState() => _NewItemTypeRowState();
@@ -633,66 +631,75 @@ class _NewItemTypeRowState extends State<_NewItemTypeRow> {
       onExit: (_) => setState(() => _hovered = false),
       child: InkWell(
         onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 130),
+          duration: const Duration(milliseconds: 150),
           curve: Curves.easeOut,
-          height: widget.option.id == 'migrate' ? 44 : 40,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          height: 68,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: widget.selected
-                ? const Color(0xFFF1F6FF)
-                : (_hovered ? const Color(0xFFF8FAFF) : Colors.white),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: widget.selected
-                  ? const Color(0xFFCFE0FF)
-                  : const Color(0xFFD8DEE9),
-            ),
+            color:
+                _hovered ? _VaultColors.peachSoft : _VaultColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: _VaultColors.borderSoft),
           ),
           child: Row(
             children: <Widget>[
-              if (widget.option.imagePath != null) ...<Widget>[
-                Image.asset(
-                  widget.option.imagePath!,
-                  width: 18,
-                  height: 18,
-                  errorBuilder: (_, __, ___) => Icon(
-                    widget.option.icon ?? TablerIcons.file_description,
-                    size: 16,
-                    color: widget.option.iconColor,
-                  ),
-                ),
-                const SizedBox(width: 10),
-              ] else if (widget.option.icon != null) ...<Widget>[
-                Icon(
-                  widget.option.icon,
-                  size: 16,
-                  color: widget.option.iconColor,
-                ),
-                const SizedBox(width: 10),
-              ],
+              _AddItemTypeIcon(
+                icon: widget.option.icon ?? TablerIcons.file_description,
+                color: widget.option.iconColor,
+                size: 36,
+                iconSize: 20,
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   widget.option.label,
                   style: _text(
-                    11,
-                    widget.option.id == 'migrate'
-                        ? const Color(0xFF3B404A)
-                        : const Color(0xFF2E3138),
-                    fontWeight: FontWeight.w500,
+                    13,
+                    _VaultColors.title,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
               const Icon(
                 TablerIcons.chevron_right,
                 size: 16,
-                color: Color(0xFF6A7282),
+                color: _VaultColors.icon,
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AddItemTypeIcon extends StatelessWidget {
+  const _AddItemTypeIcon({
+    required this.icon,
+    required this.color,
+    this.size = 58,
+    this.iconSize = 27,
+  });
+
+  final IconData icon;
+  final Color color;
+  final double size;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
+      ),
+      alignment: Alignment.center,
+      child: Icon(icon, size: iconSize, color: color),
     );
   }
 }
@@ -733,14 +740,14 @@ class _ModalIconActionState extends State<_ModalIconAction> {
           width: 30,
           height: 30,
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFF1F4F8) : Colors.transparent,
-            borderRadius: BorderRadius.circular(999),
+            color: _hovered ? _VaultColors.peachSoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
           ),
           alignment: Alignment.center,
           child: Icon(
             widget.icon,
             size: 18,
-            color: const Color(0xFF5E6676),
+            color: _VaultColors.headerLabel,
           ),
         ),
       ),
@@ -834,7 +841,7 @@ class _LoginFormFieldState extends State<_LoginFormField> {
               widget.label,
               style: _text(
                 11,
-                const Color(0xFF344054),
+                _VaultColors.headerLabel,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -847,9 +854,9 @@ class _LoginFormFieldState extends State<_LoginFormField> {
               : const BoxConstraints(minHeight: 40),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFF7F9FB),
+            color: _VaultColors.surfaceMuted,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFD0D8E2)),
+            border: Border.all(color: _VaultColors.borderSoft),
           ),
           child: Row(
             crossAxisAlignment: widget.maxLines > 1
@@ -866,14 +873,14 @@ class _LoginFormFieldState extends State<_LoginFormField> {
                   obscuringCharacter: '•',
                   style: _text(
                     12,
-                    const Color(0xFF111827),
+                    _VaultColors.title,
                     height: widget.minLines != null ? 1.4 : null,
                   ),
                   decoration: InputDecoration(
                     hintText: widget.hintText,
                     hintStyle: _text(
                       12,
-                      const Color(0xFF98A2B3),
+                      _VaultColors.icon,
                       fontWeight: FontWeight.w500,
                       height: widget.minLines != null ? 1.4 : null,
                     ),
@@ -910,7 +917,7 @@ class _LoginFormFieldState extends State<_LoginFormField> {
                               ? TablerIcons.eye_off
                               : TablerIcons.eye,
                           size: 18,
-                          color: const Color(0xFF5E6676),
+                          color: _VaultColors.icon,
                         ),
                       ),
                     ),
@@ -929,75 +936,17 @@ class _LoginFormFieldState extends State<_LoginFormField> {
   }
 }
 
-class _PasswordGeneratorIconButton extends StatefulWidget {
+class _PasswordGeneratorIconButton extends StatelessWidget {
   const _PasswordGeneratorIconButton({required this.onPressed});
 
   final VoidCallback onPressed;
 
   @override
-  State<_PasswordGeneratorIconButton> createState() =>
-      _PasswordGeneratorIconButtonState();
-}
-
-class _PasswordGeneratorIconButtonState
-    extends State<_PasswordGeneratorIconButton> {
-  bool _hovered = false;
-  final FocusNode _focusNode = FocusNode(skipTraversal: true);
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Generate password',
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      textStyle: const TextStyle(color: Colors.white, fontSize: 13),
-      child: Semantics(
-        button: true,
-        label: 'Generate password',
-        hint: 'Opens the password generator dialog',
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() => _hovered = false),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: widget.onPressed,
-              focusNode: _focusNode,
-              borderRadius: BorderRadius.circular(8),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 120),
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color:
-                      _hovered ? const Color(0xFFEAF1FF) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _hovered
-                        ? const Color(0xFFB8CDF0)
-                        : const Color(0xFFD8DEE8),
-                  ),
-                ),
-                child: const Icon(
-                  TablerIcons.wand,
-                  size: 18,
-                  color: Color(0xFF315EBA),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return _VaultToolbarIconButton(
+      icon: TablerIcons.wand,
+      tooltip: 'Generate password',
+      onPressed: onPressed,
     );
   }
 }
@@ -1020,8 +969,7 @@ class _PasswordGenerateSuggestionState
 
   @override
   Widget build(BuildContext context) {
-    final background =
-        _hovered ? const Color(0xFFE0ECFF) : const Color(0xFFEAF1FF);
+    final background = _hovered ? _VaultColors.peach : _VaultColors.peachSoft;
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -1038,7 +986,7 @@ class _PasswordGenerateSuggestionState
             decoration: BoxDecoration(
               color: background,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFFCADBFF)),
+              border: Border.all(color: _VaultColors.peach),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1046,14 +994,14 @@ class _PasswordGenerateSuggestionState
                 const Icon(
                   TablerIcons.lock_password,
                   size: 12,
-                  color: Color(0xFF315EBA),
+                  color: _kPrimaryButtonColor,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   'Suggest strong password',
                   style: _text(
                     11,
-                    const Color(0xFF315EBA),
+                    _kPrimaryButtonColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1133,9 +1081,9 @@ class _AddMoreOptionsCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD8DEE9)),
+        color: _VaultColors.surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: _VaultColors.borderSoft),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1151,7 +1099,7 @@ class _AddMoreOptionsCard extends StatelessWidget {
                   options[index],
                   style: _text(
                     12,
-                    const Color(0xFF2E3138),
+                    _VaultColors.title,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1163,7 +1111,7 @@ class _AddMoreOptionsCard extends StatelessWidget {
                 child: Divider(
                   height: 1,
                   thickness: 1,
-                  color: Color(0xFFE6EBF2),
+                  color: _VaultColors.borderSoft,
                 ),
               ),
           ],
@@ -1223,9 +1171,9 @@ class _CreditCardSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE8ECF3)),
+        color: _VaultColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: _VaultColors.borderSoft),
       ),
       child: Column(
         children: <Widget>[
@@ -1234,8 +1182,8 @@ class _CreditCardSectionCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: const BoxDecoration(
-                color: Color(0xFFF5F6F8),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                color: _VaultColors.peachSoft,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
               ),
               child: Row(
                 children: <Widget>[
@@ -1244,7 +1192,7 @@ class _CreditCardSectionCard extends StatelessWidget {
                       title!,
                       style: _text(
                         13,
-                        const Color(0xFF2E3138),
+                        _VaultColors.title,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1264,18 +1212,18 @@ class _CreditCardSectionCard extends StatelessWidget {
               const Divider(
                 height: 1,
                 thickness: 1,
-                color: Color(0xFFE8ECF3),
+                color: _VaultColors.borderSoft,
               ),
           ],
           const Divider(
             height: 1,
             thickness: 1,
-            color: Color(0xFFE8ECF3),
+            color: _VaultColors.borderSoft,
           ),
           InkWell(
             onTap: onAddField,
             borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(12),
+              bottom: Radius.circular(6),
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1285,7 +1233,7 @@ class _CreditCardSectionCard extends StatelessWidget {
                     '+ add another field',
                     style: _text(
                       12,
-                      const Color(0xFF0B63E5),
+                      _kPrimaryButtonColor,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1293,7 +1241,7 @@ class _CreditCardSectionCard extends StatelessWidget {
                   const Icon(
                     TablerIcons.chevron_down,
                     size: 14,
-                    color: Color(0xFF6A7282),
+                    color: _VaultColors.icon,
                   ),
                 ],
               ),
@@ -1347,14 +1295,14 @@ class _CreditCardFieldRow extends StatelessWidget {
                         maxLines: 1,
                         style: _text(
                           12,
-                          const Color(0xFF5E56E8),
+                          _kPrimaryButtonColor,
                           fontWeight: FontWeight.w500,
                         ),
                         decoration: InputDecoration(
                           hintText: 'field name',
                           hintStyle: _text(
                             12,
-                            const Color(0xFF98A2B3),
+                            _VaultColors.icon,
                             fontWeight: FontWeight.w500,
                           ),
                           isCollapsed: true,
@@ -1366,7 +1314,7 @@ class _CreditCardFieldRow extends StatelessWidget {
                         field.labelController.text,
                         style: _text(
                           12,
-                          const Color(0xFF5E56E8),
+                          _kPrimaryButtonColor,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -1387,14 +1335,14 @@ class _CreditCardFieldRow extends StatelessWidget {
                       : null,
                   style: _text(
                     16,
-                    const Color(0xFF6B7280),
+                    _VaultColors.headerLabel,
                     fontWeight: FontWeight.w400,
                   ),
                   decoration: InputDecoration(
                     hintText: field.valueHint,
                     hintStyle: _text(
                       16,
-                      const Color(0xFF8A8F98),
+                      _VaultColors.icon,
                       fontWeight: FontWeight.w400,
                     ),
                     isCollapsed: true,
@@ -1421,7 +1369,7 @@ class _CreditCardFieldRow extends StatelessWidget {
               child: Icon(
                 field.trailingIcon,
                 size: 18,
-                color: const Color(0xFF8A8F98),
+                color: _VaultColors.icon,
               ),
             )
           else if (field.removable && onRemove != null)
@@ -1523,9 +1471,9 @@ class _CalendarCreditCardFieldRowState
                   width: popupWidth,
                   padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE1E7F0)),
+                    color: _VaultColors.surface,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: _VaultColors.borderSoft),
                     boxShadow: const <BoxShadow>[
                       BoxShadow(
                         color: Color(0x14172033),
@@ -1535,16 +1483,16 @@ class _CalendarCreditCardFieldRowState
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(6),
                     child: SizedBox(
                       height: popupHeight - 18,
                       child: Theme(
                         data: Theme.of(context).copyWith(
                           colorScheme: Theme.of(context).colorScheme.copyWith(
-                                primary: const Color(0xFF2F6BFF),
+                                primary: _kPrimaryButtonColor,
                                 onPrimary: Colors.white,
-                                surface: Colors.white,
-                                onSurface: const Color(0xFF2E3138),
+                                surface: _VaultColors.surface,
+                                onSurface: _VaultColors.title,
                               ),
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
@@ -1608,7 +1556,7 @@ class _CalendarCreditCardFieldRowState
                       widget.field.labelController.text,
                       style: _text(
                         12,
-                        const Color(0xFF5E56E8),
+                        _kPrimaryButtonColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1620,8 +1568,8 @@ class _CalendarCreditCardFieldRowState
                       style: _text(
                         16,
                         widget.field.valueController.text.isEmpty
-                            ? const Color(0xFF8A8F98)
-                            : const Color(0xFF6B7280),
+                            ? _VaultColors.icon
+                            : _VaultColors.headerLabel,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -1639,16 +1587,15 @@ class _CalendarCreditCardFieldRowState
               width: 30,
               height: 30,
               decoration: BoxDecoration(
-                color: _showCalendar
-                    ? const Color(0xFFEAF1FF)
-                    : Colors.transparent,
+                color:
+                    _showCalendar ? _VaultColors.peachSoft : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
               child: Icon(
                 widget.field.trailingIcon ?? Icons.calendar_today_outlined,
                 size: 18,
-                color: const Color(0xFF8A8F98),
+                color: _VaultColors.icon,
               ),
             ),
           ),
@@ -1874,8 +1821,9 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FA),
-        borderRadius: BorderRadius.circular(16),
+        color: _VaultColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: _VaultColors.borderSoft),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1891,7 +1839,7 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
                   child: const Icon(
                     TablerIcons.menu_2,
                     size: 24,
-                    color: Color(0xFF2E3138),
+                    color: _VaultColors.title,
                   ),
                 ),
               ),
@@ -1907,7 +1855,7 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
                   maxLines: 1,
                   style: _text(
                     12,
-                    const Color(0xFF2E3138),
+                    _VaultColors.title,
                     fontWeight: FontWeight.w500,
                   ),
                   decoration: const InputDecoration(
@@ -1932,14 +1880,14 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
                   enableSuggestions: !isSecretField,
                   style: _text(
                     10,
-                    const Color(0xFF6B7280),
+                    _VaultColors.headerLabel,
                     fontWeight: FontWeight.w400,
                   ),
                   decoration: InputDecoration(
                     hintText: 'Enter value',
                     hintStyle: _text(
                       10,
-                      const Color(0xFF98A2B3),
+                      _VaultColors.icon,
                       fontWeight: FontWeight.w400,
                     ),
                     filled: false,
@@ -1976,7 +1924,7 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
                             ? TablerIcons.eye_off
                             : TablerIcons.eye,
                         size: 16,
-                        color: const Color(0xFF98A2B3),
+                        color: _VaultColors.icon,
                       ),
                     ),
                   ),
@@ -2110,14 +2058,14 @@ class _AttachmentSection extends StatelessWidget {
             const Icon(
               TablerIcons.paperclip,
               size: 14,
-              color: Color(0xFF5A78C5),
+              color: _kPrimaryButtonColor,
             ),
             const SizedBox(width: 6),
             Text(
               'attachments',
               style: _text(
                 11,
-                const Color(0xFF344054),
+                _VaultColors.headerLabel,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -2126,14 +2074,14 @@ class _AttachmentSection extends StatelessWidget {
         const SizedBox(height: 6),
         InkWell(
           onTap: onAddPressed,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFD),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFDDE3EC)),
+              color: _VaultColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: _VaultColors.borderSoft),
             ),
             child: Row(
               children: <Widget>[
@@ -2141,14 +2089,14 @@ class _AttachmentSection extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEAF1FF),
-                    borderRadius: BorderRadius.circular(10),
+                    color: _VaultColors.peachSoft,
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   alignment: Alignment.center,
                   child: const Icon(
                     TablerIcons.upload,
                     size: 18,
-                    color: Color(0xFF3B6FD3),
+                    color: _kPrimaryButtonColor,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -2160,7 +2108,7 @@ class _AttachmentSection extends StatelessWidget {
                         'Add files or images',
                         style: _text(
                           12,
-                          const Color(0xFF2E3138),
+                          _VaultColors.title,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -2169,7 +2117,7 @@ class _AttachmentSection extends StatelessWidget {
                         'Upload attachments for this item',
                         style: _text(
                           10,
-                          const Color(0xFF7B8798),
+                          _VaultColors.icon,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -2179,7 +2127,7 @@ class _AttachmentSection extends StatelessWidget {
                 const Icon(
                   TablerIcons.plus,
                   size: 16,
-                  color: Color(0xFF3B6FD3),
+                  color: _kPrimaryButtonColor,
                 ),
               ],
             ),
@@ -2215,9 +2163,9 @@ class _LoginAttachmentTile extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFCFF),
+        color: _VaultColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F2)),
+        border: Border.all(color: _VaultColors.borderSoft),
       ),
       child: Row(
         children: <Widget>[
@@ -2233,7 +2181,7 @@ class _LoginAttachmentTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: _text(
                     11,
-                    const Color(0xFF2B3444),
+                    _VaultColors.title,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -2242,7 +2190,7 @@ class _LoginAttachmentTile extends StatelessWidget {
                   _formatAttachmentSize(attachment.size),
                   style: _text(
                     10,
-                    const Color(0xFF7B8CA6),
+                    _VaultColors.icon,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -2302,15 +2250,15 @@ class _LoginAttachmentThumb extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: attachment.isImage
-            ? const Color(0xFFDCE5FA)
-            : const Color(0xFFEEF2F8),
+            ? _VaultColors.peachSoft
+            : _VaultColors.surfaceMuted,
         borderRadius: BorderRadius.circular(8),
       ),
       alignment: Alignment.center,
       child: Icon(
         attachment.isImage ? TablerIcons.photo : TablerIcons.file_description,
         size: 18,
-        color: const Color(0xFF6B7A92),
+        color: _VaultColors.icon,
       ),
     );
   }
@@ -2355,7 +2303,7 @@ class _LoginFooterButtonState extends State<_LoginFooterButton> {
         curve: Curves.easeOutCubic,
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             curve: Curves.easeOut,
@@ -2364,7 +2312,7 @@ class _LoginFooterButtonState extends State<_LoginFooterButton> {
               color: isEnabled
                   ? widget.backgroundColor
                   : widget.backgroundColor.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(6),
               border: widget.borderColor != null
                   ? Border.all(color: widget.borderColor!)
                   : null,

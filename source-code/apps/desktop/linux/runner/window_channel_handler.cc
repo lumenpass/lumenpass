@@ -150,6 +150,12 @@ void WindowChannelHandler::HandleMethodCall(FlMethodCall* method_call,
     }
     *response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
 
+  } else if (g_strcmp0(method, "clearQuickSearchData") == 0) {
+    if (quick_search_panel_ != nullptr) {
+      quick_search_panel_->Hide();
+    }
+    *response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+
   } else {
     *response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
   }

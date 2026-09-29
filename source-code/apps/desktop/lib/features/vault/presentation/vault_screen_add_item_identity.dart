@@ -346,7 +346,8 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
       final key = field.labelController.text.trim();
       final value = field.valueController.text.trim();
       if (key.isEmpty || value.isEmpty) continue;
-      fields.add(EntryField(key: identityStorageKeyForLabel(key), value: value));
+      fields
+          .add(EntryField(key: identityStorageKeyForLabel(key), value: value));
     }
 
     for (final attr in _customAttributes) {
@@ -445,7 +446,8 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
       final key = field.labelController.text.trim();
       final value = field.valueController.text.trim();
       if (key.isEmpty || value.isEmpty) continue;
-      fields.add(EntryField(key: identityStorageKeyForLabel(key), value: value));
+      fields
+          .add(EntryField(key: identityStorageKeyForLabel(key), value: value));
     }
 
     for (final attribute in _customAttributes) {
@@ -513,9 +515,9 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
             contentPadding: EdgeInsets.zero,
           ),
           textSelectionTheme: const TextSelectionThemeData(
-            cursorColor: Color(0xFF2F6BFF),
-            selectionColor: Color(0x1F2F6BFF),
-            selectionHandleColor: Color(0xFF2F6BFF),
+            cursorColor: _kPrimaryButtonColor,
+            selectionColor: Color(0x33FF5B22),
+            selectionHandleColor: _kPrimaryButtonColor,
           ),
         );
 
@@ -529,9 +531,9 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
                 constraints: BoxConstraints(maxHeight: modalHeight),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE7EBF0),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: const Color(0xFFD0D8E2)),
+                  color: _VaultColors.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _VaultColors.borderSoft),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
                       color: Color(0x1C172033),
@@ -556,7 +558,7 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
                           child: Text(
                             _isEditing ? 'Edit Item' : 'New Item',
                             textAlign: TextAlign.center,
-                            style: _text(20, const Color(0xFF2E3138),
+                            style: _text(20, _VaultColors.title,
                                 fontWeight: FontWeight.w700),
                           ),
                         ),
@@ -568,31 +570,9 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: <Widget>[
-                        Container(
-                          width: 58,
-                          height: 58,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: <Color>[
-                                Color(0xFF87E0A6),
-                                Color(0xFF4DBD7D),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          alignment: Alignment.center,
-                          child: Image.asset(
-                            'assets/images/item_type_identity.png',
-                            width: 34,
-                            height: 34,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              TablerIcons.id,
-                              size: 30,
-                              color: Color(0xFFFFFFFF),
-                            ),
-                          ),
+                        const _AddItemTypeIcon(
+                          icon: TablerIcons.id,
+                          color: Color(0xFF41895D),
                         ),
                         const SizedBox(width: 10),
                         if (!_isEditing) ...<Widget>[
@@ -603,12 +583,12 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
                               width: 24,
                               height: 24,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEEF2F7),
+                                color: _VaultColors.surfaceMuted,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               alignment: Alignment.center,
                               child: const Icon(TablerIcons.chevron_down,
-                                  size: 14, color: Color(0xFF667085)),
+                                  size: 14, color: _VaultColors.headerLabel),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -619,13 +599,13 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                             decoration: BoxDecoration(
                               color: _isEditing
-                                  ? const Color(0xFFF7F8FB)
+                                  ? _VaultColors.surfaceMuted
                                   : Colors.white,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: _isEditing
-                                    ? const Color(0xFFE8ECF3)
-                                    : const Color(0xFF9CB8EE),
+                                    ? _VaultColors.borderSoft
+                                    : _VaultColors.peach,
                                 width: _isEditing ? 1 : 3,
                               ),
                             ),
@@ -634,12 +614,10 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
                               controller: _titleController,
                               maxLines: 1,
                               textAlignVertical: TextAlignVertical.center,
-                              style: const TextStyle(
-                                fontSize: 22,
+                              style: _displayText(
+                                22,
+                                _VaultColors.title,
                                 height: 1,
-                                color: Color(0xFF2E3138),
-                                fontWeight: FontWeight.w700,
-                                fontFamily: 'Inter',
                               ),
                               decoration: const InputDecoration(
                                 filled: false,
@@ -705,15 +683,14 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF5F7FB),
+                                    color: _VaultColors.surfaceMuted,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
                                     children: <Widget>[
                                       Text(
                                         '+ add more',
-                                        style: _text(
-                                            12, const Color(0xFF0B63E5),
+                                        style: _text(12, _kPrimaryButtonColor,
                                             fontWeight: FontWeight.w600),
                                       ),
                                       const Spacer(),
@@ -722,7 +699,7 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
                                             ? TablerIcons.chevron_up
                                             : TablerIcons.chevron_down,
                                         size: 14,
-                                        color: const Color(0xFF6A7282),
+                                        color: _VaultColors.icon,
                                       ),
                                     ],
                                   ),
@@ -744,7 +721,7 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
                               maxLines: 4,
                               minLines: 4,
                               icon: TablerIcons.notes,
-                              iconColor: const Color(0xFF6D63D6),
+                              iconColor: _kPrimaryButtonColor,
                               hintText: 'Add any notes about this item here.',
                             ),
                             const SizedBox(height: 16),
@@ -752,7 +729,7 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
                               alignment: Alignment.centerLeft,
                               child: Text(
                                 'tags',
-                                style: _text(12, const Color(0xFF6D63D6),
+                                style: _text(12, _kPrimaryButtonColor,
                                     fontWeight: FontWeight.w600),
                               ),
                             ),
@@ -771,16 +748,16 @@ class _AddIdentityItemModalState extends ConsumerState<_AddIdentityItemModal> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Container(height: 1, color: const Color(0xFFCCD4DF)),
+                    Container(height: 1, color: _VaultColors.borderSoft),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: <Widget>[
                         _LoginFooterButton(
                           label: 'Cancel',
-                          backgroundColor: const Color(0xFFEBEEF3),
-                          textColor: const Color(0xFF3E4B60),
-                          borderColor: const Color(0xFFC0C9D4),
+                          backgroundColor: _VaultColors.surfaceMuted,
+                          textColor: _VaultColors.headerLabel,
+                          borderColor: _VaultColors.borderPane,
                           onTap: _isSaving ? null : _confirmClose,
                         ),
                         const SizedBox(width: 10),

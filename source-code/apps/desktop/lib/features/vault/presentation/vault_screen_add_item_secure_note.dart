@@ -387,9 +387,9 @@ class _AddSecureNoteItemModalState
             contentPadding: EdgeInsets.zero,
           ),
           textSelectionTheme: const TextSelectionThemeData(
-            cursorColor: Color(0xFF2F6BFF),
-            selectionColor: Color(0x1F2F6BFF),
-            selectionHandleColor: Color(0xFF2F6BFF),
+            cursorColor: _kPrimaryButtonColor,
+            selectionColor: Color(0x33FF5B22),
+            selectionHandleColor: _kPrimaryButtonColor,
           ),
         );
 
@@ -403,9 +403,9 @@ class _AddSecureNoteItemModalState
                 constraints: BoxConstraints(maxHeight: modalHeight),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE7EBF0),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: const Color(0xFFD0D8E2)),
+                  color: _VaultColors.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _VaultColors.borderSoft),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
                       color: Color(0x1C172033),
@@ -430,7 +430,7 @@ class _AddSecureNoteItemModalState
                           child: Text(
                             _isEditing ? 'Edit Item' : 'New Item',
                             textAlign: TextAlign.center,
-                            style: _text(20, const Color(0xFF2E3138),
+                            style: _text(20, _VaultColors.title,
                                 fontWeight: FontWeight.w700),
                           ),
                         ),
@@ -441,26 +441,9 @@ class _AddSecureNoteItemModalState
                     const SizedBox(height: 14),
                     Row(
                       children: <Widget>[
-                        Container(
-                          width: 58,
-                          height: 58,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Image.asset(
-                            'assets/images/item_type_note.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: const Color(0xFFFFE1AE),
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                TablerIcons.notes,
-                                size: 24,
-                                color: Color(0xFFC17800),
-                              ),
-                            ),
-                          ),
+                        const _AddItemTypeIcon(
+                          icon: TablerIcons.notes,
+                          color: Color(0xFFC17800),
                         ),
                         const SizedBox(width: 10),
                         if (!_isEditing) ...<Widget>[
@@ -471,12 +454,12 @@ class _AddSecureNoteItemModalState
                               width: 24,
                               height: 24,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEEF2F7),
+                                color: _VaultColors.surfaceMuted,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               alignment: Alignment.center,
                               child: const Icon(TablerIcons.chevron_down,
-                                  size: 14, color: Color(0xFF667085)),
+                                  size: 14, color: _VaultColors.headerLabel),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -486,22 +469,20 @@ class _AddSecureNoteItemModalState
                             height: 42,
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF7F9FB),
+                              color: _VaultColors.surfaceMuted,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                  color: const Color(0xFF8BA9D8), width: 2),
+                                  color: _kPrimaryButtonColor, width: 2),
                             ),
                             alignment: Alignment.centerLeft,
                             child: TextField(
                               controller: _titleController,
                               maxLines: 1,
                               textAlignVertical: TextAlignVertical.center,
-                              style: const TextStyle(
-                                fontSize: 22,
+                              style: _displayText(
+                                22,
+                                _VaultColors.title,
                                 height: 1,
-                                color: Color(0xFF2E3138),
-                                fontWeight: FontWeight.w700,
-                                fontFamily: 'Inter',
                               ),
                               decoration: const InputDecoration(
                                 filled: false,
@@ -543,15 +524,14 @@ class _AddSecureNoteItemModalState
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFE8EEF9),
+                                    color: _VaultColors.peachSoft,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
                                     children: <Widget>[
                                       Text(
                                         '+ add more',
-                                        style: _text(
-                                            12, const Color(0xFF3B6FD3),
+                                        style: _text(12, _kPrimaryButtonColor,
                                             fontWeight: FontWeight.w600),
                                       ),
                                       const Spacer(),
@@ -560,7 +540,7 @@ class _AddSecureNoteItemModalState
                                             ? TablerIcons.chevron_up
                                             : TablerIcons.chevron_down,
                                         size: 14,
-                                        color: const Color(0xFF6A7282),
+                                        color: _VaultColors.icon,
                                       ),
                                     ],
                                   ),
@@ -596,7 +576,7 @@ class _AddSecureNoteItemModalState
                               alignment: Alignment.centerLeft,
                               child: Text(
                                 'tags',
-                                style: _text(12, const Color(0xFF6D63D6),
+                                style: _text(12, _kPrimaryButtonColor,
                                     fontWeight: FontWeight.w600),
                               ),
                             ),
@@ -615,16 +595,16 @@ class _AddSecureNoteItemModalState
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Container(height: 1, color: const Color(0xFFCCD4DF)),
+                    Container(height: 1, color: _VaultColors.borderSoft),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: <Widget>[
                         _LoginFooterButton(
                           label: 'Cancel',
-                          backgroundColor: const Color(0xFFEBEEF3),
-                          textColor: const Color(0xFF3E4B60),
-                          borderColor: const Color(0xFFC0C9D4),
+                          backgroundColor: _VaultColors.surfaceMuted,
+                          textColor: _VaultColors.headerLabel,
+                          borderColor: _VaultColors.borderPane,
                           onTap: _isSaving ? null : _confirmClose,
                         ),
                         const SizedBox(width: 10),

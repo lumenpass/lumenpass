@@ -22,7 +22,7 @@ TextStyle _t(
     fontSize: size,
     color: color,
     fontWeight: fontWeight,
-    fontFamily: 'Inter',
+    fontFamily: 'Ubuntu Sans',
     height: height,
   );
 }

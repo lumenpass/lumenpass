@@ -220,6 +220,7 @@ class _MockEntry {
     bool? selected,
     _CardBrand? cardBrand,
     String? socialProvider,
+    String? faviconPngBase64,
   }) {
     return _MockEntry(
       uuid: uuid ?? this.uuid,
@@ -251,7 +252,7 @@ class _MockEntry {
       selected: selected ?? this.selected,
       cardBrand: cardBrand ?? this.cardBrand,
       socialProvider: socialProvider ?? this.socialProvider,
-      faviconPngBase64: faviconPngBase64,
+      faviconPngBase64: faviconPngBase64 ?? this.faviconPngBase64,
     );
   }
 }
@@ -640,8 +641,7 @@ String _compactWebsite(String rawUrl) {
 // Invalidated automatically when visible entry data changes. Normal edits bump
 // `updatedAt`; hidden favicon-cache writes intentionally preserve `updatedAt`,
 // so the favicon payload is part of this lightweight cache key too.
-// Deleted entries leak at most one cache slot per uuid until
-// `_clearMockEntryCache()` is called on vault teardown.
+// Deleted entries are evicted when removed from the vault or moved to Trash.
 class _MockEntryCacheItem {
   _MockEntryCacheItem(this.updatedAt, this.faviconPngBase64, this.mock);
 
@@ -655,6 +655,16 @@ final Map<String, _MockEntryCacheItem> _mockEntryCache =
 
 void _clearMockEntryCache() {
   _mockEntryCache.clear();
+}
+
+void _evictMockEntryCache(String uuid) {
+  _mockEntryCache.remove(uuid);
+}
+
+void _pruneMockEntryCache(Iterable<KdbxEntry> currentEntries) {
+  if (_mockEntryCache.isEmpty) return;
+  final currentUuids = currentEntries.map((entry) => entry.uuid).toSet();
+  _mockEntryCache.removeWhere((uuid, _) => !currentUuids.contains(uuid));
 }
 
 _MockEntry _mockEntryFromKdbx(KdbxEntry entry) {

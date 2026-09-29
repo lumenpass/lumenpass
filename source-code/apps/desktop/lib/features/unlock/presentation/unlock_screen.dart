@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/database_record.dart';
 import '../../../core/services/backup_service.dart';
@@ -15,7 +16,9 @@ import '../../../core/services/bookmark_service.dart';
 
 import '../../../core/services/vault_unlock_service.dart';
 import '../../../presentation/theme/app_theme.dart';
+import '../../../presentation/widgets/lumenpass_wordmark.dart';
 
+import '../../cloud/application/cloud_service_provider.dart';
 import '../../cloud/application/cloud_disconnect.dart';
 import '../../cloud/presentation/cloud_services_screen.dart';
 import '../../vault/presentation/vault_screen.dart';
@@ -33,36 +36,41 @@ import 'unlocking_progress_screen.dart';
 import 'webdav_config_dialog.dart';
 
 // ── Shared palette ─────────────────────────────────────────────────────────
-const Color _kSidebar = Color(0xFFF2F5FA);
-const Color _kCanvas = Color(0xFFF6F8FB);
 const Color _kBorderSoft = Color(0xFFE1E7F0);
-const Color _kBorderRow = Color(0xFFE6EAF0);
-const Color _kBorderHover = Color(0xFFD4DDEA);
-const Color _kHoverBg = Color(0xFFEAF0FB);
 const Color _kTitle = Color(0xFF22314A);
 const Color _kLabel = Color(0xFF73839D);
 const Color _kIcon = Color(0xFF8A97AC);
-const Color _kBlue = Color(0xFF4B6CFF);
 const Color _kActionDark = Color(0xFF0A3B48);
-const Color _kPanelTextSoft = Colors.white;
 
-const Color _kUnlockDialogBackground = Color(0xFFE7EBF0);
-const Color _kUnlockDialogBorder = Color(0xFFC9D2DE);
-const Color _kUnlockCardBackground = Color(0xFFE2E7ED);
-const Color _kUnlockCardBorder = Color(0xFFD0D8E2);
-const Color _kUnlockFieldBackground = Color(0xFFF7F9FB);
-const Color _kUnlockFieldText = Color(0xFF1F2937);
-const Color _kUnlockHintText = Color(0xFF6E7783);
-const Color _kUnlockFieldFocus = Color(0xFF0F67D6);
-const Color _kUnlockAccentSoft = Color(0xFFEAF2FF);
-const Color _kUnlockAccentBorder = Color(0xFF8BA9D8);
-const Color _kUnlockFooterBackground = Color(0xFFDDE4EC);
-const Color _kUnlockFooterBorder = Color(0xFFCCD4DF);
-const Color _kUnlockGhostBg = Color(0xFFEBEEF3);
-const Color _kUnlockGhostBorder = Color(0xFFC0C9D4);
-const Color _kUnlockGhostText = Color(0xFF3E4B60);
-const Color _kUnlockPrimaryHover = Color(0xFF0D4A59);
-const Color _kUnlockPrimaryDisabled = Color(0xFF7F959D);
+const Color _kPickerInk = Color(0xFF191A1B);
+const Color _kPickerPaper = Color(0xFFF7F4EC);
+const Color _kPickerPaperBright = Color(0xFFFFFCF5);
+const Color _kPickerLine = Color(0xFF252628);
+const Color _kPickerLineSoft = Color(0xFFC9CBC8);
+const Color _kPickerMuted = Color(0xFF626560);
+const Color _kPickerOrange = Color(0xFFFF5B22);
+const Color _kPickerOrangeDark = Color(0xFFE94A13);
+const Color _kPickerMint = Color(0xFF21A98F);
+const Color _kPickerMintSoft = Color(0xFFDFF2EC);
+const Color _kPickerPeach = Color(0xFFF4D7C8);
+const Color _kPickerYellow = Color(0xFFF4E2A4);
+const Color _kPickerBlue = Color(0xFF3858D8);
+const double _kVaultStatisticsFooterHeight = 62;
+
+const Color _kUnlockDialogBackground = _kPickerPaper;
+const Color _kUnlockCardBackground = _kPickerPaperBright;
+const Color _kUnlockCardBorder = _kPickerLineSoft;
+const Color _kUnlockFieldText = _kPickerInk;
+const Color _kUnlockHintText = _kPickerMuted;
+const Color _kUnlockAccentSoft = _kPickerMintSoft;
+const Color _kUnlockAccentBorder = _kPickerMint;
+const Color _kUnlockFooterBackground = _kPickerPaperBright;
+const Color _kUnlockFooterBorder = _kPickerLineSoft;
+const Color _kUnlockGhostBg = _kPickerPaper;
+const Color _kUnlockGhostBorder = _kPickerLine;
+const Color _kUnlockGhostText = _kPickerInk;
+const Color _kUnlockPrimaryHover = _kPickerOrangeDark;
+const Color _kUnlockPrimaryDisabled = Color(0xFFB9B4A9);
 
 TextStyle _uText(
   double size,
@@ -75,9 +83,74 @@ TextStyle _uText(
     fontSize: size,
     color: color,
     fontWeight: fontWeight,
-    fontFamily: 'Inter',
+    fontFamily: 'Ubuntu Sans',
     letterSpacing: letterSpacing,
     height: height,
+  );
+}
+
+TextStyle _pickerText(
+  double size,
+  Color color, {
+  FontWeight fontWeight = FontWeight.w400,
+  double? letterSpacing,
+  double? height,
+}) {
+  return TextStyle(
+    fontSize: size,
+    color: color,
+    fontWeight: fontWeight,
+    fontFamily: 'Ubuntu Sans',
+    letterSpacing: letterSpacing,
+    height: height,
+  );
+}
+
+TextStyle _pickerDisplayText(
+  double size,
+  Color color, {
+  double? height,
+}) {
+  return TextStyle(
+    fontSize: size,
+    color: color,
+    fontWeight: FontWeight.w700,
+    fontFamily: 'Ubuntu Sans',
+    letterSpacing: -0.45,
+    height: height,
+  );
+}
+
+InputDecoration _unlockFieldDecoration({
+  required String hint,
+  required IconData prefixIcon,
+  Widget? suffix,
+}) {
+  return InputDecoration(
+    hintText: hint,
+    hintStyle: _pickerText(13, _kPickerMuted),
+    filled: true,
+    fillColor: _kPickerPaper,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: Color(0xFFCAC3B7)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: Color(0xFFCAC3B7)),
+    ),
+    disabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: _kPickerLineSoft),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: _kPickerOrange, width: 1.5),
+    ),
+    prefixIcon: Icon(prefixIcon, size: 17, color: _kPickerMuted),
+    prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+    suffixIcon: suffix,
   );
 }
 
@@ -119,8 +192,10 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   static const double _kWindowHeight = 480.0;
   bool _showSplash = false;
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   final Map<String, DatabaseConnectionHealth> _databaseHealth =
       <String, DatabaseConnectionHealth>{};
+  bool _showDatabaseSearch = false;
   String? _selectedDatabaseId;
   _DatabaseSortField _sortField = _DatabaseSortField.recent;
   bool _sortAscending = true;
@@ -132,10 +207,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   void initState() {
     super.initState();
     if (Platform.isMacOS) {
-      _windowChannel.invokeMethod<void>(
-        'showNativeTitleBar',
-        <String, dynamic>{'title': 'LumenPass - Password Manager'},
-      );
+      _windowChannel.invokeMethod<void>('hideNativeTitleBar');
       _windowChannel.invokeMethod<void>(
         'setSize',
         <String, double>{'width': 820, 'height': _kWindowHeight},
@@ -168,6 +240,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -178,141 +251,145 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     final visibleDatabases = _visibleDatabases(databases);
     final selectedRecord = _selectedRecordFrom(visibleDatabases);
 
-    final selectedHealth =
-        selectedRecord == null ? null : _databaseHealth[selectedRecord.id];
-    final canUnlockSelected = selectedRecord != null &&
-        !_isDatabaseInteractionBlocked(selectedRecord, health: selectedHealth);
-
     final unlockContent = Theme(
       data: AppTheme.light(),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: _kPickerPaper,
         body: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             // Left: database list
             Expanded(
               flex: 3,
-              child: Container(
-                color: Colors.white,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: _VintageGridSurface(
+                child: Stack(
                   children: <Widget>[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          _buildHeader(),
-                          const SizedBox(height: 14),
-                          _SearchField(
-                            controller: _searchController,
-                            onChanged: (_) => setState(() {}),
-                            onClear: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            20,
+                            Platform.isMacOS ? 26 : 16,
+                            20,
+                            0,
                           ),
-                          if (databases.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 12),
-                            _DatabaseListHeader(
-                              sortField: _sortField,
-                              sortAscending: _sortAscending,
-                              onSort: _toggleSort,
-                              isRefreshing: _isRefreshingDatabaseHealth,
-                              onRefresh: _refreshAllDatabaseHealth,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: databases.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: const _EmptyDatabaseState(),
-                            )
-                          : visibleDatabases.isEmpty
-                              ? const Padding(
-                                  padding: EdgeInsets.all(20),
-                                  child: _EmptySearchState(),
-                                )
-                              : ListView.separated(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                                  itemCount: visibleDatabases.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(height: 6),
-                                  itemBuilder: (_, index) {
-                                    final db = visibleDatabases[index];
-                                    final health = _databaseHealth[db.id];
-
-                                    return _DatabaseRow(
-                                      record: db,
-                                      selected: selectedRecord?.id == db.id,
-                                      health: health,
-                                      onTap: _isDatabaseInteractionBlocked(
-                                        db,
-                                        health: health,
-                                      )
-                                          ? null
-                                          : () => _selectDatabase(db),
-                                      onDoubleTap:
-                                          _isDatabaseInteractionBlocked(
-                                        db,
-                                        health: health,
-                                      )
-                                              ? null
-                                              : () => _handleOpenDatabase(
-                                                    db,
-                                                    autoPromptMode:
-                                                        UnlockAutoPromptMode
-                                                            .immediate,
-                                                  ),
-                                      onShowHealthDetails: health != null &&
-                                              health.hasError
-                                          ? () => _showDatabaseHealthDetails(db)
-                                          : null,
-                                      onSetDefault: () =>
-                                          _handleSetDefaultDatabase(db),
-                                      onSaveAs: () => _handleSaveDatabaseAs(db),
-                                      onDuplicate: () =>
-                                          _handleDuplicateDatabase(db),
-                                      onRestore: () =>
-                                          _handleRestoreDatabase(db),
-                                      onRemove: () => _handleRemoveDatabase(db),
-                                    );
-                                  },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              _buildHeader(),
+                              if (databases.isNotEmpty) ...<Widget>[
+                                const SizedBox(height: 12),
+                                _DatabaseListHeader(
+                                  sortField: _sortField,
+                                  sortAscending: _sortAscending,
+                                  onSort: _toggleSort,
+                                  isRefreshing: _isRefreshingDatabaseHealth,
+                                  onRefresh: _refreshAllDatabaseHealth,
                                 ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: databases.isEmpty
+                              ? Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: const _EmptyDatabaseState(),
+                                )
+                              : visibleDatabases.isEmpty
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(20),
+                                      child: _EmptySearchState(),
+                                    )
+                                  : ListView.separated(
+                                      padding: EdgeInsets.fromLTRB(
+                                        20,
+                                        10,
+                                        20,
+                                        _showDatabaseSearch ? 82 : 16,
+                                      ),
+                                      itemCount: visibleDatabases.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(height: 6),
+                                      itemBuilder: (_, index) {
+                                        final db = visibleDatabases[index];
+                                        final health = _databaseHealth[db.id];
+
+                                        return _DatabaseRow(
+                                          record: db,
+                                          selected: selectedRecord?.id == db.id,
+                                          health: health,
+                                          onTap: _isDatabaseInteractionBlocked(
+                                            db,
+                                            health: health,
+                                          )
+                                              ? null
+                                              : () => _selectDatabase(db),
+                                          onDoubleTap:
+                                              _isDatabaseInteractionBlocked(
+                                            db,
+                                            health: health,
+                                          )
+                                                  ? null
+                                                  : () => _handleOpenDatabase(
+                                                        db,
+                                                        autoPromptMode:
+                                                            UnlockAutoPromptMode
+                                                                .immediate,
+                                                      ),
+                                          onShowHealthDetails: health != null &&
+                                                  health.hasError
+                                              ? () =>
+                                                  _showDatabaseHealthDetails(db)
+                                              : null,
+                                          onSetDefault: () =>
+                                              _handleSetDefaultDatabase(db),
+                                          onSaveAs: () =>
+                                              _handleSaveDatabaseAs(db),
+                                          onDuplicate: () =>
+                                              _handleDuplicateDatabase(db),
+                                          onRestore: () =>
+                                              _handleRestoreDatabase(db),
+                                          onRemove: () =>
+                                              _handleRemoveDatabase(db),
+                                        );
+                                      },
+                                    ),
+                        ),
+                        _VaultStatisticsFooter(databases: databases),
+                      ],
                     ),
-                    _UnlockFooterBar(
-                      selectedRecord: selectedRecord,
-                      onExit: _handleExitApp,
-                      onUnlock: !canUnlockSelected
-                          ? null
-                          : () => _handleOpenDatabase(
-                                selectedRecord,
-                                autoPromptMode: UnlockAutoPromptMode.immediate,
-                              ),
-                    ),
+                    if (_showDatabaseSearch)
+                      Positioned(
+                        left: 20,
+                        right: 20,
+                        bottom: _kVaultStatisticsFooterHeight + 12,
+                        child: _SearchField(
+                          controller: _searchController,
+                          focusNode: _searchFocusNode,
+                          onChanged: (_) => setState(() {}),
+                          onClose: _closeDatabaseSearch,
+                        ),
+                      ),
                   ],
                 ),
               ),
             ),
             // Vertical divider
-            Container(width: 1, color: _kBorderSoft),
+            Container(width: 2, color: _kPickerLine),
             // Right: greeting header (top) + guide panel (below)
             Expanded(
               flex: 2,
               child: Container(
-                color: _kSidebar,
+                color: _kPickerMintSoft,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: const <Widget>[
                     _UnlockGreetingHeader(),
                     Expanded(
                       child: Padding(
-                        padding: EdgeInsets.all(20),
+                        padding: EdgeInsets.fromLTRB(18, 15, 18, 14),
                         child: _VaultGuidePanel(),
                       ),
                     ),
@@ -337,61 +414,73 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   }
 
   Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _kBorderSoft),
-              ),
-              child: const Icon(
-                TablerIcons.database,
-                size: 17,
-                color: _kTitle,
-              ),
+        Container(
+          height: 27,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: _kPickerInk,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            'YOUR VAULTS',
+            style: _pickerText(
+              9,
+              Colors.white,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.05,
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Your Databases',
-                style: _uText(15, _kTitle, fontWeight: FontWeight.w700),
-              ),
-            ),
-            _HeaderIconButton(
-              icon: TablerIcons.plus,
-              tooltip: 'Create database',
-              onTap: _openCreateDatabase,
-              primary: true,
-            ),
-            const SizedBox(width: 8),
-            _HeaderIconButton(
-              icon: TablerIcons.folder_open,
-              tooltip: 'Open existing database',
-              onTap: _openExistingDatabase,
-              primary: false,
-            ),
-            const SizedBox(width: 8),
-            _HeaderIconButton(
-              icon: TablerIcons.cloud,
-              tooltip: 'Cloud Services',
-              onTap: _openCloudServices,
-              primary: false,
-            ),
-          ],
+          ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          'Choose a database, then unlock it from the footer.',
-          style: _uText(12, _kLabel),
+        const Spacer(),
+        _HeaderIconButton(
+          icon: TablerIcons.search,
+          tooltip: 'Search databases',
+          onTap: _openDatabaseSearch,
+          primary: false,
+        ),
+        const SizedBox(width: 8),
+        _HeaderIconButton(
+          icon: TablerIcons.plus,
+          tooltip: 'Create database',
+          onTap: _openCreateDatabase,
+          primary: true,
+        ),
+        const SizedBox(width: 8),
+        _HeaderIconButton(
+          icon: TablerIcons.folder_open,
+          tooltip: 'Open existing database',
+          onTap: _openExistingDatabase,
+          primary: false,
+        ),
+        const SizedBox(width: 8),
+        _HeaderIconButton(
+          icon: TablerIcons.cloud,
+          tooltip: 'Cloud Services',
+          onTap: _openCloudServices,
+          primary: false,
         ),
       ],
     );
+  }
+
+  void _openDatabaseSearch() {
+    if (_showDatabaseSearch) {
+      _searchFocusNode.requestFocus();
+      return;
+    }
+    setState(() => _showDatabaseSearch = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
+  void _closeDatabaseSearch() {
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    setState(() => _showDatabaseSearch = false);
   }
 
   void _scheduleDatabaseHealthChecks(List<DatabaseRecord> databases) {
@@ -1220,16 +1309,6 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     }
     return null;
   }
-
-  Future<void> _handleExitApp() async {
-    if (Platform.isMacOS) {
-      try {
-        await _windowChannel.invokeMethod<void>('quit');
-        return;
-      } catch (_) {}
-    }
-    exit(0);
-  }
 }
 
 // ── Database row ────────────────────────────────────────────────────────────
@@ -1268,9 +1347,9 @@ class _DatabaseRow extends StatefulWidget {
 class _DatabaseRowState extends State<_DatabaseRow> {
   bool _hovered = false;
 
-  static const Color _menuSurface = Color(0xFFFFFFFF);
-  static const Color _menuText = Color(0xFF243247);
-  static const Color _menuBorder = Color(0xFFDDE6F2);
+  static const Color _menuSurface = _kPickerPaperBright;
+  static const Color _menuText = _kPickerInk;
+  static const Color _menuBorder = _kPickerLine;
 
   PopupMenuItem<String> _menuItem({
     required String value,
@@ -1382,11 +1461,11 @@ class _DatabaseRowState extends State<_DatabaseRow> {
       items: _buildContextMenuEntries(),
       color: _menuSurface,
       surfaceTintColor: _menuSurface,
-      shadowColor: const Color(0x22000000),
-      elevation: 10,
+      shadowColor: const Color(0x30000000),
+      elevation: 8,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: const BorderSide(color: _menuBorder),
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: _menuBorder, width: 1.3),
       ),
       menuPadding: const EdgeInsets.symmetric(vertical: 2),
       constraints: const BoxConstraints(
@@ -1479,32 +1558,30 @@ class _DatabaseRowState extends State<_DatabaseRow> {
     final highlighted = widget.selected || _hovered;
     final titleColor = hasHealthError
         ? const Color(0xFF9F1239)
-        : widget.selected
-            ? Colors.white
-            : isChecking
-                ? _kLabel
-                : _kTitle;
+        : isChecking
+            ? _kLabel
+            : _kPickerInk;
     final subtitleColor = hasHealthError
         ? const Color(0xFFBE123C)
-        : widget.selected
-            ? _kPanelTextSoft
-            : isChecking
-                ? _kIcon
-                : _kLabel;
+        : isChecking
+            ? _kIcon
+            : _kPickerMuted;
     final backgroundColor = hasHealthError
         ? const Color(0xFFFFFBFB)
         : widget.selected
-            ? _kActionDark
+            ? _kPickerMintSoft
             : isChecking
-                ? const Color(0xFFFAFBFD)
-                : Colors.white;
+                ? const Color(0xFFF0EEE7)
+                : _hovered
+                    ? _kPickerPaperBright
+                    : const Color(0xF7FFFCF5);
     final borderColor = hasHealthError
         ? const Color(0xFFF3C2C2)
         : highlighted
-            ? (widget.selected ? const Color(0xFF2B6A76) : _kBorderHover)
+            ? _kPickerLine
             : isChecking
-                ? _kBorderSoft
-                : _kBorderRow;
+                ? _kPickerLineSoft
+                : const Color(0xFF9C9E99);
     final locationText = hasHealthError
         ? health?.title ?? 'This vault needs attention.'
         : isChecking
@@ -1520,8 +1597,8 @@ class _DatabaseRowState extends State<_DatabaseRow> {
 
     return Theme(
       data: Theme.of(context).copyWith(
-        hoverColor: const Color(0xFFEAF1FC),
-        highlightColor: const Color(0x144D79C7),
+        hoverColor: _kPickerMintSoft,
+        highlightColor: const Color(0x1421A98F),
         splashColor: Colors.transparent,
         splashFactory: NoSplash.splashFactory,
       ),
@@ -1548,11 +1625,19 @@ class _DatabaseRowState extends State<_DatabaseRow> {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: backgroundColor,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(13),
                   border: Border.all(
                     color: borderColor,
-                    width: widget.selected ? 1.4 : 1,
+                    width: widget.selected ? 1.8 : 1.1,
                   ),
+                  boxShadow: widget.selected
+                      ? const <BoxShadow>[
+                          BoxShadow(
+                            color: Color(0x33FF5B22),
+                            offset: Offset(4, 4),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Stack(
                   clipBehavior: Clip.none,
@@ -1577,10 +1662,10 @@ class _DatabaseRowState extends State<_DatabaseRow> {
                                         widget.record.nickname,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: _uText(
+                                        style: _pickerText(
                                           13,
                                           titleColor,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                     ),
@@ -1591,11 +1676,9 @@ class _DatabaseRowState extends State<_DatabaseRow> {
                                         icon: TablerIcons.star_filled,
                                         label: 'Default',
                                         backgroundColor: widget.selected
-                                            ? const Color(0x1FFFFFFF)
-                                            : const Color(0xFFEEF3FF),
-                                        foregroundColor: widget.selected
-                                            ? Colors.white
-                                            : _kBlue,
+                                            ? _kPickerPeach
+                                            : _kPickerYellow,
+                                        foregroundColor: _kPickerInk,
                                       ),
                                     ],
                                   ],
@@ -1605,7 +1688,7 @@ class _DatabaseRowState extends State<_DatabaseRow> {
                                   locationText,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: _uText(
+                                  style: _pickerText(
                                     11,
                                     subtitleColor,
                                   ),
@@ -1619,15 +1702,13 @@ class _DatabaseRowState extends State<_DatabaseRow> {
                             child: Text(
                               _formatCreatedAt(widget.record.addedAt),
                               textAlign: TextAlign.left,
-                              style: _uText(
+                              style: _pickerText(
                                 11,
                                 hasHealthError
                                     ? const Color(0xFF9F1239)
-                                    : widget.selected
-                                        ? Colors.white
-                                        : isChecking
-                                            ? _kIcon
-                                            : _kLabel,
+                                    : isChecking
+                                        ? _kIcon
+                                        : _kPickerMuted,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -1714,8 +1795,11 @@ class _DatabaseBadge extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        color: selected ? const Color(0x1FFFFFFF) : bg,
-        borderRadius: BorderRadius.circular(9),
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: selected ? _kPickerLine : const Color(0x33808080),
+        ),
       ),
       alignment: Alignment.center,
       child: Image.asset(asset, width: 18, height: 18),
@@ -1818,14 +1902,23 @@ class _UnlockVaultIcon extends StatelessWidget {
         width: 60,
         height: 60,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFF4B6CFF), Color(0xFF7B52FF)],
-          ),
+          color: _kPickerPeach,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _kPickerLineSoft),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x18252628),
+              blurRadius: 8,
+              spreadRadius: -3,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
-        child: const Icon(TablerIcons.lock, size: 28, color: Colors.white),
+        child: const Icon(
+          TablerIcons.lock,
+          size: 27,
+          color: _kPickerOrangeDark,
+        ),
       );
     }
     final String asset;
@@ -1863,10 +1956,21 @@ class _UnlockVaultIcon extends StatelessWidget {
     return Container(
       width: 60,
       height: 60,
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _kPickerLineSoft),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x18252628),
+            blurRadius: 8,
+            spreadRadius: -3,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
       alignment: Alignment.center,
-      child: Image.asset(asset, width: 32, height: 32),
+      child: Image.asset(asset, width: 31, height: 31),
     );
   }
 }
@@ -1907,6 +2011,226 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
+class _VintageGridSurface extends StatelessWidget {
+  const _VintageGridSurface({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: const _VintageGridPainter(),
+      child: ColoredBox(
+        color: _kPickerPaper.withValues(alpha: 0.88),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _VaultStatisticsFooter extends StatelessWidget {
+  const _VaultStatisticsFooter({required this.databases});
+
+  final List<DatabaseRecord> databases;
+
+  @override
+  Widget build(BuildContext context) {
+    final counts = <String, int>{
+      'local': 0,
+      CloudServiceProvider.googleDrive.storageType: 0,
+      CloudServiceProvider.dropbox.storageType: 0,
+      CloudServiceProvider.s3.storageType: 0,
+      CloudServiceProvider.webdav.storageType: 0,
+    };
+    for (final database in databases) {
+      if (counts.containsKey(database.storageType)) {
+        counts[database.storageType] = counts[database.storageType]! + 1;
+      }
+    }
+
+    return Container(
+      height: _kVaultStatisticsFooterHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
+      decoration: const BoxDecoration(
+        color: Color(0xF7FFFCF5),
+        border: Border(top: BorderSide(color: _kPickerLine, width: 1.2)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Semantics(
+            label: 'Total vaults: ${databases.length}',
+            excludeSemantics: true,
+            child: SizedBox(
+              width: 70,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    '${databases.length}',
+                    style: _pickerDisplayText(
+                      20,
+                      _kPickerOrangeDark,
+                      height: 0.9,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    databases.length == 1 ? 'TOTAL VAULT' : 'TOTAL VAULTS',
+                    style: _pickerText(
+                      7.5,
+                      _kPickerMuted,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.65,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 34,
+            margin: const EdgeInsets.only(left: 4, right: 16),
+            color: _kPickerLineSoft,
+          ),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'BY STORAGE',
+                  style: _pickerText(
+                    7.5,
+                    _kPickerMuted,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.65,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    _StorageCountMetric(
+                      storageType: 'local',
+                      label: 'Local',
+                      assetPath: 'assets/images/dir.png',
+                      count: counts['local']!,
+                    ),
+                    _StorageCountMetric(
+                      storageType: CloudServiceProvider.googleDrive.storageType,
+                      label: CloudServiceProvider.googleDrive.label,
+                      assetPath: CloudServiceProvider.googleDrive.assetPath,
+                      count:
+                          counts[CloudServiceProvider.googleDrive.storageType]!,
+                    ),
+                    _StorageCountMetric(
+                      storageType: CloudServiceProvider.dropbox.storageType,
+                      label: CloudServiceProvider.dropbox.label,
+                      assetPath: CloudServiceProvider.dropbox.assetPath,
+                      count: counts[CloudServiceProvider.dropbox.storageType]!,
+                    ),
+                    _StorageCountMetric(
+                      storageType: CloudServiceProvider.s3.storageType,
+                      label: CloudServiceProvider.s3.label,
+                      assetPath: CloudServiceProvider.s3.assetPath,
+                      count: counts[CloudServiceProvider.s3.storageType]!,
+                    ),
+                    _StorageCountMetric(
+                      storageType: CloudServiceProvider.webdav.storageType,
+                      label: CloudServiceProvider.webdav.label,
+                      assetPath: CloudServiceProvider.webdav.assetPath,
+                      count: counts[CloudServiceProvider.webdav.storageType]!,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StorageCountMetric extends StatelessWidget {
+  const _StorageCountMetric({
+    required this.storageType,
+    required this.label,
+    required this.assetPath,
+    required this.count,
+  });
+
+  final String storageType;
+  final String label;
+  final String assetPath;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final description = '$label vaults: $count';
+    return Tooltip(
+      key: ValueKey<String>('supported-platform-$storageType'),
+      message: description,
+      child: Semantics(
+        label: description,
+        excludeSemantics: true,
+        child: Opacity(
+          opacity: count == 0 ? 0.48 : 1,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Image.asset(
+                assetPath,
+                width: 17,
+                height: 17,
+                errorBuilder: (_, __, ___) => Icon(
+                  storageType == 'local'
+                      ? TablerIcons.folder
+                      : TablerIcons.cloud,
+                  size: 17,
+                  color: _kPickerMuted,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '$count',
+                style: _pickerText(
+                  10.5,
+                  _kPickerInk,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VintageGridPainter extends CustomPainter {
+  const _VintageGridPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0x12191A1B)
+      ..strokeWidth = 0.6;
+    const spacing = 24.0;
+    for (var x = 0.0; x <= size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (var y = 0.0; y <= size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 // ── Empty state ─────────────────────────────────────────────────────────────
 
 class _EmptyDatabaseState extends StatelessWidget {
@@ -1916,9 +2240,12 @@ class _EmptyDatabaseState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: _kCanvas,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kBorderSoft),
+        color: _kPickerPaperBright,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _kPickerLine, width: 1.2),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(color: Color(0x2BFF5B22), offset: Offset(5, 5)),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
@@ -1941,29 +2268,29 @@ class _EmptyDatabaseState extends StatelessWidget {
                   width: box,
                   height: box,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEF3FF),
-                    borderRadius: BorderRadius.circular(12),
+                    color: _kPickerYellow,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _kPickerLine),
                   ),
                   child: Icon(
                     TablerIcons.database_off,
                     size: iconSz,
-                    color: _kBlue,
+                    color: _kPickerInk,
                   ),
                 ),
                 SizedBox(height: tight ? 6 : 10),
                 Text(
                   'No databases yet',
-                  style: _uText(
+                  style: _pickerDisplayText(
                     tight ? 12 : 13,
-                    _kTitle,
-                    fontWeight: FontWeight.w600,
+                    _kPickerInk,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: tight ? 2 : 4),
                 Text(
                   'Create a new database or open an existing .kdbx file.',
-                  style: _uText(tight ? 10 : 11, _kLabel),
+                  style: _pickerText(tight ? 10 : 11, _kPickerMuted),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -1982,9 +2309,9 @@ class _EmptySearchState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: _kCanvas,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kBorderSoft),
+        color: _kPickerPaperBright,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _kPickerLine, width: 1.2),
       ),
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
@@ -2003,22 +2330,21 @@ class _EmptySearchState extends StatelessWidget {
                 Icon(
                   TablerIcons.search_off,
                   size: tight ? 20 : 22,
-                  color: _kIcon,
+                  color: _kPickerMuted,
                 ),
                 SizedBox(height: tight ? 6 : 10),
                 Text(
                   'No databases match your search',
-                  style: _uText(
+                  style: _pickerDisplayText(
                     tight ? 12 : 13,
-                    _kTitle,
-                    fontWeight: FontWeight.w600,
+                    _kPickerInk,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: tight ? 2 : 4),
                 Text(
                   'Try a different name or path keyword.',
-                  style: _uText(tight ? 10 : 11, _kLabel),
+                  style: _pickerText(tight ? 10 : 11, _kPickerMuted),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -2033,42 +2359,76 @@ class _EmptySearchState extends StatelessWidget {
 class _SearchField extends StatelessWidget {
   const _SearchField({
     required this.controller,
+    required this.focusNode,
     required this.onChanged,
-    required this.onClear,
+    required this.onClose,
   });
 
   final TextEditingController controller;
+  final FocusNode focusNode;
   final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      style: _uText(12, _kTitle, fontWeight: FontWeight.w500),
-      decoration: InputDecoration(
-        hintText: 'Search databases',
-        hintStyle: _uText(12, _kIcon),
-        prefixIcon: const Icon(TablerIcons.search, size: 16, color: _kIcon),
-        suffixIcon: controller.text.isEmpty
-            ? null
-            : IconButton(
-                onPressed: onClear,
-                icon: const Icon(TablerIcons.x, size: 14, color: _kIcon),
+    return TapRegion(
+      behavior: HitTestBehavior.opaque,
+      onTapOutside: (_) => onClose(),
+      child: Focus(
+        onKeyEvent: (_, event) {
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.escape) {
+            onClose();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: const <BoxShadow>[
+              BoxShadow(
+                color: Color(0x26191A1B),
+                blurRadius: 14,
+                spreadRadius: -3,
+                offset: Offset(0, 6),
               ),
-        filled: true,
-        fillColor: _kCanvas,
-        isDense: true,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: _kBorderSoft),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: _kBlue, width: 1.4),
+            ],
+          ),
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            onChanged: onChanged,
+            style: _pickerText(12, _kPickerInk, fontWeight: FontWeight.w600),
+            decoration: InputDecoration(
+              hintText: 'Search databases',
+              hintStyle: _pickerText(12, _kPickerMuted),
+              prefixIcon:
+                  const Icon(TablerIcons.search, size: 16, color: _kPickerInk),
+              suffixIcon: IconButton(
+                tooltip: 'Close search',
+                onPressed: onClose,
+                icon: const Icon(
+                  TablerIcons.x,
+                  size: 14,
+                  color: _kPickerInk,
+                ),
+              ),
+              filled: true,
+              fillColor: _kPickerPaperBright,
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: const BorderSide(color: _kPickerLine, width: 1.3),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: const BorderSide(color: _kPickerOrange, width: 1.8),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -2095,9 +2455,9 @@ class _DatabaseListHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F8FD),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD8E1EF)),
+        color: _kPickerPeach,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: _kPickerLine, width: 1.1),
       ),
       child: Row(
         children: <Widget>[
@@ -2179,7 +2539,7 @@ class _DatabaseHealthRefreshButton extends StatelessWidget {
                   child: Icon(
                     TablerIcons.refresh,
                     size: 17,
-                    color: isRefreshing ? _kBlue : const Color(0xFF7C8CA3),
+                    color: isRefreshing ? _kPickerOrange : _kPickerInk,
                   ),
                 ),
               ),
@@ -2216,9 +2576,9 @@ class _SortLabel extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: _uText(
+              style: _pickerText(
                 11,
-                active ? _kBlue : const Color(0xFF667892),
+                active ? _kPickerOrangeDark : _kPickerInk,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.2,
               ),
@@ -2232,7 +2592,7 @@ class _SortLabel extends StatelessWidget {
                     : TablerIcons.chevron_down)
                 : TablerIcons.selector,
             size: 13,
-            color: active ? _kBlue : const Color(0xFF7C8CA3),
+            color: active ? _kPickerOrangeDark : _kPickerMuted,
           ),
         ],
       ),
@@ -2266,13 +2626,13 @@ class _HeaderIconButtonState extends State<_HeaderIconButton> {
   Widget build(BuildContext context) {
     final disabled = widget.onTap == null;
     final backgroundColor = disabled
-        ? (widget.primary ? const Color(0xFFB7C2CC) : const Color(0xFFF1F4F8))
+        ? (widget.primary ? const Color(0xFFD0A996) : const Color(0xFFE2DFD5))
         : (widget.primary
-            ? (_hovered ? const Color(0xFF0D4A59) : _kActionDark)
-            : (_hovered ? _kHoverBg : Colors.white));
+            ? (_hovered ? _kPickerOrangeDark : _kPickerOrange)
+            : (_hovered ? _kPickerMintSoft : _kPickerPaperBright));
     final foregroundColor = disabled
-        ? const Color(0xFF98A1AE)
-        : (widget.primary ? Colors.white : _kTitle);
+        ? const Color(0xFF8C8982)
+        : (widget.primary ? Colors.white : _kPickerInk);
 
     return Tooltip(
       message: widget.tooltip,
@@ -2289,18 +2649,16 @@ class _HeaderIconButtonState extends State<_HeaderIconButton> {
             height: 38,
             decoration: BoxDecoration(
               color: backgroundColor,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: widget.primary
-                    ? Colors.transparent
-                    : (_hovered ? _kBorderHover : _kBorderSoft),
+                color: disabled ? _kPickerLineSoft : _kPickerLine,
+                width: widget.primary ? 1.3 : 1.1,
               ),
               boxShadow: widget.primary && !disabled
                   ? const <BoxShadow>[
                       BoxShadow(
-                        color: Color(0x140A3B48),
-                        blurRadius: 14,
-                        offset: Offset(0, 6),
+                        color: Color(0x40191A1B),
+                        offset: Offset(3, 3),
                       ),
                     ]
                   : null,
@@ -2322,22 +2680,39 @@ class _UnlockGreetingHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: _kSidebar,
-        border: Border(bottom: BorderSide(color: _kBorderSoft)),
+        color: _kPickerPaperBright,
+        border: Border(bottom: BorderSide(color: _kPickerLine, width: 2)),
       ),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: EdgeInsets.fromLTRB(
+        16,
+        9,
+        16,
+        9,
+      ),
+      child: Row(
         children: <Widget>[
-          Text(
-            'LumenPass Vaults',
-            style: _uText(13, _kTitle, fontWeight: FontWeight.w700),
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: _kPickerMintSoft,
+              shape: BoxShape.circle,
+              border: Border.all(color: _kPickerMint),
+            ),
+            child: const Icon(
+              TablerIcons.lock,
+              size: 14,
+              color: _kPickerInk,
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Open a local or cloud-backed vault using its own credentials.',
-            style: _uText(11, _kLabel, height: 1.35),
+          const SizedBox(width: 9),
+          const Expanded(
+            child: LumenPassWordmark(
+              fontSize: 18,
+              suffix: ' vaults',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -2357,45 +2732,59 @@ class _VaultGuidePanel extends StatelessWidget {
       children: <Widget>[
         Text(
           'Getting started',
-          style: _uText(15, _kTitle, fontWeight: FontWeight.w700),
+          style: _pickerDisplayText(25, _kPickerInk, height: 1),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 5),
         Text(
-          'Manage your KeePass databases:',
-          style: _uText(12, _kLabel),
+          'Three ways to begin with a portable KeePass vault.',
+          style: _pickerText(10.5, _kPickerMuted, height: 1.25),
         ),
-        const SizedBox(height: 14),
-        _GuideItem(
+        const SizedBox(height: 10),
+        const _GuideItem(
+          index: '01',
           icon: TablerIcons.database_plus,
           title: 'Create a new database',
           subtitle: 'Click "Create" to start a fresh vault',
+          surface: _kPickerYellow,
+          accent: Color(0xFFB77900),
         ),
-        const SizedBox(height: 8),
-        _GuideItem(
+        const SizedBox(height: 7),
+        const _GuideItem(
+          index: '02',
           icon: TablerIcons.folder_open,
           title: 'Open an existing database',
           subtitle: 'Click "Open" to browse local, Google Drive, or Dropbox',
+          surface: _kPickerPaperBright,
+          accent: _kPickerBlue,
         ),
-        const SizedBox(height: 8),
-        _GuideItem(
+        const SizedBox(height: 7),
+        const _GuideItem(
+          index: '03',
           icon: TablerIcons.lock_open,
           title: 'Unlock a database',
-          subtitle: 'Select a database in the list, then click "Unlock"',
+          subtitle: 'Double-click a database in the list to unlock it',
+          surface: _kPickerPeach,
+          accent: _kPickerOrangeDark,
         ),
-        const SizedBox(height: 14),
-        Text(
-          'Tips:',
-          style: _uText(12, _kLabel, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '• Your files stay on your device — LumenPass never uploads them.',
-          style: _uText(11, _kLabel),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          '• The default database stays pinned to the top of the list.',
-          style: _uText(11, _kLabel),
+        const SizedBox(height: 9),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: const Color(0x99FFFCF5),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _kPickerLine, width: 1.05),
+          ),
+          child: Text(
+            'PRIVATE BY DEFAULT  ·  Your files stay under your control. The default vault remains pinned first.',
+            style: _pickerText(
+              9.2,
+              _kPickerInk,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
+              letterSpacing: 0.15,
+            ),
+          ),
         ),
         const Spacer(),
         const _GuidePanelFooter(),
@@ -2406,6 +2795,9 @@ class _VaultGuidePanel extends StatelessWidget {
 
 class _GuidePanelFooter extends StatelessWidget {
   const _GuidePanelFooter();
+
+  static final Uri _githubRepository =
+      Uri.parse('https://github.com/lumenpass/lumenpass');
 
   @override
   Widget build(BuildContext context) {
@@ -2419,18 +2811,53 @@ class _GuidePanelFooter extends StatelessWidget {
         return SizedBox(
           width: double.infinity,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'Copyright @ $year LumenPass - v$version (build $buildNumber)\nYour Right Privacy Password Manager',
-                textAlign: TextAlign.right,
-                style: _uText(10, _kLabel),
+                '© $year LumenPass  ·  v$version ($buildNumber)  ·  LOCAL-FIRST',
+                style: _pickerText(
+                  8.7,
+                  _kPickerMuted,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.35,
+                ),
               ),
-              const SizedBox(height: 2),
-              SelectableText(
-                'staff@lumenpass.app - https://www.lumenpass.app',
-                textAlign: TextAlign.right,
-                style: _uText(10, _kLabel),
+              const SizedBox(height: 3),
+              Tooltip(
+                message: 'Open the LumenPass repository on GitHub',
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: InkWell(
+                    onTap: () => launchUrl(_githubRepository),
+                    borderRadius: BorderRadius.circular(5),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: <Widget>[
+                          const Icon(
+                            TablerIcons.brand_github,
+                            size: 11,
+                            color: _kPickerMuted,
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              'github.com/lumenpass/lumenpass  ·  MPL-2.0',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: _pickerText(
+                                8.7,
+                                _kPickerMuted,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.1,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -2466,16 +2893,16 @@ class _DatabaseItemMenu extends StatelessWidget {
               width: 30,
               height: 30,
               decoration: BoxDecoration(
-                color: selected ? const Color(0x1AFFFFFF) : _kCanvas,
-                borderRadius: BorderRadius.circular(8),
+                color: selected ? _kPickerPaperBright : _kPickerPaper,
+                borderRadius: BorderRadius.circular(999),
                 border: Border.all(
-                  color: selected ? const Color(0x33FFFFFF) : _kBorderSoft,
+                  color: selected ? _kPickerLine : _kPickerLineSoft,
                 ),
               ),
               child: Icon(
                 TablerIcons.dots_vertical,
                 size: 16,
-                color: selected ? Colors.white : _kIcon,
+                color: selected ? _kPickerInk : _kPickerMuted,
               ),
             ),
           ),
@@ -2485,65 +2912,79 @@ class _DatabaseItemMenu extends StatelessWidget {
   }
 }
 
-class _UnlockFooterBar extends StatelessWidget {
-  const _UnlockFooterBar({
-    required this.selectedRecord,
-    required this.onExit,
-    required this.onUnlock,
+class _GuideItem extends StatelessWidget {
+  const _GuideItem({
+    required this.index,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.surface,
+    required this.accent,
   });
 
-  final DatabaseRecord? selectedRecord;
-  final VoidCallback onExit;
-  final VoidCallback? onUnlock;
+  final String index;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color surface;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: _kBorderSoft)),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kPickerLine, width: 1.1),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
+          Container(
+            width: 31,
+            height: 31,
+            decoration: BoxDecoration(
+              color: _kPickerPaperBright,
+              shape: BoxShape.circle,
+              border: Border.all(color: _kPickerLine),
+            ),
+            child: Icon(icon, size: 15, color: accent),
+          ),
+          const SizedBox(width: 9),
           Expanded(
-            child: OutlinedButton.icon(
-              onPressed: onExit,
-              icon: const Icon(TablerIcons.logout_2, size: 16),
-              label: const Text('Exit'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _kLabel,
-                side: const BorderSide(color: _kBorderSoft),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _pickerText(
+                    10.8,
+                    _kPickerInk,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w700),
-              ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: _pickerText(9.4, _kPickerMuted, height: 1.18),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: ElevatedButton.icon(
-              onPressed: onUnlock,
-              icon: const Icon(TablerIcons.lock_open, size: 16),
-              label: const Text('Unlock'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _kActionDark,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(0xFF9BB0B5),
-                disabledForegroundColor: Colors.white,
-                elevation: 0,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                textStyle:
-                    _uText(12, Colors.white, fontWeight: FontWeight.w700),
-              ),
+          const SizedBox(width: 5),
+          Text(
+            index,
+            style: _pickerText(
+              8.5,
+              _kPickerInk,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
             ),
           ),
         ],
@@ -2552,52 +2993,7 @@ class _UnlockFooterBar extends StatelessWidget {
   }
 }
 
-class _GuideItem extends StatelessWidget {
-  const _GuideItem({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(color: _kBorderSoft),
-          ),
-          child: Icon(icon, size: 14, color: _kBlue),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                title,
-                style: _uText(12, _kTitle, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 2),
-              Text(subtitle, style: _uText(11, _kLabel)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Unlock credentials dialog (unchanged) ────────────────────────────────────
+// ── Unlock credentials dialog ────────────────────────────────────────────────
 
 class _UnlockCredentialsDialog extends ConsumerStatefulWidget {
   const _UnlockCredentialsDialog({
@@ -2907,14 +3303,8 @@ class _UnlockCredentialsDialogState
 
     return Theme(
       data: AppTheme.light(),
-      child: Dialog(
-        backgroundColor: _kUnlockDialogBackground,
-        elevation: 0,
-        insetPadding: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: _kUnlockDialogBorder),
-          borderRadius: BorderRadius.circular(8),
-        ),
+      child: Material(
+        color: _kUnlockDialogBackground,
         child: Stack(
           children: <Widget>[
             Column(
@@ -2922,228 +3312,412 @@ class _UnlockCredentialsDialogState
               children: <Widget>[
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 100),
+                    padding: EdgeInsets.fromLTRB(
+                      72,
+                      Platform.isMacOS ? 46 : 28,
+                      72,
+                      22,
+                    ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        const SizedBox(height: 8),
-                        _UnlockVaultIcon(record: matchedRecord),
-                        const SizedBox(height: 12),
-                        Text(
-                          vaultName,
-                          style:
-                              _uText(24, _kTitle, fontWeight: FontWeight.w800),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          vaultSubtitle,
-                          style: _uText(12, _kLabel),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _acceptNoPassword
-                                ? _kUnlockAccentSoft
-                                : _kUnlockCardBackground,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: _acceptNoPassword
-                                  ? _kUnlockAccentBorder
-                                  : _kUnlockCardBorder,
+                        Row(
+                          children: <Widget>[
+                            _UnlockVaultIcon(record: matchedRecord),
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    'UNLOCK YOUR VAULT',
+                                    style: _pickerText(
+                                      9,
+                                      _kPickerOrangeDark,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    vaultName,
+                                    style: _pickerDisplayText(
+                                      27,
+                                      _kPickerInk,
+                                      height: 1.05,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: <Widget>[
+                                      const Icon(
+                                        TablerIcons.map_pin,
+                                        size: 13,
+                                        color: _kPickerMuted,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          vaultSubtitle,
+                                          style: _pickerText(
+                                            11,
+                                            _kPickerMuted,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _kPickerMintSoft,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: _kPickerLineSoft,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  const Icon(
+                                    TablerIcons.lock,
+                                    size: 12,
+                                    color: _kPickerMint,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'ENCRYPTED',
+                                    style: _pickerText(
+                                      8.5,
+                                      _kPickerInk,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.7,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: _kUnlockCardBackground,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: _kUnlockCardBorder,
+                              width: 1.1,
+                            ),
+                            boxShadow: const <BoxShadow>[
+                              BoxShadow(
+                                color: Color(0x1C191A1B),
+                                blurRadius: 12,
+                                spreadRadius: -4,
+                                offset: Offset(0, 5),
+                              ),
+                              BoxShadow(
+                                color: Color(0x16FFFFFF),
+                                blurRadius: 0,
+                                spreadRadius: -1,
+                                offset: Offset(0, -1),
+                              ),
+                            ],
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: <Widget>[
-                                    Text(
-                                      'Accept no password',
-                                      style: _uText(
-                                        12,
-                                        _kTitle,
-                                        fontWeight: FontWeight.w600,
+                              Row(
+                                children: <Widget>[
+                                  Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: BoxDecoration(
+                                      color: _kPickerPeach,
+                                      borderRadius: BorderRadius.circular(9),
+                                    ),
+                                    child: const Icon(
+                                      TablerIcons.key,
+                                      size: 17,
+                                      color: _kPickerOrangeDark,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: <Widget>[
+                                        Text(
+                                          'Enter your credentials',
+                                          style: _pickerText(
+                                            13,
+                                            _kPickerInk,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Your master password stays on this device.',
+                                          style: _pickerText(
+                                            10.5,
+                                            _kPickerMuted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                'Master password',
+                                style: _pickerText(
+                                  10.5,
+                                  _kPickerInk,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: <Widget>[
+                                  Expanded(
+                                    child: _UnlockShadowedInput(
+                                      child: TextField(
+                                        controller: _passwordController,
+                                        obscureText: _obscurePassword,
+                                        enabled: !_acceptNoPassword,
+                                        enableSuggestions: false,
+                                        autocorrect: false,
+                                        autofocus: true,
+                                        textInputAction: TextInputAction.done,
+                                        onChanged: (_) =>
+                                            controller.clearError(),
+                                        onSubmitted: (_) => _submit(),
+                                        style: _pickerText(
+                                          12.5,
+                                          _kUnlockFieldText,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        decoration: _unlockFieldDecoration(
+                                          hint: _acceptNoPassword
+                                              ? 'No password required'
+                                              : 'Enter master password',
+                                          prefixIcon: TablerIcons.lock_password,
+                                          suffix: _acceptNoPassword
+                                              ? null
+                                              : IconButton(
+                                                  tooltip: _obscurePassword
+                                                      ? 'Show password'
+                                                      : 'Hide password',
+                                                  onPressed: () => setState(
+                                                    () => _obscurePassword =
+                                                        !_obscurePassword,
+                                                  ),
+                                                  icon: Icon(
+                                                    _obscurePassword
+                                                        ? TablerIcons.eye
+                                                        : TablerIcons.eye_off,
+                                                    size: 16,
+                                                    color: _kUnlockHintText,
+                                                  ),
+                                                ),
+                                        ),
                                       ),
                                     ),
-                                    Text(
-                                      'Open vault with key file only',
-                                      style: _uText(11, _kLabel),
+                                  ),
+                                  if (_pinEnabled) ...<Widget>[
+                                    const SizedBox(width: 8),
+                                    _IconActionButton(
+                                      icon: TablerIcons.grid_dots,
+                                      onPressed: state.isLoading
+                                          ? null
+                                          : () => setState(
+                                                () => _showPinPad = true,
+                                              ),
+                                      tooltip: 'PIN entry',
+                                    ),
+                                  ],
+                                  if (_biometricEnabled) ...<Widget>[
+                                    const SizedBox(width: 7),
+                                    _IconActionButton(
+                                      icon: Platform.isWindows
+                                          ? TablerIcons.scan_eye
+                                          : TablerIcons.fingerprint,
+                                      onPressed: state.isLoading
+                                          ? null
+                                          : _tryUnlockWithBiometric,
+                                      tooltip: Platform.isWindows
+                                          ? 'Windows Hello unlock'
+                                          : 'Biometric unlock',
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 11),
+                              Container(
+                                padding: const EdgeInsets.fromLTRB(11, 7, 5, 7),
+                                decoration: BoxDecoration(
+                                  color: _acceptNoPassword
+                                      ? _kUnlockAccentSoft
+                                      : _kPickerPaper,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: _acceptNoPassword
+                                        ? _kUnlockAccentBorder
+                                        : _kPickerLineSoft,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: <Widget>[
+                                    Icon(
+                                      TablerIcons.key_off,
+                                      size: 16,
+                                      color: _acceptNoPassword
+                                          ? _kPickerMint
+                                          : _kPickerMuted,
+                                    ),
+                                    const SizedBox(width: 9),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            'Use key file only',
+                                            style: _pickerText(
+                                              11,
+                                              _kPickerInk,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Accept an empty master password',
+                                            style: _pickerText(
+                                              9.8,
+                                              _kPickerMuted,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Transform.scale(
+                                      scale: 0.72,
+                                      alignment: Alignment.centerRight,
+                                      child: Switch.adaptive(
+                                        value: _acceptNoPassword,
+                                        activeTrackColor: _kPickerMint,
+                                        activeThumbColor: _kPickerPaperBright,
+                                        inactiveTrackColor: _kPickerLineSoft,
+                                        inactiveThumbColor: _kPickerPaperBright,
+                                        onChanged: (bool v) {
+                                          setState(() {
+                                            _acceptNoPassword = v;
+                                            if (v) {
+                                              _passwordController.clear();
+                                            }
+                                          });
+                                        },
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                              Transform.scale(
-                                scale: 0.75,
-                                alignment: Alignment.centerRight,
-                                child: Switch.adaptive(
-                                  value: _acceptNoPassword,
-                                  onChanged: (bool v) {
-                                    setState(() {
-                                      _acceptNoPassword = v;
-                                      if (v) _passwordController.clear();
-                                    });
-                                  },
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.fromLTRB(11, 7, 5, 7),
+                                decoration: BoxDecoration(
+                                  color: _kPickerPaper,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: _kPickerLineSoft),
+                                ),
+                                child: Row(
+                                  children: <Widget>[
+                                    const Icon(
+                                      TablerIcons.adjustments_horizontal,
+                                      size: 16,
+                                      color: _kPickerMuted,
+                                    ),
+                                    const SizedBox(width: 9),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            'Advanced options',
+                                            style: _pickerText(
+                                              11,
+                                              _kPickerInk,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Key files and hardware keys',
+                                            style: _pickerText(
+                                              9.8,
+                                              _kPickerMuted,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Transform.scale(
+                                      scale: 0.72,
+                                      alignment: Alignment.centerRight,
+                                      child: Switch.adaptive(
+                                        value: _showAdvanced,
+                                        activeTrackColor: _kPickerOrange,
+                                        activeThumbColor: _kPickerPaperBright,
+                                        inactiveTrackColor: _kPickerLineSoft,
+                                        inactiveThumbColor: _kPickerPaperBright,
+                                        onChanged: _toggleAdvanced,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: <Widget>[
-                            Expanded(
-                              child: TextField(
-                                controller: _passwordController,
-                                obscureText: _obscurePassword,
-                                enabled: !_acceptNoPassword,
-                                enableSuggestions: false,
-                                autocorrect: false,
-                                autofocus: true,
-                                textInputAction: TextInputAction.done,
-                                onChanged: (_) => controller.clearError(),
-                                onSubmitted: (_) => _submit(),
-                                style: _uText(13, _kUnlockFieldText),
-                                decoration: InputDecoration(
-                                  hintText: _acceptNoPassword
-                                      ? 'No password required'
-                                      : 'Enter Master Password',
-                                  hintStyle: _uText(13, _kUnlockHintText),
-                                  filled: true,
-                                  fillColor: _kUnlockFieldBackground,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 13,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(
-                                      color: _kUnlockCardBorder,
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(
-                                      color: _kUnlockCardBorder,
-                                    ),
-                                  ),
-                                  disabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(
-                                      color: _kUnlockDialogBorder,
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(
-                                      color: _kUnlockFieldFocus,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  suffixIcon: _acceptNoPassword
-                                      ? null
-                                      : IconButton(
-                                          onPressed: () => setState(
-                                            () => _obscurePassword =
-                                                !_obscurePassword,
-                                          ),
-                                          icon: Icon(
-                                            _obscurePassword
-                                                ? TablerIcons.eye
-                                                : TablerIcons.eye_off,
-                                            size: 16,
-                                            color: _kUnlockHintText,
-                                          ),
-                                        ),
+                              if (_showAdvanced) ...<Widget>[
+                                const SizedBox(height: 10),
+                                _AdvancedFileRow(
+                                  icon: TablerIcons.key,
+                                  label: 'Key file',
+                                  subtitle: hasKeyFile
+                                      ? _fileName(state.keyFilePath!)
+                                      : 'Optional — add if your vault requires one',
+                                  hasValue: hasKeyFile,
+                                  onChoose: controller.selectKeyFile,
+                                  onClear: hasKeyFile
+                                      ? controller.clearKeyFile
+                                      : null,
                                 ),
-                              ),
-                            ),
-                            if (_pinEnabled) ...<Widget>[
-                              const SizedBox(width: 8),
-                              _IconActionButton(
-                                icon: TablerIcons.grid_dots,
-                                onPressed: state.isLoading
-                                    ? null
-                                    : () => setState(
-                                          () => _showPinPad = true,
-                                        ),
-                                tooltip: 'PIN entry',
-                              ),
+                                const SizedBox(height: 8),
+                                Opacity(
+                                  opacity: 0.45,
+                                  child: _AdvancedFileRow(
+                                    icon: TablerIcons.usb,
+                                    label: 'Hardware key',
+                                    subtitle: 'YubiKey and FIDO2 hardware keys',
+                                    badge: 'Soon',
+                                    hasValue: false,
+                                    onChoose: () {},
+                                  ),
+                                ),
+                              ],
                             ],
-                            if (_biometricEnabled) ...<Widget>[
-                              const SizedBox(width: 6),
-                              _IconActionButton(
-                                icon: Platform.isWindows
-                                    ? TablerIcons.scan_eye
-                                    : TablerIcons.fingerprint,
-                                onPressed: state.isLoading
-                                    ? null
-                                    : _tryUnlockWithBiometric,
-                                tooltip: Platform.isWindows
-                                    ? 'Windows Hello unlock'
-                                    : 'Biometric unlock',
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: <Widget>[
-                            Text(
-                              'Advanced',
-                              style: _uText(
-                                12,
-                                _kLabel,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const Spacer(),
-                            Transform.scale(
-                              scale: 0.75,
-                              alignment: Alignment.centerRight,
-                              child: Switch.adaptive(
-                                value: _showAdvanced,
-                                onChanged: _toggleAdvanced,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (_showAdvanced) ...<Widget>[
-                          const SizedBox(height: 10),
-                          _AdvancedFileRow(
-                            icon: TablerIcons.key,
-                            label: 'Key file',
-                            subtitle: hasKeyFile
-                                ? _fileName(state.keyFilePath!)
-                                : 'Optional — add if your vault requires one',
-                            hasValue: hasKeyFile,
-                            onChoose: controller.selectKeyFile,
-                            onClear:
-                                hasKeyFile ? controller.clearKeyFile : null,
                           ),
-                          const SizedBox(height: 8),
-                          Opacity(
-                            opacity: 0.45,
-                            child: _AdvancedFileRow(
-                              icon: TablerIcons.usb,
-                              label: 'Hardware key',
-                              subtitle: 'YubiKey and FIDO2 hardware keys',
-                              badge: 'Soon',
-                              hasValue: false,
-                              onChoose: () {},
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 10),
+                        ),
                       ],
                     ),
                   ),
@@ -3151,11 +3725,15 @@ class _UnlockCredentialsDialogState
                 Container(
                   decoration: const BoxDecoration(
                     color: _kUnlockFooterBackground,
-                    border:
-                        Border(top: BorderSide(color: _kUnlockFooterBorder)),
+                    border: Border(
+                      top: BorderSide(
+                        color: _kUnlockFooterBorder,
+                        width: 1.2,
+                      ),
+                    ),
                   ),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
+                    horizontal: 28,
                     vertical: 12,
                   ),
                   child: Row(
@@ -3164,7 +3742,7 @@ class _UnlockCredentialsDialogState
                         onPressed: state.isLoading
                             ? null
                             : () => Navigator.of(context).pop(false),
-                        icon: const Icon(TablerIcons.arrow_left, size: 13),
+                        icon: const Icon(TablerIcons.arrow_left, size: 16),
                         label: const Text('Back'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _kUnlockGhostText,
@@ -3173,13 +3751,18 @@ class _UnlockCredentialsDialogState
                             alpha: 0.5,
                           ),
                           disabledBackgroundColor: _kUnlockGhostBg,
-                          side: const BorderSide(color: _kUnlockGhostBorder),
-                          minimumSize: const Size(0, 32),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                          side: const BorderSide(
+                            color: _kUnlockGhostBorder,
+                            width: 1.2,
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          textStyle: _uText(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(22),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 10,
+                          ),
+                          textStyle: _pickerText(
                             12,
                             _kUnlockGhostText,
                             fontWeight: FontWeight.w600,
@@ -3197,36 +3780,37 @@ class _UnlockCredentialsDialogState
                                   color: Colors.white,
                                 ),
                               )
-                            : const Icon(TablerIcons.lock_open, size: 13),
-                        label: const Text('Unlock Vault'),
+                            : const Icon(TablerIcons.lock_open, size: 14),
+                        label: const Text('Unlock vault'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _kActionDark,
+                          backgroundColor: _kPickerOrange,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: _kUnlockPrimaryDisabled,
-                          elevation: 0,
-                          minimumSize: const Size(0, 32),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                          shadowColor: _kPickerLine,
+                          elevation: 2,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 22,
+                            vertical: 10,
                           ),
-                          textStyle: _uText(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(22),
+                          ),
+                          textStyle: _pickerText(
                             12,
                             Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
                         ).copyWith(
                           backgroundColor:
-                              WidgetStateProperty.resolveWith<Color>(
-                            (states) {
-                              if (states.contains(WidgetState.disabled)) {
-                                return _kUnlockPrimaryDisabled;
-                              }
-                              if (states.contains(WidgetState.hovered)) {
-                                return _kUnlockPrimaryHover;
-                              }
-                              return _kActionDark;
-                            },
-                          ),
+                              WidgetStateProperty.resolveWith<Color>((states) {
+                            if (states.contains(WidgetState.disabled)) {
+                              return _kUnlockPrimaryDisabled;
+                            }
+                            if (states.contains(WidgetState.hovered)) {
+                              return _kUnlockPrimaryHover;
+                            }
+                            return _kPickerOrange;
+                          }),
                         ),
                       ),
                     ],
@@ -3387,7 +3971,7 @@ class _UnlockCredentialsDialogState
 
   Widget _buildPinPad(String vaultName) {
     return Material(
-      color: Colors.white,
+      color: _kPickerPaper,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -3397,37 +3981,38 @@ class _UnlockCredentialsDialogState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
-                  const SizedBox(height: 16),
+                  SizedBox(height: Platform.isMacOS ? 46 : 24),
                   Container(
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: <Color>[
-                          Color(0xFF4B6CFF),
-                          Color(0xFF7B52FF),
-                        ],
-                      ),
+                      color: _kPickerPeach,
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(color: _kPickerLineSoft),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x26191A1B),
+                          blurRadius: 0,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
                     ),
                     child: const Icon(
                       TablerIcons.lock,
                       size: 24,
-                      color: Colors.white,
+                      color: _kPickerOrangeDark,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     vaultName,
-                    style: _uText(20, _kTitle, fontWeight: FontWeight.w800),
+                    style: _pickerDisplayText(25, _kPickerInk, height: 1.05),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Enter your 6-digit PIN',
-                    style: _uText(12, _kLabel),
+                    style: _pickerText(11, _kPickerMuted),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
@@ -3444,16 +4029,16 @@ class _UnlockCredentialsDialogState
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: _pinError
-                                ? const Color(0xFFEF4444)
+                                ? const Color(0xFFCF3E32)
                                 : filled
-                                    ? _kBlue
+                                    ? _kPickerOrange
                                     : Colors.transparent,
                             border: Border.all(
                               color: _pinError
-                                  ? const Color(0xFFEF4444)
+                                  ? const Color(0xFFCF3E32)
                                   : filled
-                                      ? _kBlue
-                                      : _kBorderRow,
+                                      ? _kPickerOrange
+                                      : _kPickerLineSoft,
                               width: 1.5,
                             ),
                           ),
@@ -3465,7 +4050,7 @@ class _UnlockCredentialsDialogState
                     const SizedBox(height: 8),
                     Text(
                       'Incorrect PIN — try again',
-                      style: _uText(11, const Color(0xFFEF4444)),
+                      style: _pickerText(10.5, const Color(0xFFCF3E32)),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -3573,6 +4158,70 @@ class _UnlockCredentialsDialogState
 
 // ── Shared helper widgets ────────────────────────────────────────────────────
 
+class _UnlockShadowedInput extends StatelessWidget {
+  const _UnlockShadowedInput({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x1A252628),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Color(0x14252628),
+            blurRadius: 10,
+            spreadRadius: -2,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: CustomPaint(
+        foregroundPainter: const _UnlockInputInnerShadowPainter(),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _UnlockInputInnerShadowPainter extends CustomPainter {
+  const _UnlockInputInnerShadowPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fieldBounds = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(8),
+    );
+    final outside = Path()
+      ..addRect(Rect.fromLTRB(-12, -12, size.width + 12, size.height + 12));
+    final inset = Path()
+      ..addRRect(fieldBounds.deflate(0.5).shift(const Offset(0, 0.75)));
+    final innerEdge = Path.combine(PathOperation.difference, outside, inset);
+
+    canvas
+      ..save()
+      ..clipRRect(fieldBounds)
+      ..drawPath(
+        innerEdge,
+        Paint()
+          ..color = const Color(0x18252628)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      )
+      ..restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _UnlockInputInnerShadowPainter oldDelegate) =>
+      false;
+}
+
 class _PinKeyButton extends StatefulWidget {
   const _PinKeyButton({this.label, this.icon, required this.onTap});
 
@@ -3600,18 +4249,23 @@ class _PinKeyButtonState extends State<_PinKeyButton> {
         duration: const Duration(milliseconds: 80),
         height: 52,
         decoration: BoxDecoration(
-          color: _pressed ? _kHoverBg : _kCanvas,
+          color: _pressed ? _kPickerPeach : _kPickerPaperBright,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _pressed ? _kBorderHover : _kBorderRow,
+            color: _kPickerLineSoft,
+            width: _pressed ? 1.5 : 1.1,
           ),
         ),
         alignment: Alignment.center,
         child: widget.icon != null
-            ? Icon(widget.icon, size: 16, color: _kIcon)
+            ? Icon(widget.icon, size: 16, color: _kPickerMuted)
             : Text(
                 widget.label!,
-                style: _uText(18, _kTitle, fontWeight: FontWeight.w600),
+                style: _pickerText(
+                  17,
+                  _kPickerInk,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
       ),
     );
@@ -3637,16 +4291,16 @@ class _IconActionButton extends StatelessWidget {
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: _kCanvas,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _kBorderRow),
+          color: _kPickerPaper,
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: _kPickerLineSoft),
         ),
         child: IconButton(
           onPressed: onPressed,
           icon: Icon(
             icon,
             size: 16,
-            color: onPressed == null ? const Color(0xFFCDD5E0) : _kIcon,
+            color: onPressed == null ? _kPickerLineSoft : _kPickerInk,
           ),
           padding: EdgeInsets.zero,
           style: IconButton.styleFrom(
@@ -3682,9 +4336,9 @@ class _AdvancedFileRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _kCanvas,
+        color: _kPickerPaper,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _kBorderSoft),
+        border: Border.all(color: _kPickerLineSoft),
       ),
       child: Row(
         children: <Widget>[
@@ -3692,11 +4346,10 @@ class _AdvancedFileRow extends StatelessWidget {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _kPickerPeach,
               borderRadius: BorderRadius.circular(7),
-              border: Border.all(color: _kBorderSoft),
             ),
-            child: Icon(icon, size: 14, color: _kBlue),
+            child: Icon(icon, size: 14, color: _kPickerOrangeDark),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -3707,7 +4360,11 @@ class _AdvancedFileRow extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       label,
-                      style: _uText(12, _kTitle, fontWeight: FontWeight.w600),
+                      style: _pickerText(
+                        11,
+                        _kPickerInk,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     if (badge != null) ...<Widget>[
                       const SizedBox(width: 6),
@@ -3717,13 +4374,17 @@ class _AdvancedFileRow extends StatelessWidget {
                           vertical: 1,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: _kBorderSoft),
+                          color: _kPickerYellow,
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(color: _kPickerLineSoft),
                         ),
                         child: Text(
                           badge!,
-                          style: _uText(9, _kIcon, fontWeight: FontWeight.w600),
+                          style: _pickerText(
+                            8.5,
+                            _kPickerInk,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
@@ -3731,7 +4392,7 @@ class _AdvancedFileRow extends StatelessWidget {
                 ),
                 Text(
                   subtitle,
-                  style: _uText(11, _kLabel),
+                  style: _pickerText(10, _kPickerMuted),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -3741,7 +4402,11 @@ class _AdvancedFileRow extends StatelessWidget {
           if (hasValue && onClear != null)
             IconButton(
               onPressed: onClear,
-              icon: const Icon(TablerIcons.x, size: 14, color: _kIcon),
+              icon: const Icon(
+                TablerIcons.x,
+                size: 14,
+                color: _kPickerMuted,
+              ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             )
@@ -3749,8 +4414,12 @@ class _AdvancedFileRow extends StatelessWidget {
             TextButton(
               onPressed: onChoose,
               style: TextButton.styleFrom(
-                foregroundColor: _kBlue,
-                textStyle: _uText(11, _kBlue, fontWeight: FontWeight.w600),
+                foregroundColor: _kPickerOrangeDark,
+                textStyle: _pickerText(
+                  10.5,
+                  _kPickerOrangeDark,
+                  fontWeight: FontWeight.w700,
+                ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 6,

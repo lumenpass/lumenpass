@@ -2,6 +2,7 @@ part of 'vault_screen.dart';
 
 class _ListPane extends StatefulWidget {
   const _ListPane({
+    required this.width,
     required this.entries,
     required this.selectedIndex,
     required this.onEntrySelected,
@@ -25,9 +26,13 @@ class _ListPane extends StatefulWidget {
     required this.passwordAuditSelection,
     required this.onPasswordAuditIssueSelected,
     required this.onPasswordAuditBack,
+    required this.floatingActionsKey,
+    required this.onNewItemPressed,
+    required this.onEntryRequested,
     this.passwordAuditDuplicateGroupLabel,
   });
 
+  final double width;
   final List<_MockEntry> entries;
   final int selectedIndex;
   final ValueChanged<int> onEntrySelected;
@@ -51,6 +56,9 @@ class _ListPane extends StatefulWidget {
   final PasswordAuditIssue? passwordAuditSelection;
   final ValueChanged<PasswordAuditIssue> onPasswordAuditIssueSelected;
   final VoidCallback onPasswordAuditBack;
+  final GlobalKey<_VaultFloatingActionsState> floatingActionsKey;
+  final VoidCallback onNewItemPressed;
+  final ValueChanged<String> onEntryRequested;
 
   /// When non-null, the list pane is rendering members of a specific
   /// duplicate group (level 3 of the duplicate-items audit flow). The
@@ -65,7 +73,7 @@ class _ListPane extends StatefulWidget {
 class _ListPaneState extends State<_ListPane> {
   static const double _scrollbarThickness = 6;
   static const double _scrollbarGutter = 10;
-  static const double _rowHeight = 80;
+  static const double _rowHeight = 74;
 
   late final ScrollController _scrollController;
   bool _showsScrollbar = false;
@@ -156,159 +164,195 @@ class _ListPaneState extends State<_ListPane> {
         : const <String, PasswordAuditEntry>{};
 
     return Container(
-      width: 330,
+      width: widget.width,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: _VaultColors.surface,
         border: Border(
           right: BorderSide(color: _VaultColors.borderPane),
         ),
       ),
-      child: Column(
+      child: Stack(
         children: <Widget>[
-          Container(
-            height: 38,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: <Color>[
-                  Color(0xFFFFFFFF),
-                  Color(0xFFEBF0F7),
-                ],
-              ),
-              border: Border(
-                top: BorderSide(color: Color(0xFFFFFFFF)),
-                bottom: BorderSide(
-                  color: Color(0xFFB8C5D6),
-                  width: 1.5,
-                ),
-              ),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: Color(0x18000000),
-                  offset: Offset(0, 2),
-                  blurRadius: 4,
-                ),
-              ],
-            ),
-            child: Row(
+          Positioned.fill(
+            child: Column(
               children: <Widget>[
-                _ListHeaderButton(
-                  label: 'Title',
-                  field: _VaultSortField.title,
-                  activeField: widget.sortField,
-                  direction: widget.sortDirection,
-                  onTap: widget.onSortChanged,
-                ),
-                const Spacer(),
-                _ListHeaderButton(
-                  label: 'Last Edited',
-                  field: _VaultSortField.lastEdited,
-                  activeField: widget.sortField,
-                  direction: widget.sortDirection,
-                  onTap: widget.onSortChanged,
-                ),
-                const SizedBox(width: 8),
-                _RefreshListButton(
-                  isRefreshing: widget.isRefreshing,
-                  onTap: widget.onRefreshEntries,
-                ),
-              ],
-            ),
-          ),
-          if (widget.isPasswordAuditView)
-            _PasswordAuditDrilldownHeader(
-              issue: widget.passwordAuditSelection,
-              resultCount: widget.entries.length,
-              onBack: widget.onPasswordAuditBack,
-              duplicateGroupLabel: widget.passwordAuditDuplicateGroupLabel,
-            )
-          else if (widget.searchQuery.trim().isNotEmpty)
-            _ActiveSearchBanner(
-              query: widget.searchQuery,
-              resultCount: widget.entries.length,
-              onClear: widget.onClearSearch,
-            ),
-          Expanded(
-            child: widget.isPasswordAuditView && widget.entries.isEmpty
-                ? const _PasswordAuditEmptyState()
-                : widget.entries.isEmpty
-                    ? const _ListEmptyState()
-                    : ScrollbarTheme(
-                        data: const ScrollbarThemeData(
-                          thumbColor: WidgetStatePropertyAll<Color>(
-                            Color(0xFFB7C0CE),
-                          ),
-                          trackColor: WidgetStatePropertyAll<Color>(
-                            Color(0xFFF0F3F8),
-                          ),
-                          trackBorderColor: WidgetStatePropertyAll<Color>(
-                            Color(0xFFDCE3EE),
-                          ),
-                        ),
-                        child: Scrollbar(
-                          controller: _scrollController,
-                          thumbVisibility: _showsScrollbar,
-                          trackVisibility: _showsScrollbar,
-                          interactive: _showsScrollbar,
-                          thickness: _scrollbarThickness,
-                          radius: const Radius.circular(999),
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              right: _showsScrollbar
-                                  ? _scrollbarThickness + _scrollbarGutter
-                                  : 0,
-                            ),
-                            child: ScrollConfiguration(
-                              behavior: ScrollConfiguration.of(
-                                context,
-                              ).copyWith(scrollbars: false),
-                              child: NotificationListener<
-                                  ScrollMetricsNotification>(
-                                onNotification: (notification) {
-                                  _syncScrollbarVisibility(
-                                      notification.metrics);
-                                  return false;
-                                },
-                                child: ListView.builder(
-                                  controller: _scrollController,
-                                  itemExtent: _rowHeight,
-                                  padding: EdgeInsets.zero,
-                                  itemCount: widget.entries.length,
-                                  itemBuilder: (context, index) =>
-                                      RepaintBoundary(
-                                    // Each row paints into its own raster layer so
-                                    // hover/selection/favicon-load on one row does
-                                    // not invalidate siblings.
-                                    child: _ListRow(
-                                      entry: widget.entries[index],
-                                      selected: index == widget.selectedIndex,
-                                      onTap: () =>
-                                          widget.onEntrySelected(index),
-                                      onOpenWebsite: () =>
-                                          widget.onOpenEntryWebsite(index),
-                                      onEdit: () => widget.onEditEntry(index),
-                                      onDuplicate: () =>
-                                          widget.onDuplicateEntry(index),
-                                      onCopyTotp: widget.entries[index]
-                                              .totpAuthUrl.isNotEmpty
-                                          ? () => widget.onCopyEntryTotp(index)
-                                          : null,
-                                      onDelete: () =>
-                                          widget.onDeleteEntry(index),
-                                      auditEntry: widget.isPasswordAuditView
-                                          ? auditEntryByUuid[
-                                              widget.entries[index].uuid]
-                                          : null,
+                if (widget.isPasswordAuditView)
+                  _PasswordAuditDrilldownHeader(
+                    issue: widget.passwordAuditSelection,
+                    resultCount: widget.entries.length,
+                    onBack: widget.onPasswordAuditBack,
+                    duplicateGroupLabel:
+                        widget.passwordAuditDuplicateGroupLabel,
+                  )
+                else if (widget.searchQuery.trim().isNotEmpty)
+                  _ActiveSearchBanner(
+                    query: widget.searchQuery,
+                    resultCount: widget.entries.length,
+                    onClear: widget.onClearSearch,
+                  ),
+                Expanded(
+                  child: widget.isPasswordAuditView && widget.entries.isEmpty
+                      ? const _PasswordAuditEmptyState()
+                      : widget.entries.isEmpty
+                          ? const _ListEmptyState()
+                          : ScrollbarTheme(
+                              data: const ScrollbarThemeData(
+                                thumbColor: WidgetStatePropertyAll<Color>(
+                                  Color(0xFFAAA69F),
+                                ),
+                                trackColor: WidgetStatePropertyAll<Color>(
+                                  _VaultColors.surfaceMuted,
+                                ),
+                                trackBorderColor: WidgetStatePropertyAll<Color>(
+                                  _VaultColors.borderSoft,
+                                ),
+                              ),
+                              child: Scrollbar(
+                                controller: _scrollController,
+                                thumbVisibility: _showsScrollbar,
+                                trackVisibility: _showsScrollbar,
+                                interactive: _showsScrollbar,
+                                thickness: _scrollbarThickness,
+                                radius: const Radius.circular(999),
+                                child: Padding(
+                                  padding: EdgeInsets.only(
+                                    right: _showsScrollbar
+                                        ? _scrollbarThickness + _scrollbarGutter
+                                        : 0,
+                                  ),
+                                  child: ScrollConfiguration(
+                                    behavior: ScrollConfiguration.of(
+                                      context,
+                                    ).copyWith(scrollbars: false),
+                                    child: NotificationListener<
+                                        ScrollMetricsNotification>(
+                                      onNotification: (notification) {
+                                        _syncScrollbarVisibility(
+                                            notification.metrics);
+                                        return false;
+                                      },
+                                      child: ListView.builder(
+                                        controller: _scrollController,
+                                        itemExtent: _rowHeight,
+                                        padding:
+                                            const EdgeInsets.only(bottom: 58),
+                                        itemCount: widget.entries.length,
+                                        itemBuilder: (context, index) =>
+                                            RepaintBoundary(
+                                          // Each row paints into its own raster layer so
+                                          // hover/selection/favicon-load on one row does
+                                          // not invalidate siblings.
+                                          child: _ListRow(
+                                            entry: widget.entries[index],
+                                            selected:
+                                                index == widget.selectedIndex,
+                                            onTap: () =>
+                                                widget.onEntrySelected(index),
+                                            onOpenWebsite: () => widget
+                                                .onOpenEntryWebsite(index),
+                                            onEdit: () =>
+                                                widget.onEditEntry(index),
+                                            onDuplicate: () =>
+                                                widget.onDuplicateEntry(index),
+                                            onCopyTotp: widget.entries[index]
+                                                    .totpAuthUrl.isNotEmpty
+                                                ? () => widget
+                                                    .onCopyEntryTotp(index)
+                                                : null,
+                                            onDelete: () =>
+                                                widget.onDeleteEntry(index),
+                                            auditEntry: widget
+                                                    .isPasswordAuditView
+                                                ? auditEntryByUuid[
+                                                    widget.entries[index].uuid]
+                                                : null,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      ),
+                ),
+                _ListControlBar(
+                  itemCount: widget.entries.length,
+                  sortField: widget.sortField,
+                  sortDirection: widget.sortDirection,
+                  onSortChanged: widget.onSortChanged,
+                  isRefreshing: widget.isRefreshing,
+                  onRefreshEntries: widget.onRefreshEntries,
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 14,
+            right: 14,
+            bottom: 64,
+            child: _VaultFloatingActions(
+              key: widget.floatingActionsKey,
+              onNewItemPressed: widget.onNewItemPressed,
+              onEntryRequested: widget.onEntryRequested,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ListControlBar extends StatelessWidget {
+  const _ListControlBar({
+    required this.itemCount,
+    required this.sortField,
+    required this.sortDirection,
+    required this.onSortChanged,
+    required this.isRefreshing,
+    required this.onRefreshEntries,
+  });
+
+  final int itemCount;
+  final _VaultSortField sortField;
+  final _VaultSortDirection sortDirection;
+  final ValueChanged<_VaultSortField> onSortChanged;
+  final bool isRefreshing;
+  final Future<void> Function() onRefreshEntries;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: const BoxDecoration(
+        color: _VaultColors.surfaceMuted,
+        border: Border(
+          top: BorderSide(color: _VaultColors.borderSoft),
+        ),
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              '$itemCount ${itemCount == 1 ? 'item' : 'items'}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _text(
+                12,
+                _VaultColors.title,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          _ListSortMenu(
+            activeField: sortField,
+            direction: sortDirection,
+            onSelected: onSortChanged,
+          ),
+          const SizedBox(width: 6),
+          _RefreshListButton(
+            isRefreshing: isRefreshing,
+            onTap: onRefreshEntries,
           ),
         ],
       ),
@@ -332,7 +376,7 @@ class _ActiveSearchBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: const BoxDecoration(
-        color: Color(0xFFF6F3FF),
+        color: _VaultColors.surfaceMuted,
         border: Border(
           bottom: BorderSide(color: _VaultColors.borderPane),
         ),
@@ -346,7 +390,7 @@ class _ActiveSearchBanner extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: _text(
                 12,
-                const Color(0xFF3A4457),
+                _VaultColors.title,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -359,7 +403,7 @@ class _ActiveSearchBanner extends StatelessWidget {
               width: 26,
               height: 26,
               decoration: const BoxDecoration(
-                color: Color(0xFF7C8598),
+                color: _VaultColors.headerLabel,
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
@@ -376,52 +420,72 @@ class _ActiveSearchBanner extends StatelessWidget {
   }
 }
 
-class _ListHeaderButton extends StatelessWidget {
-  const _ListHeaderButton({
-    required this.label,
-    required this.field,
+class _ListSortMenu extends StatelessWidget {
+  const _ListSortMenu({
     required this.activeField,
     required this.direction,
-    required this.onTap,
+    required this.onSelected,
   });
 
-  final String label;
-  final _VaultSortField field;
   final _VaultSortField activeField;
   final _VaultSortDirection direction;
-  final ValueChanged<_VaultSortField> onTap;
+  final ValueChanged<_VaultSortField> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    final isActive = field == activeField;
+    final label =
+        activeField == _VaultSortField.lastEdited ? 'Recent' : 'Title';
     final icon = direction == _VaultSortDirection.ascending
         ? TablerIcons.arrow_narrow_up
         : TablerIcons.arrow_narrow_down;
 
-    return InkWell(
-      onTap: () => onTap(field),
-      borderRadius: BorderRadius.circular(6),
+    return PopupMenuButton<_VaultSortField>(
+      tooltip: 'Sort items',
+      color: _VaultColors.surface,
+      surfaceTintColor: _VaultColors.surface,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: _VaultColors.borderSoft),
+      ),
+      onSelected: onSelected,
+      itemBuilder: (context) => <PopupMenuEntry<_VaultSortField>>[
+        PopupMenuItem<_VaultSortField>(
+          value: _VaultSortField.lastEdited,
+          child: Text(
+            'Last edited',
+            style: _text(11, _VaultColors.title, fontWeight: FontWeight.w600),
+          ),
+        ),
+        PopupMenuItem<_VaultSortField>(
+          value: _VaultSortField.title,
+          child: Text(
+            'Title',
+            style: _text(11, _VaultColors.title, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
+            const Icon(
+              TablerIcons.arrows_sort,
+              size: 14,
+              color: _VaultColors.icon,
+            ),
+            const SizedBox(width: 6),
             Text(
               label,
               style: _text(
-                11,
-                isActive ? const Color(0xFF000000) : const Color(0xFF000000),
-                fontWeight: FontWeight.w600,
+                10,
+                _VaultColors.title,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            if (isActive) ...<Widget>[
-              const SizedBox(width: 3),
-              Icon(
-                icon,
-                size: 12,
-                color: const Color(0xFF536987),
-              ),
-            ],
+            const SizedBox(width: 3),
+            Icon(icon, size: 12, color: _kPrimaryButtonColor),
           ],
         ),
       ),
@@ -440,18 +504,38 @@ class _RefreshListButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: isRefreshing ? null : () => onTap(),
-      borderRadius: BorderRadius.circular(999),
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: AnimatedRotation(
-          turns: isRefreshing ? 1 : 0,
-          duration: const Duration(milliseconds: 700),
-          child: Icon(
-            TablerIcons.refresh,
-            size: 14,
-            color: isRefreshing ? const Color(0xFF0A67FF) : _VaultColors.icon,
+    final tooltip = isRefreshing ? 'Refreshing items…' : 'Refresh items';
+    return _AppTooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        child: Material(
+          color: _VaultColors.surfaceMuted,
+          shape: const CircleBorder(
+            side: BorderSide(color: _VaultColors.borderSoft),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: isRefreshing ? null : () => onTap(),
+            hoverColor: _VaultColors.peachSoft,
+            highlightColor: _VaultColors.peach,
+            child: SizedBox(
+              width: 30,
+              height: 30,
+              child: Center(
+                child: AnimatedRotation(
+                  turns: isRefreshing ? 1 : 0,
+                  duration: const Duration(milliseconds: 700),
+                  child: Icon(
+                    TablerIcons.refresh,
+                    size: 14,
+                    color:
+                        isRefreshing ? _kPrimaryButtonColor : _VaultColors.icon,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -474,14 +558,14 @@ class _ListEmptyState extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: const Color(0xFFEEF4FF),
+                color: _VaultColors.peachSoft,
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: const Color(0xFFC7D6F6)),
+                border: Border.all(color: _VaultColors.borderSoft),
                 boxShadow: const <BoxShadow>[
                   BoxShadow(
-                    color: Color(0x120A67FF),
-                    blurRadius: 16,
-                    offset: Offset(0, 6),
+                    color: Color(0x12000000),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
@@ -489,7 +573,7 @@ class _ListEmptyState extends StatelessWidget {
               child: const Icon(
                 TablerIcons.inbox,
                 size: 24,
-                color: Color(0xFF2E5ECC),
+                color: _kPrimaryButtonColor,
               ),
             ),
             const SizedBox(height: 14),
@@ -497,7 +581,7 @@ class _ListEmptyState extends StatelessWidget {
               'Nothing here yet',
               style: _text(
                 12,
-                const Color(0xFF3A4A5E),
+                _VaultColors.title,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -507,7 +591,7 @@ class _ListEmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: _text(
                 11,
-                const Color(0xFF9AAABB),
+                _VaultColors.headerLabel,
                 fontWeight: FontWeight.w400,
                 height: 1.5,
               ),
@@ -519,7 +603,7 @@ class _ListEmptyState extends StatelessWidget {
   }
 }
 
-class _NewItemButton extends StatefulWidget {
+class _NewItemButton extends StatelessWidget {
   const _NewItemButton({
     required this.onPressed,
   });
@@ -527,56 +611,12 @@ class _NewItemButton extends StatefulWidget {
   final VoidCallback onPressed;
 
   @override
-  State<_NewItemButton> createState() => _NewItemButtonState();
-}
-
-class _NewItemButtonState extends State<_NewItemButton> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedScale(
-        scale: _hovered ? 1.015 : 1,
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOutCubic,
-        child: InkWell(
-          onTap: widget.onPressed,
-          borderRadius: BorderRadius.circular(8),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color:
-                  _hovered ? _kPrimaryButtonHoverColor : _kPrimaryButtonColor,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: _hovered
-                      ? _kPrimaryButtonColor.withValues(alpha: 0.24)
-                      : _kPrimaryButtonColor.withValues(alpha: 0.14),
-                  blurRadius: _hovered ? 12 : 4,
-                  offset: Offset(0, _hovered ? 4 : 1),
-                ),
-              ],
-            ),
-            child: Row(
-              children: <Widget>[
-                const Icon(TablerIcons.plus, size: 14, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(
-                  'New Item',
-                  style: _text(11, Colors.white, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return _VaultToolbarIconButton(
+      icon: TablerIcons.plus,
+      tooltip: 'Create new item',
+      primary: true,
+      onPressed: onPressed,
     );
   }
 }
@@ -905,12 +945,12 @@ class _ListRowState extends State<_ListRow> {
     final hasTotp = widget.entry.totpAuthUrl.isNotEmpty;
     final website = widget.entry.website.trim();
     final subtitleStyle = _text(
-      11,
+      13,
       const Color(0xFF6E6E73),
       fontWeight: FontWeight.w400,
     );
     final websiteStyle = _text(
-      10,
+      12,
       const Color(0xFF8A96A8),
       fontWeight: FontWeight.w400,
     );
@@ -929,7 +969,7 @@ class _ListRowState extends State<_ListRow> {
           );
         },
         child: AnimatedScale(
-          scale: _hovered && !widget.selected ? 1.012 : 1,
+          scale: 1,
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
           child: InkWell(
@@ -937,21 +977,29 @@ class _ListRowState extends State<_ListRow> {
             // Ink colors are set directly on the widget instead of cloning
             // the whole ThemeData per row (via Theme.of(context).copyWith),
             // which was needless allocation on the scroll hot path.
-            hoverColor: const Color(0xFFEAF1FC),
-            highlightColor: const Color(0x144D79C7),
+            hoverColor: _VaultColors.peachSoft,
+            highlightColor: _VaultColors.peach,
             splashColor: Colors.transparent,
             splashFactory: NoSplash.splashFactory,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 140),
               curve: Curves.easeOut,
               height: _ListPaneState._rowHeight,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.fromLTRB(14, 0, 10, 0),
               decoration: BoxDecoration(
                 color: widget.selected
-                    ? const Color(0xFFDCE8FF)
-                    : (_hovered ? const Color(0xFFE8EFF9) : Colors.white),
-                border: const Border(
-                  bottom: BorderSide(color: _VaultColors.borderPane),
+                    ? _VaultColors.peach
+                    : (_hovered
+                        ? _VaultColors.surfaceMuted
+                        : _VaultColors.surface),
+                border: Border(
+                  left: BorderSide(
+                    color: widget.selected
+                        ? _kPrimaryButtonColor
+                        : Colors.transparent,
+                    width: 3,
+                  ),
+                  bottom: const BorderSide(color: _VaultColors.borderSoft),
                 ),
               ),
               child: Row(
@@ -975,8 +1023,8 @@ class _ListRowState extends State<_ListRow> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: _text(
-                                  12,
-                                  const Color(0xFF2C3B56),
+                                  15,
+                                  _VaultColors.title,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1051,8 +1099,8 @@ class _ListRowState extends State<_ListRow> {
                   Text(
                     widget.entry.dateLabel,
                     style: _text(
-                      11,
-                      const Color(0xFF74839A),
+                      13,
+                      _VaultColors.headerLabel,
                       fontWeight: FontWeight.w400,
                     ),
                   ),

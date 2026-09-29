@@ -1,6 +1,57 @@
 part of 'vault_screen.dart';
 
 /// ─────────────────────────────────────────────────────────────────────────
+
+/// The macOS panel only needs searchable/list data until an item is opened.
+/// Keep custom fields and passwords in the main isolate until that point.
+@visibleForTesting
+Map<String, Object?> compactQuickSearchEntry(KdbxEntry entry) {
+  final display = _mockEntryFromKdbx(entry);
+  return <String, Object?>{
+    'uuid': entry.uuid,
+    'groupUuid': entry.groupUuid,
+    'title': entry.title,
+    if (entry.username?.isNotEmpty ?? false) 'username': entry.username,
+    if (entry.url?.isNotEmpty ?? false) 'url': entry.url,
+    if (entry.notes?.isNotEmpty ?? false) 'notes': entry.notes,
+    if (entry.otpAuthUrl?.isNotEmpty ?? false) 'otpAuthUrl': entry.otpAuthUrl,
+    if (entry.createdAt != null)
+      'createdAt': entry.createdAt!.toIso8601String(),
+    if (entry.updatedAt != null)
+      'updatedAt': entry.updatedAt!.toIso8601String(),
+    if (entry.tags.isNotEmpty) 'tags': entry.tags,
+    if (entry.faviconPngBase64 != null)
+      'faviconPngBase64': entry.faviconPngBase64,
+    'quickItemType': display.itemType.id,
+    if (display.subtitle.isNotEmpty) 'quickSubtitle': display.subtitle,
+    if (display.hasPasskeyChip) 'quickHasPasskey': true,
+    if (display.socialProvider.isNotEmpty)
+      'quickSocialProvider': display.socialProvider,
+    if (display.cardBrand != null) 'quickCardBrand': display.cardBrand!.name,
+  };
+}
+
+_MockEntry _mockEntryFromCompactQuickSearchJson(Map<String, dynamic> json) {
+  final entry = KdbxEntry.fromJson(json);
+  final display = _computeMockEntryFromKdbx(entry);
+  _CardBrand? cardBrand;
+  for (final candidate in _CardBrand.values) {
+    if (candidate.name == json['quickCardBrand']) {
+      cardBrand = candidate;
+      break;
+    }
+  }
+  return display.copyWith(
+    itemType: VaultItemType.fromId(json['quickItemType'] as String? ?? '') ??
+        VaultItemType.login,
+    subtitle: json['quickSubtitle'] as String? ?? display.subtitle,
+    hasPasskeyChip: json['quickHasPasskey'] as bool? ?? false,
+    socialProvider: json['quickSocialProvider'] as String? ?? '',
+    cardBrand: cardBrand,
+    faviconPngBase64: display.faviconPngBase64,
+  );
+}
+
 /// Isolated Quick Search window (Option A — second Flutter engine)
 /// ─────────────────────────────────────────────────────────────────────────
 ///
@@ -10,19 +61,18 @@ part of 'vault_screen.dart';
 ///
 /// Because the second engine runs in its own Dart isolate it shares **no**
 /// memory with the main app — most importantly it has no access to the
-/// decrypted vault. The main engine therefore serialises the current entry
-/// projection (`KdbxEntry`, which is `freezed` + `json_serializable`) into a
-/// JSON snapshot and pushes it over the `lumenpass/quick_search` method
-/// channel. Here we rebuild the identical `_MockEntry` list via
-/// `_mockEntryFromKdbx`, so the panel renders byte-for-byte the same overlay
-/// the in-window path renders — no colours, icons or detail-field metadata
-/// have to cross the isolate boundary.
+/// decrypted vault. The main engine sends a JSON snapshot over the
+/// `lumenpass/quick_search` channel. macOS sends searchable summaries and
+/// resolves full entry details on demand; Windows and Linux currently send
+/// full entry projections.
 ///
 /// Channel contract (`lumenpass/quick_search`):
 ///   native → this engine:
 ///     • `setSnapshot`  (String jsonPayload)  — push the live entry snapshot
+///     • `clearSnapshot`                    — drop the hidden panel's entries
 ///   this engine → native:
-///     • `ready`                    — engine booted, request a snapshot
+///     • `ready`                    — engine booted
+///     • `getEntry` (String uuid)   — request full details on macOS
 ///     • `close`                    — dismiss the panel
 ///     • `openEntry`   (String uuid)
 ///     • `editEntry`   (String uuid)
@@ -65,6 +115,7 @@ class _QuickSearchWindowShellState extends State<_QuickSearchWindowShell> {
 
   // Snapshot-derived state.
   List<_MockEntry> _entries = const <_MockEntry>[];
+  bool _compactSnapshot = false;
   String? _initialSelectedUuid;
   bool _initialShowGenerator = false;
   bool _hideCreditCardNumber = true;
@@ -84,11 +135,7 @@ class _QuickSearchWindowShellState extends State<_QuickSearchWindowShell> {
   void initState() {
     super.initState();
     _channel.setMethodCallHandler(_handleNativeCall);
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      _timeNotifier.value = DateTime.now();
-    });
-    // Tell native we're up so it can push the first snapshot even before the
-    // user opens the panel (keeps the first open instant).
+    // The macOS host waits for this signal before sending the first snapshot.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _channel.invokeMethod<void>('ready');
     });
@@ -112,6 +159,25 @@ class _QuickSearchWindowShellState extends State<_QuickSearchWindowShell> {
         if (raw is String) {
           _applySnapshot(raw);
         }
+        return null;
+      case 'clearSnapshot':
+        _ticker?.cancel();
+        _ticker = null;
+        if (mounted) {
+          setState(() {
+            _entries = const <_MockEntry>[];
+            _compactSnapshot = false;
+            _initialSelectedUuid = null;
+            _initialShowGenerator = false;
+            _hideCreditCardNumber = true;
+            _shortcutDisplay = '';
+            _snapshotSeq++;
+          });
+        }
+        _toastTimer?.cancel();
+        _toastMessage = null;
+        _removeToastOverlay();
+        _clearMockEntryCache();
         return null;
       default:
         return null;
@@ -143,8 +209,10 @@ class _QuickSearchWindowShellState extends State<_QuickSearchWindowShell> {
       for (final item in rawEntries) {
         if (item is Map) {
           try {
-            final kdbx = KdbxEntry.fromJson(Map<String, dynamic>.from(item));
-            entries.add(_mockEntryFromKdbx(kdbx));
+            final json = Map<String, dynamic>.from(item);
+            entries.add(payload['compact'] == true
+                ? _mockEntryFromCompactQuickSearchJson(json)
+                : _mockEntryFromKdbx(KdbxEntry.fromJson(json)));
           } catch (_) {
             // Skip malformed entries rather than failing the whole snapshot.
           }
@@ -155,14 +223,31 @@ class _QuickSearchWindowShellState extends State<_QuickSearchWindowShell> {
     if (!mounted) {
       return;
     }
+    _ticker ??= Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) _timeNotifier.value = DateTime.now();
+    });
     setState(() {
       _entries = entries;
+      _compactSnapshot = payload['compact'] == true;
       _initialSelectedUuid = payload['initialSelectedUuid'] as String?;
       _initialShowGenerator = payload['initialShowGenerator'] as bool? ?? false;
       _hideCreditCardNumber = payload['hideCreditCardNumber'] as bool? ?? true;
       _shortcutDisplay = payload['shortcutDisplay'] as String? ?? '';
       _snapshotSeq++;
     });
+  }
+
+  Future<_MockEntry?> _loadEntry(_MockEntry summary) async {
+    if (!_compactSnapshot) return summary;
+    try {
+      final raw = await _channel.invokeMethod<String>('getEntry', summary.uuid);
+      if (raw == null) return null;
+      return _computeMockEntryFromKdbx(
+        KdbxEntry.fromJson(jsonDecode(raw) as Map<String, dynamic>),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   // ── Actions relayed to the main engine ────────────────────────────────
@@ -298,6 +383,7 @@ class _QuickSearchWindowShellState extends State<_QuickSearchWindowShell> {
                   onCreateNewItem: _createNewItem,
                   onShowToast: _showToast,
                   onEditItem: _editItem,
+                  onLoadEntry: _loadEntry,
                   onPreferredHeightChanged: _handleHeightChanged,
                   currentTime: currentTime,
                   initialShowGenerator: _initialShowGenerator,

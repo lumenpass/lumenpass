@@ -36,7 +36,7 @@ TextStyle _uText(
     fontSize: size,
     color: color,
     fontWeight: fontWeight,
-    fontFamily: 'Inter',
+    fontFamily: 'Ubuntu Sans',
     letterSpacing: letterSpacing,
   );
 }
@@ -369,8 +369,7 @@ class _DuplicateDatabaseModalState
           isConnecting: _isConnectingOneDrive,
           onConnect: _connectOneDrive,
           onDisconnect: _disconnectOneDrive,
-          onPickFolder:
-              _oneDriveAccount != null ? _pickOneDriveFolder : null,
+          onPickFolder: _oneDriveAccount != null ? _pickOneDriveFolder : null,
           onSelect: _oneDriveAccount != null
               ? () => setState(() => _storage = _DuplicateStorage.oneDrive)
               : null,
@@ -389,8 +388,7 @@ class _DuplicateDatabaseModalState
           isConnecting: _isConnectingWebDav,
           onConnect: _connectWebDav,
           onDisconnect: _disconnectWebDav,
-          onPickFolder:
-              _webDavAccount != null ? _pickWebDavFolder : null,
+          onPickFolder: _webDavAccount != null ? _pickWebDavFolder : null,
           onSelect: _webDavAccount != null
               ? () => setState(() => _storage = _DuplicateStorage.webDav)
               : null,
@@ -1052,9 +1050,10 @@ class _DuplicateDatabaseModalState
     final cachePath = await _cacheFilePath('webdav', safeName);
     await File(cachePath).writeAsBytes(bytes, flush: true);
 
-    final folderPath = (_webDavFolderPath != null && _webDavFolderPath!.isNotEmpty)
-        ? _webDavFolderPath!
-        : BackupService.instance.currentWebDavConfig?.rootPath ?? '/';
+    final folderPath =
+        (_webDavFolderPath != null && _webDavFolderPath!.isNotEmpty)
+            ? _webDavFolderPath!
+            : BackupService.instance.currentWebDavConfig?.rootPath ?? '/';
     final remotePath = await BackupService.instance.uploadNewFileToWebDav(
       bytes,
       folderPath,
@@ -1480,8 +1479,8 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
       final CloudFolder created;
       switch (widget.cloudType) {
         case _CloudType.googleDrive:
-          final rawCreated = await BackupService.instance
-              .createGoogleDriveFolder(
+          final rawCreated =
+              await BackupService.instance.createGoogleDriveFolder(
             folderName,
             parentId: _breadcrumb.isEmpty ? null : _breadcrumb.last.id,
           );
@@ -1492,8 +1491,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
           );
         case _CloudType.dropbox:
           final parent = _breadcrumb.isEmpty ? '' : _breadcrumb.last.id;
-          final path =
-              parent.isEmpty ? '/$folderName' : '$parent/$folderName';
+          final path = parent.isEmpty ? '/$folderName' : '$parent/$folderName';
           await BackupService.instance.createDropboxFolder(path);
           created = CloudFolder(
             id: path.toLowerCase().replaceAll(' ', '-'),
@@ -1501,8 +1499,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
             path: _childDisplayPath(folderName),
           );
         case _CloudType.oneDrive:
-          final rawCreated = await BackupService.instance
-              .createOneDriveFolder(
+          final rawCreated = await BackupService.instance.createOneDriveFolder(
             folderName,
             parentId: _breadcrumb.isEmpty ? null : _breadcrumb.last.id,
           );
@@ -1512,8 +1509,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
             path: _childDisplayPath(folderName),
           );
         case _CloudType.webDav:
-          final rawCreated = await BackupService.instance
-              .createWebDavFolder(
+          final rawCreated = await BackupService.instance.createWebDavFolder(
             folderName,
             parentId: _breadcrumb.isEmpty ? null : _breadcrumb.last.id,
           );

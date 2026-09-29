@@ -57,6 +57,7 @@ import '../application/vault_item_type.dart';
 import '../application/vault_providers.dart';
 import '../application/vault_search_ranking.dart';
 import '../../../presentation/theme/app_theme.dart';
+import '../../../presentation/widgets/lumenpass_wordmark.dart';
 
 part 'vault_screen_theme.dart';
 part 'vault_screen_models.dart';
@@ -101,7 +102,7 @@ enum _VaultSortDirection { ascending, descending }
 
 class _VaultScreenState extends ConsumerState<VaultScreen>
     with WidgetsBindingObserver {
-  static const double _kVaultWindowWidth = 1040;
+  static const double _kVaultWindowWidth = 1200;
   static const double _kVaultWindowHeight = 760;
   static const double _kQuickSearchWindowMinHeight = 178;
   static const double _kQuickSearchGeneratorHeight = 428.0;
@@ -146,7 +147,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
   LatestRelease? _pendingUpdate;
   bool _updateBannerDismissed = false;
 
-  final _titleBarKey = GlobalKey<_VaultTitleBarState>();
+  final _floatingActionsKey = GlobalKey<_VaultFloatingActionsState>();
 
   static const MethodChannel _windowChannel = MethodChannel('lumenpass/window');
 
@@ -413,6 +414,15 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
         final openGenerator = args?['openGenerator'] as bool? ?? false;
         _quickSearchOpenGenerator = openGenerator;
         return _buildQuickSearchSnapshotJson(openGenerator: openGenerator);
+      case 'quickSearchRequestEntry':
+        final uuid = call.arguments as String?;
+        if (uuid == null || ref.read(activeDatabaseProvider) == null) {
+          return null;
+        }
+        for (final entry in ref.read(vaultDatabaseEntriesProvider)) {
+          if (entry.uuid == uuid) return jsonEncode(entry.toJson());
+        }
+        return null;
       case 'quickSearchOpenEntry':
         final uuid = call.arguments as String?;
         if (uuid != null && uuid.isNotEmpty) {
@@ -561,7 +571,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
                       searchQuery: appliedSearchQuery,
                       onClearSearch: _clearAppliedSearch,
                       onEntryRequested: _openEntryByUuid,
-                      titleBarKey: _titleBarKey,
+                      floatingActionsKey: _floatingActionsKey,
                       onOpenEntryWebsite: _openEntryWebsiteFromList,
                       onEditEntry: _editEntryFromList,
                       onDuplicateEntry: _duplicateEntryFromList,
@@ -858,6 +868,15 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
     }
 
     if (!mounted) return;
+    try {
+      await _windowChannel.invokeMethod<void>('clearQuickSearchData');
+    } catch (_) {
+      // Older native runners may not expose the data-clearing method yet.
+      try {
+        await _windowChannel.invokeMethod<void>('hideQuickSearchPanel');
+      } catch (_) {}
+    }
+    if (!mounted) return;
     BookmarkService.instance.stopAll();
     BackupService.instance.cancelForLockedVault();
     ref.read(vaultWriteSchedulerProvider).reset();
@@ -990,10 +1009,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
     });
   }
 
-  /// Serialises the current entry projection + appearance/config into the
-  /// JSON snapshot consumed by the isolated Quick Search engine. `KdbxEntry`
-  /// is `freezed` + `json_serializable`, so the panel can rebuild the exact
-  /// same `_MockEntry` list via `_mockEntryFromKdbx` on the other side.
+  /// Serialises searchable summaries for macOS. Full details are fetched
+  /// individually when opened; other desktop runners retain their current
+  /// snapshot protocol until they support on-demand requests.
   String _buildQuickSearchSnapshotJson({bool openGenerator = false}) {
     final kdbxEntries = ref.read(vaultDatabaseEntriesProvider);
     final mapped = _sortEntries(
@@ -1007,23 +1025,25 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
     final spotlight =
         ref.read(spotlightShortcutProvider) ?? ShortcutData.defaultSpotlight;
 
-    // Ship entries in the ranked/sorted order via their uuid so the panel can
-    // preserve ordering; the KdbxEntry JSON carries everything the overlay
-    // renders.
+    // Preserve the ranked order. macOS receives searchable summaries; the
+    // other desktop runners still receive full entries.
     final orderedUuids = mapped.map((e) => e.uuid).toList();
     final byUuid = <String, KdbxEntry>{
       for (final e in kdbxEntries) e.uuid: e,
     };
-    final orderedKdbx = <Map<String, dynamic>>[];
+    final orderedKdbx = <Map<String, Object?>>[];
+    final compact = Platform.isMacOS;
     for (final uuid in orderedUuids) {
       final entry = byUuid[uuid];
       if (entry != null) {
-        orderedKdbx.add(entry.toJson());
+        orderedKdbx
+            .add(compact ? compactQuickSearchEntry(entry) : entry.toJson());
       }
     }
 
     return jsonEncode(<String, Object?>{
       'entries': orderedKdbx,
+      'compact': compact,
       'initialSelectedUuid': selectedUuid,
       'initialShowGenerator': openGenerator,
       'hideCreditCardNumber': ref.read(vaultHideCreditCardNumberProvider),
@@ -1268,6 +1288,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
     });
     try {
       await ref.read(kdbxRepositoryProvider).permanentlyDeleteEntry(entry.uuid);
+      _evictMockEntryCache(entry.uuid);
       publishAndScheduleSave(ref, ref.read(kdbxRepositoryProvider));
       if (!mounted) return;
       _showToast('${entry.title} permanently deleted');
@@ -1290,6 +1311,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
   Future<bool> _deleteEntryFromRepository(String uuid) async {
     try {
       await ref.read(kdbxRepositoryProvider).deleteEntry(uuid);
+      _evictMockEntryCache(uuid);
       publishAndScheduleSave(ref, ref.read(kdbxRepositoryProvider));
       if (!mounted) return false;
       return true;
@@ -1363,6 +1385,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
     List<_MockEntry> mapped, {
     String? preferredEntryUuid,
   }) {
+    _pruneMockEntryCache(
+      ref.read(activeDatabaseProvider)?.entries ?? const <KdbxEntry>[],
+    );
     final selectedUuid = preferredEntryUuid ??
         ((_entries.isNotEmpty && _selectedIndex < _entries.length)
             ? _entries[_selectedIndex].uuid
@@ -1850,7 +1875,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
 
 class _VaultWindow extends StatelessWidget {
   const _VaultWindow({
-    required this.titleBarKey,
+    required this.floatingActionsKey,
     required this.width,
     required this.height,
     required this.entries,
@@ -1931,7 +1956,7 @@ class _VaultWindow extends StatelessWidget {
   final String searchQuery;
   final VoidCallback onClearSearch;
   final ValueChanged<String> onEntryRequested;
-  final GlobalKey<_VaultTitleBarState> titleBarKey;
+  final GlobalKey<_VaultFloatingActionsState> floatingActionsKey;
   final ValueChanged<int> onOpenEntryWebsite;
   final ValueChanged<int> onEditEntry;
   final ValueChanged<int> onDuplicateEntry;
@@ -1952,59 +1977,47 @@ class _VaultWindow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Two-column layout with INDEPENDENT top-strip heights.
+    final compactWorkspace = width < 1120;
+    final sidebarWidth = compactWorkspace ? 256.0 : 272.0;
+    final listWidth = compactWorkspace ? 312.0 : 328.0;
+
+    // Two-column layout with a compact sidebar and workspace title bar.
     //
     //   ┌───────────────────────┬─────────────────────────────────────────┐
-    //   │ _VaultGreetingHeader  │ _VaultTitleBar  (~58 px, hugs content)  │
-    //   │   (content-sized)     ├─────────────────────────────────────────┤
-    //   │                       │ ┌──────────┬──────────────────────────┐ │
-    //   ├───────────────────────┤ │ _ListPane│ _DetailPane / _Empty…    │ │
-    //   │ _SidebarPane          │ │          │                          │ │
-    //   │   (Expanded)          │ └──────────┴──────────────────────────┘ │
+    //   │ _SidebarPane          │ _VaultTitleBar  (~56 px)                │
+    //   │ (native-safe inset)   ├─────────────────────────────────────────┤
+    //   │                       │ ┌──────────┬─┬────────────────────────┐ │
+    //   │                       │ │ _ListPane│ │ _DetailPane / _Empty…  │ │
+    //   │   (Expanded)          │ └──────────┴─┴────────────────────────┘ │
     //   └───────────────────────┴─────────────────────────────────────────┘
     //
-    // The left column's bottom-border ("divider line") sits flush under
-    // the greeting block and is independent of the right column's
-    // title-bar height — so the right panel's `Title | Last Edited` row
-    // begins flush under the search row, eliminating the previously
-    // synced ~46 px gap.
+    // The sidebar starts directly below the native window controls instead
+    // of reserving an empty title strip.
     return Container(
       width: width,
       height: height,
-      color: Colors.white,
+      color: _VaultColors.canvas,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          // LEFT column ─ greeting header on top + sidebar below.
-          SizedBox(
-            width: 230,
-            child: Column(
-              children: <Widget>[
-                _VaultGreetingHeader(
-                  onSettingsPressed: onOpenSettings,
-                ),
-                Expanded(
-                  child: _SidebarPane(
-                    onLockVault: onLockVault,
-                    onOpenImport: onOpenImport,
-                    onOpenAddCategoryModal: onOpenAddCategoryModal,
-                    onEditCategory: onEditCategory,
-                    onDeleteCategory: onDeleteCategory,
-                  ),
-                ),
-              ],
-            ),
+          // LEFT column ─ compact sidebar; its own top inset clears native
+          // window controls without reserving an empty header strip.
+          _SidebarPane(
+            width: sidebarWidth,
+            onLockVault: onLockVault,
+            onOpenImport: onOpenImport,
+            onOpenAddCategoryModal: onOpenAddCategoryModal,
+            onEditCategory: onEditCategory,
+            onDeleteCategory: onDeleteCategory,
           ),
-          // RIGHT column ─ search header on top + content row below.
+          // RIGHT column ─ compact header + list/detail content.
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 _VaultTitleBar(
-                  key: titleBarKey,
-                  onNewItemPressed: onOpenNewItemModal,
                   onImportPressed: onOpenImport,
-                  onEntryRequested: onEntryRequested,
+                  onSettingsPressed: onOpenSettings,
                 ),
                 if (isPasswordAuditView && passwordAuditSelection == null)
                   _PasswordAuditReportPane(
@@ -2027,6 +2040,7 @@ class _VaultWindow extends StatelessWidget {
                     child: Row(
                       children: <Widget>[
                         _ListPane(
+                          width: listWidth,
                           entries: _entriesForListPane(),
                           selectedIndex: _safeSelectedIndexForListPane(),
                           onEntrySelected: (clippedIndex) {
@@ -2038,7 +2052,9 @@ class _VaultWindow extends StatelessWidget {
                             final uuid = clipped[clippedIndex].uuid;
                             final fullIndex =
                                 entries.indexWhere((e) => e.uuid == uuid);
-                            if (fullIndex >= 0) onEntrySelected(fullIndex);
+                            if (fullIndex >= 0) {
+                              onEntrySelected(fullIndex);
+                            }
                           },
                           onRefreshEntries: onRefreshEntries,
                           isRefreshing: isRefreshing,
@@ -2072,7 +2088,11 @@ class _VaultWindow extends StatelessWidget {
                           onPasswordAuditIssueSelected:
                               onPasswordAuditIssueSelected,
                           onPasswordAuditBack: onPasswordAuditBack,
+                          floatingActionsKey: floatingActionsKey,
+                          onNewItemPressed: onOpenNewItemModal,
+                          onEntryRequested: onEntryRequested,
                         ),
+                        const _VaultWorkspaceDivider(),
                         if (_resolveSelectedEntry() != null)
                           _DetailPane(
                             entry: _resolveSelectedEntry()!,
@@ -2179,6 +2199,24 @@ class _VaultWindow extends StatelessWidget {
     final uuid = clipped[clippedIndex].uuid;
     final fullIndex = entries.indexWhere((entry) => entry.uuid == uuid);
     if (fullIndex >= 0) onFull(fullIndex);
+  }
+}
+
+class _VaultWorkspaceDivider extends StatelessWidget {
+  const _VaultWorkspaceDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 8,
+      decoration: const BoxDecoration(
+        color: _VaultColors.canvas,
+        border: Border(
+          left: BorderSide(color: _VaultColors.borderPane),
+          right: BorderSide(color: _VaultColors.borderSoft),
+        ),
+      ),
+    );
   }
 }
 

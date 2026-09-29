@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/appearance_preferences.dart';
 import '../../../core/repository/kdbx_repository.dart';
 import '../../../core/repository/kdbx_repository_provider.dart';
 import '../../../core/repository/vault_write_scheduler_provider.dart';
@@ -256,21 +257,22 @@ class _ImportFlowDialogState extends ConsumerState<_ImportFlowDialog> {
   Widget build(BuildContext context) {
     final importState = ref.watch(importStateProvider);
 
+    final Widget step;
     switch (importState.step) {
       case ImportStep.providerSelection:
-        return ImportProviderModal(
+        step = ImportProviderModal(
           onClose: widget.onFlowComplete,
           onNext: _parseAndPreview,
         );
       case ImportStep.preview:
-        return ImportPreviewScreen(
+        step = ImportPreviewScreen(
           onClose: widget.onFlowComplete,
           onStartImport: () {
             ref.read(importStateProvider.notifier).goToConfirmation();
           },
         );
       case ImportStep.confirmation:
-        return ImportConfirmationModal(
+        step = ImportConfirmationModal(
           onCancel: () {
             ref.read(importStateProvider.notifier).goBackToPreview();
           },
@@ -287,7 +289,7 @@ class _ImportFlowDialogState extends ConsumerState<_ImportFlowDialog> {
           },
         );
       case ImportStep.clearing:
-        return ClearProgressModal(
+        step = ClearProgressModal(
           progress: _clearProgress,
           onRetry: () {
             final repository = ref.read(kdbxRepositoryProvider);
@@ -303,7 +305,7 @@ class _ImportFlowDialogState extends ConsumerState<_ImportFlowDialog> {
           onCancel: widget.onFlowComplete,
         );
       case ImportStep.progress:
-        return ImportProgressModal(
+        step = ImportProgressModal(
           progress: _currentProgress,
           onDone: () async {
             await _completedFinalizeFuture;
@@ -328,5 +330,50 @@ class _ImportFlowDialogState extends ConsumerState<_ImportFlowDialog> {
           },
         );
     }
+
+    final base = Theme.of(context);
+    final textTheme = base.textTheme.apply(
+      fontFamily: currentFontFamily,
+      bodyColor: const Color(0xFF1E2021),
+      displayColor: const Color(0xFF1E2021),
+    );
+    final vintageTheme = base.copyWith(
+      colorScheme: base.colorScheme.copyWith(
+        primary: const Color(0xFFFF5B22),
+        secondary: const Color(0xFF168B76),
+        surface: const Color(0xFFFFFCF6),
+        surfaceContainerHighest: const Color(0xFFF8F3EA),
+        onSurface: const Color(0xFF1E2021),
+        onSurfaceVariant: const Color(0xFF686B67),
+        outline: const Color(0xFFCEC7BB),
+        outlineVariant: const Color(0xFFD8D2C7),
+      ),
+      textTheme: textTheme,
+      dialogTheme: const DialogThemeData(
+        backgroundColor: Color(0xFFFFFCF6),
+        surfaceTintColor: Colors.transparent,
+      ),
+      dividerColor: const Color(0xFFD8D2C7),
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
+        filled: true,
+        fillColor: const Color(0xFFFFFCF6),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFCEC7BB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFFF5B22), width: 1.6),
+        ),
+      ),
+    );
+
+    return Theme(
+      data: vintageTheme,
+      child: DefaultTextStyle.merge(
+        style: TextStyle(fontFamily: currentFontFamily),
+        child: step,
+      ),
+    );
   }
 }

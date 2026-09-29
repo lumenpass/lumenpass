@@ -25,7 +25,7 @@ TextStyle _uText(
     fontSize: size,
     color: color,
     fontWeight: fontWeight,
-    fontFamily: 'Inter',
+    fontFamily: 'Ubuntu Sans',
     letterSpacing: letterSpacing,
   );
 }

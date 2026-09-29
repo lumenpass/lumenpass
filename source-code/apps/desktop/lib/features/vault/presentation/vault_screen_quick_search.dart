@@ -52,6 +52,7 @@ class _QuickSearchOverlay extends StatefulWidget {
     required this.onCreateNewItem,
     required this.onShowToast,
     required this.onEditItem,
+    this.onLoadEntry,
     required this.currentTime,
     this.showBackdrop = true,
     this.onPreferredHeightChanged,
@@ -69,6 +70,7 @@ class _QuickSearchOverlay extends StatefulWidget {
   final Future<void> Function() onCreateNewItem;
   final _QuickSearchToastCallback onShowToast;
   final void Function(String uuid) onEditItem;
+  final Future<_MockEntry?> Function(_MockEntry summary)? onLoadEntry;
   final ValueChanged<double>? onPreferredHeightChanged;
   final DateTime currentTime;
   final bool initialShowGenerator;
@@ -323,6 +325,18 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
     return results[resolvedIndex];
   }
 
+  Future<void> _showEntryDetails(_MockEntry summary) async {
+    final entry = await (widget.onLoadEntry?.call(summary) ??
+        Future<_MockEntry?>.value(summary));
+    if (!mounted || entry == null) return;
+    setState(() {
+      _detailEntry = entry;
+      _detailFieldIndex = -1;
+      _revealedFieldIndices.clear();
+    });
+    _schedulePreferredHeightReport();
+  }
+
   double _resultsViewportHeight(int resultCount) {
     if (resultCount <= 0) {
       return _kNoResultsHeight;
@@ -549,12 +563,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
           event.logicalKey == LogicalKeyboardKey.numpadEnter) {
         final active = _activeEntry;
         if (active != null && active.uuid.isNotEmpty) {
-          setState(() {
-            _detailEntry = active;
-            _detailFieldIndex = -1;
-            _revealedFieldIndices.clear();
-          });
-          _schedulePreferredHeightReport();
+          unawaited(_showEntryDetails(active));
         }
         return KeyEventResult.handled;
       }
@@ -592,7 +601,13 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
   }
 
   Future<void> _copyActivePassword() async {
-    final password = _activeEntry?.password.trim() ?? '';
+    final active = _activeEntry;
+    final entry = active == null
+        ? null
+        : await (widget.onLoadEntry?.call(active) ??
+            Future<_MockEntry?>.value(active));
+    if (!mounted) return;
+    final password = entry?.password.trim() ?? '';
     if (password.isEmpty) {
       widget.onShowToast('No password on selected item', danger: true);
       return;
@@ -1397,12 +1412,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                         onSubmitted: (_) {
                           final active = _activeEntry;
                           if (active != null && active.uuid.isNotEmpty) {
-                            setState(() {
-                              _detailEntry = active;
-                              _detailFieldIndex = -1;
-                              _revealedFieldIndices.clear();
-                            });
-                            _schedulePreferredHeightReport();
+                            unawaited(_showEntryDetails(active));
                           }
                         },
                         style: _quickText(
@@ -1531,12 +1541,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                                         },
                                         onTap: () {
                                           if (entry.uuid.isNotEmpty) {
-                                            setState(() {
-                                              _detailEntry = entry;
-                                              _detailFieldIndex = -1;
-                                              _revealedFieldIndices.clear();
-                                            });
-                                            _schedulePreferredHeightReport();
+                                            unawaited(_showEntryDetails(entry));
                                           }
                                         },
                                       ),

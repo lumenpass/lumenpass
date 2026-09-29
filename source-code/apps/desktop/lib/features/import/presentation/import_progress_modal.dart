@@ -5,6 +5,7 @@ import '../application/import_executor.dart';
 
 class ImportProgressModal extends StatefulWidget {
   const ImportProgressModal({
+    super.key,
     required this.progress,
     required this.onDone,
     required this.onCancelRequested,
@@ -49,8 +50,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
   @override
   void didUpdateWidget(covariant ImportProgressModal oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final isComplete =
-        widget.progress.status == ImportProgressStatus.completed;
+    final isComplete = widget.progress.status == ImportProgressStatus.completed;
     if (isComplete && !_wasCompleted) {
       _wasCompleted = true;
       _successController.forward();
@@ -78,13 +78,14 @@ class _ImportProgressModalState extends State<ImportProgressModal>
         width: 400,
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          color: const Color(0xFFFFFCF6),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFCEC7BB)),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x22172033),
-              blurRadius: 40,
-              offset: Offset(0, 16),
+              color: Color(0x295B4638),
+              blurRadius: 32,
+              offset: Offset(0, 14),
             ),
           ],
         ),
@@ -115,7 +116,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1D23),
+                  color: Color(0xFF1E2021),
                 ),
               ),
               const SizedBox(height: 8),
@@ -126,7 +127,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1D23),
+                  color: Color(0xFF1E2021),
                 ),
               ),
               const SizedBox(height: 6),
@@ -136,7 +137,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
                     : 'Preparing...',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.grey.shade600,
+                  color: const Color(0xFF74766F),
                 ),
               ),
               const SizedBox(height: 20),
@@ -145,9 +146,9 @@ class _ImportProgressModalState extends State<ImportProgressModal>
                 child: LinearProgressIndicator(
                   value: progress.fraction,
                   minHeight: 8,
-                  backgroundColor: const Color(0xFFF3F4F6),
+                  backgroundColor: const Color(0xFFF3EDE4),
                   valueColor: const AlwaysStoppedAnimation<Color>(
-                    Color(0xFF0A3B48),
+                    Color(0xFFFF5B22),
                   ),
                 ),
               ),
@@ -159,7 +160,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1F2937),
+                    color: Color(0xFF1E2021),
                   ),
                 ),
               ),
@@ -172,7 +173,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade500,
+                      color: const Color(0xFFA09D95),
                     ),
                   ),
                 ),
@@ -180,12 +181,12 @@ class _ImportProgressModalState extends State<ImportProgressModal>
                 Container(
                   width: double.infinity,
                   height: 132,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
+                    color: const Color(0xFFF8F3EA),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    border: Border.all(color: const Color(0xFFD8D2C7)),
                   ),
                   child: ListView.builder(
                     controller: _logScrollController,
@@ -203,7 +204,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
                             height: 1.4,
                             color: entry.isError
                                 ? const Color(0xFFDC2626)
-                                : const Color(0xFF6B7280),
+                                : const Color(0xFF74766F),
                           ),
                         ),
                       );
@@ -227,7 +228,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
                       count: progress.failed,
                       color: progress.failed > 0
                           ? const Color(0xFFEF4444)
-                          : const Color(0xFF9CA3AF),
+                          : const Color(0xFFA09D95),
                     ),
                   ],
                 ),
@@ -237,33 +238,33 @@ class _ImportProgressModalState extends State<ImportProgressModal>
             if (isComplete)
               _FooterButton(
                 label: 'Close',
-                backgroundColor: const Color(0xFF0A3B48),
+                backgroundColor: const Color(0xFFFF5B22),
                 textColor: Colors.white,
                 onTap: widget.onDone,
               )
             else
               _FooterButton(
                 label: 'Cancel',
-                backgroundColor: Colors.white,
-                textColor: const Color(0xFF374151),
-                borderColor: const Color(0xFFD1D5DB),
+                backgroundColor: const Color(0xFFFFFCF6),
+                textColor: const Color(0xFF4F524E),
+                borderColor: const Color(0xFFCEC7BB),
                 onTap: () async {
                   final shouldCancel = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      backgroundColor: Colors.white,
+                      backgroundColor: const Color(0xFFFFFCF6),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16)),
                       title: const Text('Cancel Import?',
-                          style: TextStyle(color: Color(0xFF1F2937))),
+                          style: TextStyle(color: Color(0xFF1E2021))),
                       content: const Text(
                           'Are you sure you want to cancel the import process? Some items may have already been imported.',
-                          style: TextStyle(color: Color(0xFF4B5563))),
+                          style: TextStyle(color: Color(0xFF686B67))),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(false),
                           child: const Text('No, continue',
-                              style: TextStyle(color: Color(0xFF4B5563))),
+                              style: TextStyle(color: Color(0xFF686B67))),
                         ),
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(true),
@@ -295,7 +296,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
-            color: Colors.grey.shade600,
+            color: const Color(0xFF74766F),
           ),
         ),
         const SizedBox(height: 16),
@@ -305,7 +306,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
               child: _ReportStat(
                 label: 'Total',
                 count: progress.total,
-                color: const Color(0xFF374151),
+                color: const Color(0xFF4F524E),
                 icon: TablerIcons.list_details,
               ),
             ),
@@ -325,7 +326,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
                 count: progress.failed,
                 color: progress.failed > 0
                     ? const Color(0xFFEF4444)
-                    : const Color(0xFF9CA3AF),
+                    : const Color(0xFFA09D95),
                 icon: TablerIcons.circle_x,
               ),
             ),
@@ -376,7 +377,7 @@ class _ReportStat extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
-              color: Colors.grey.shade600,
+              color: const Color(0xFF74766F),
             ),
           ),
         ],
@@ -405,7 +406,7 @@ class _MiniStat extends StatelessWidget {
           label,
           style: const TextStyle(
             fontSize: 12,
-            color: Color(0xFF6B7280),
+            color: Color(0xFF74766F),
           ),
         ),
         const SizedBox(width: 4),
@@ -457,8 +458,7 @@ class _FooterButtonState extends State<_FooterButton> {
           borderRadius: BorderRadius.circular(12),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
             decoration: BoxDecoration(
               color: _hovered && isEnabled
                   ? widget.backgroundColor.withValues(alpha: 0.8)

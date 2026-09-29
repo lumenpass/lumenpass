@@ -11,6 +11,7 @@ import '../models/entry_binary_attachment.dart';
 import '../models/entry_field.dart';
 import '../models/kdbx_database.dart';
 import '../models/kdbx_entry.dart';
+import '../models/kdbx_group.dart';
 import '../services/totp_service.dart';
 
 /// Contract for all KeePass database access used by the app.
@@ -117,6 +118,7 @@ class KdbxRepositoryImpl implements KdbxRepository {
   String? _activePath;
   DateTime? _openedAt;
   List<_IndexedEntry>? _entryIndexCache;
+  KdbxDatabase? _databaseSnapshotCache;
 
   @override
   KdbxDatabase? get currentDatabase {
@@ -128,7 +130,7 @@ class KdbxRepositoryImpl implements KdbxRepository {
       return null;
     }
 
-    return KdbxDatabase.fromNative(
+    return _databaseSnapshotCache ??= KdbxDatabase.fromNative(
       file,
       path: path,
       openedAt: openedAt,
@@ -554,12 +556,14 @@ class KdbxRepositoryImpl implements KdbxRepository {
       return cached;
     }
 
-    final built = _requireFile()
-        .body
-        .rootGroup
-        .getAllEntries()
-        .where((entry) => !entry.isInRecycleBin())
-        .map((entry) => _IndexedEntry.fromEntry(KdbxEntry.fromNative(entry)))
+    final database = currentDatabase;
+    if (database == null) {
+      throw const VaultStateException(
+          'Open a database before searching entries.');
+    }
+    final built = database.rootGroup
+        .subtreeEntriesExcludingRecycleBin()
+        .map(_IndexedEntry.fromEntry)
         .toList(growable: false);
     _entryIndexCache = built;
     return built;
@@ -567,6 +571,7 @@ class KdbxRepositoryImpl implements KdbxRepository {
 
   void _invalidateCaches() {
     _entryIndexCache = null;
+    _databaseSnapshotCache = null;
   }
 
   native.KdbxGroup _findGroup(String groupUuid) {

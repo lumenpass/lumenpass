@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../presentation/widgets/lumenpass_wordmark.dart';
+
+const Color _kPaper = Color(0xFFF7F4EC);
+const Color _kOrange = Color(0xFFFF5B22);
+const Color _kMuted = Color(0xFF626560);
+
 class DesktopSplashScreen extends StatefulWidget {
   const DesktopSplashScreen({super.key, required this.onFinished});
 
@@ -21,7 +27,7 @@ class _DesktopSplashScreenState extends State<DesktopSplashScreen>
       duration: const Duration(milliseconds: 900),
     )..repeat();
 
-    Future.delayed(const Duration(milliseconds: 3000), () {
+    Future<void>.delayed(const Duration(milliseconds: 3000), () {
       if (mounted) widget.onFinished();
     });
   }
@@ -35,16 +41,27 @@ class _DesktopSplashScreenState extends State<DesktopSplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: _kPaper,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/images/lumenpass-dark.png',
-              width: 180,
+          children: <Widget>[
+            const LumenPassWordmark(
+              key: ValueKey<String>('splash-wordmark'),
+              fontSize: 38,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 9),
+            const Text(
+              'Private by default. Yours to control.',
+              style: TextStyle(
+                color: _kMuted,
+                fontFamily: 'Ubuntu Sans',
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0,
+              ),
+            ),
+            const SizedBox(height: 25),
             _HeartbeatDots(controller: _pulseController),
           ],
         ),
@@ -60,17 +77,24 @@ class _HeartbeatDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 24,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: List.generate(3, (i) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 5),
-            child: _PulseDot(controller: controller, delay: i * 0.22),
-          );
-        }),
+    return Semantics(
+      key: const ValueKey<String>('splash-loading-dots'),
+      label: 'Loading LumenPass',
+      child: SizedBox(
+        height: 24,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: List<Widget>.generate(3, (int index) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: _PulseDot(
+                controller: controller,
+                delay: index * 0.22,
+              ),
+            );
+          }),
+        ),
       ),
     );
   }
@@ -84,7 +108,10 @@ class _PulseDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final offsetAnim = Tween<double>(begin: 0, end: -6).animate(
+    final Animation<double> offsetAnimation = Tween<double>(
+      begin: 0,
+      end: -6,
+    ).animate(
       CurvedAnimation(
         parent: controller,
         curve: Interval(
@@ -95,7 +122,10 @@ class _PulseDot extends StatelessWidget {
       ),
     );
 
-    final opacityAnim = Tween<double>(begin: 0.35, end: 1.0).animate(
+    final Animation<double> opacityAnimation = Tween<double>(
+      begin: 0.28,
+      end: 1,
+    ).animate(
       CurvedAnimation(
         parent: controller,
         curve: Interval(
@@ -108,22 +138,20 @@ class _PulseDot extends StatelessWidget {
 
     return AnimatedBuilder(
       animation: controller,
-      builder: (context, _) {
+      builder: (BuildContext context, Widget? child) {
         return Transform.translate(
-          offset: Offset(0, offsetAnim.value),
-          child: Opacity(
-            opacity: opacityAnim.value,
-            child: Container(
-              width: 7,
-              height: 7,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-            ),
-          ),
+          offset: Offset(0, offsetAnimation.value),
+          child: Opacity(opacity: opacityAnimation.value, child: child),
         );
       },
+      child: Container(
+        width: 7,
+        height: 7,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: _kOrange,
+        ),
+      ),
     );
   }
 }

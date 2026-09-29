@@ -27,6 +27,30 @@ void main() {
       await tempDir.delete(recursive: true);
     });
 
+    test('reuses the vault projection until a repository mutation', () async {
+      final before = repository.currentDatabase;
+      expect(identical(repository.currentDatabase, before), isTrue);
+
+      await repository.createEntry(
+        groupUuid: repository.rootGroupUuid!,
+        fields: const <EntryField>[
+          EntryField(key: AppKdbxFieldKeys.title, value: 'New entry'),
+        ],
+      );
+
+      final after = repository.currentDatabase;
+      expect(identical(after, before), isFalse);
+      expect(after?.entryCount, 1);
+      expect(identical(repository.currentDatabase, after), isTrue);
+      expect(
+          identical(
+              (await repository.searchEntries()).single, after!.entries.single),
+          isTrue);
+
+      repository.closeDatabase();
+      expect(repository.currentDatabase, isNull);
+    });
+
     test('favicon cache writes do not change usage timestamps', () async {
       final entry = await repository.createEntry(
         groupUuid: repository.rootGroupUuid!,

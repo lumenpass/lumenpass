@@ -366,6 +366,9 @@ void QuickSearchPanel::Hide() {
   }
   visible_ = false;
   ::ShowWindow(hwnd_, SW_HIDE);
+  if (qs_channel_) {
+    qs_channel_->InvokeMethod("clearSnapshot", nullptr);
+  }
   if (main_channel_) {
     main_channel_->InvokeMethod("quickSearchPanelClosed", nullptr);
   }

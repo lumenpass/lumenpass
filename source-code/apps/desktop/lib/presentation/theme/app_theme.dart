@@ -7,6 +7,7 @@ abstract final class AppTheme {
   static const Color _darkSurface = Color(0xFF111827);
   static const Color _darkPanel = Color(0xFF1E293B);
   static const List<String> _fontFallback = <String>[
+    'Ubuntu Sans',
     'Segoe UI Variable',
     'Segoe UI',
     'SF Pro Text',
@@ -15,7 +16,7 @@ abstract final class AppTheme {
   ];
 
   static ThemeData light({
-    String fontFamily = 'Inter',
+    String fontFamily = 'Ubuntu Sans',
     int sizeDelta = 0,
   }) {
     final base = ThemeData(
@@ -39,7 +40,7 @@ abstract final class AppTheme {
   }
 
   static ThemeData dark({
-    String fontFamily = 'Inter',
+    String fontFamily = 'Ubuntu Sans',
     int sizeDelta = 0,
   }) {
     final base = ThemeData(
@@ -75,7 +76,7 @@ abstract final class AppTheme {
   static ThemeData _buildTheme(
     ThemeData base,
     ColorScheme colorScheme, {
-    String fontFamily = 'Inter',
+    String fontFamily = 'Ubuntu Sans',
     int sizeDelta = 0,
   }) {
     final textTheme = _increaseTextTheme(

@@ -60,13 +60,14 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
         width: 400,
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          color: const Color(0xFFFFFCF6),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFCEC7BB)),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x22172033),
-              blurRadius: 40,
-              offset: Offset(0, 16),
+              color: Color(0x295B4638),
+              blurRadius: 32,
+              offset: Offset(0, 14),
             ),
           ],
         ),
@@ -94,7 +95,7 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1D23),
+                  color: Color(0xFF1E2021),
                 ),
               ),
               const SizedBox(height: 8),
@@ -105,7 +106,7 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.grey.shade600,
+                  color: const Color(0xFF74766F),
                 ),
               ),
             ] else ...<Widget>[
@@ -114,7 +115,7 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1D23),
+                  color: Color(0xFF1E2021),
                 ),
               ),
               const SizedBox(height: 6),
@@ -124,7 +125,7 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
                     : 'Removing ${progress.current} of ${progress.total} items',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.grey.shade600,
+                  color: const Color(0xFF74766F),
                 ),
               ),
               const SizedBox(height: 20),
@@ -133,7 +134,7 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
                 child: LinearProgressIndicator(
                   value: progress.fraction,
                   minHeight: 8,
-                  backgroundColor: const Color(0xFFF3F4F6),
+                  backgroundColor: const Color(0xFFF3EDE4),
                   valueColor: const AlwaysStoppedAnimation<Color>(
                     Color(0xFFEF4444),
                   ),
@@ -147,7 +148,7 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1F2937),
+                    color: Color(0xFF1E2021),
                   ),
                 ),
               ),
@@ -160,7 +161,7 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade500,
+                      color: const Color(0xFFA09D95),
                     ),
                   ),
                 ),
@@ -168,12 +169,12 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
                 Container(
                   width: double.infinity,
                   height: 132,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
+                    color: const Color(0xFFF8F3EA),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    border: Border.all(color: const Color(0xFFD8D2C7)),
                   ),
                   child: ListView.builder(
                     controller: _logScrollController,
@@ -191,7 +192,7 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
                             height: 1.4,
                             color: entry.isError
                                 ? const Color(0xFFDC2626)
-                                : const Color(0xFF6B7280),
+                                : const Color(0xFF74766F),
                           ),
                         ),
                       );
@@ -207,9 +208,9 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
                   Expanded(
                     child: _FooterButton(
                       label: 'Cancel',
-                      backgroundColor: Colors.white,
-                      textColor: const Color(0xFF374151),
-                      borderColor: const Color(0xFFD1D5DB),
+                      backgroundColor: const Color(0xFFFFFCF6),
+                      textColor: const Color(0xFF4F524E),
+                      borderColor: const Color(0xFFCEC7BB),
                       onTap: widget.onCancel,
                     ),
                   ),
@@ -217,7 +218,7 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
                   Expanded(
                     child: _FooterButton(
                       label: 'Retry',
-                      backgroundColor: const Color(0xFF0A3B48),
+                      backgroundColor: const Color(0xFFFF5B22),
                       textColor: Colors.white,
                       onTap: widget.onRetry,
                     ),
@@ -254,7 +255,7 @@ class _SpinnerHint extends StatelessWidget {
           'Please wait while the vault is cleaned...',
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey.shade600,
+            color: const Color(0xFF74766F),
           ),
         ),
       ],
@@ -297,8 +298,7 @@ class _FooterButtonState extends State<_FooterButton> {
           borderRadius: BorderRadius.circular(12),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
             decoration: BoxDecoration(
               color: _hovered && isEnabled
                   ? widget.backgroundColor.withValues(alpha: 0.8)

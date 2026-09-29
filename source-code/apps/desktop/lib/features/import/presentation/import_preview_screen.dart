@@ -10,6 +10,7 @@ import '../../vault/application/vault_providers.dart';
 
 class ImportPreviewScreen extends ConsumerStatefulWidget {
   const ImportPreviewScreen({
+    super.key,
     required this.onClose,
     required this.onStartImport,
   });
@@ -63,19 +64,20 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
         ),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          color: const Color(0xFFFFFCF6),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFCEC7BB)),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x22172033),
-              blurRadius: 40,
-              offset: Offset(0, 16),
+              color: Color(0x295B4638),
+              blurRadius: 32,
+              offset: Offset(0, 14),
             ),
           ],
         ),
         child: ScaffoldMessenger(
           child: Scaffold(
-            backgroundColor: Colors.transparent,
+            backgroundColor: const Color(0xFFFFFCF6),
             body: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
@@ -142,14 +144,14 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFFF0F4FF),
+              color: const Color(0xFFFAEDE5),
               borderRadius: BorderRadius.circular(10),
             ),
             alignment: Alignment.center,
             child: const Icon(
               TablerIcons.eye,
               size: 20,
-              color: Color(0xFF0A3B48),
+              color: Color(0xFFFF5B22),
             ),
           ),
           const SizedBox(width: 14),
@@ -162,7 +164,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1D23),
+                    color: Color(0xFF1E2021),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -173,7 +175,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    color: Colors.grey.shade600,
+                    color: const Color(0xFF74766F),
                   ),
                 ),
               ],
@@ -202,22 +204,22 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
             child: Container(
               height: 34,
               decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
+                color: const Color(0xFFF8F3EA),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
+                border: Border.all(color: const Color(0xFFD8D2C7)),
               ),
               child: TabBar(
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 controller: _tabController,
                 indicator: BoxDecoration(
-                  color: const Color(0xFF0A3B48),
+                  color: const Color(0xFFFF5B22),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 indicatorSize: TabBarIndicatorSize.tab,
                 dividerColor: Colors.transparent,
                 labelColor: Colors.white,
-                unselectedLabelColor: const Color(0xFF6B7280),
+                unselectedLabelColor: const Color(0xFF74766F),
                 labelStyle: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -297,7 +299,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
           offset: const Offset(0, 38),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: Color(0xFFE5E7EB)),
+            side: const BorderSide(color: Color(0xFFD8D2C7)),
           ),
           color: Colors.white,
           elevation: 4,
@@ -333,7 +335,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFD1D5DB)),
+              border: Border.all(color: const Color(0xFFCEC7BB)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -346,7 +348,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey.shade500,
+                    color: const Color(0xFFA09D95),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -358,13 +360,13 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF1F2937),
+                      color: Color(0xFF1E2021),
                     ),
                   ),
                 ),
                 const SizedBox(width: 6),
                 const Icon(TablerIcons.chevron_down,
-                    size: 14, color: Color(0xFF6B7280)),
+                    size: 14, color: Color(0xFF74766F)),
               ],
             ),
           ),
@@ -400,14 +402,14 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                 color: selected
-                    ? const Color(0xFF0A3B48)
-                    : const Color(0xFF374151),
+                    ? const Color(0xFFFF5B22)
+                    : const Color(0xFF4F524E),
               ),
             ),
           ),
           if (selected) ...<Widget>[
             const SizedBox(width: 8),
-            const Icon(TablerIcons.check, size: 14, color: Color(0xFF0A3B48)),
+            const Icon(TablerIcons.check, size: 14, color: Color(0xFFFF5B22)),
           ],
         ],
       ),
@@ -421,7 +423,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
       context: context,
       builder: (context) {
         return Dialog(
-          backgroundColor: Colors.white,
+          backgroundColor: const Color(0xFFFFFCF6),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -437,7 +439,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF1E2021),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -446,7 +448,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1F2937),
+                    color: Color(0xFF1E2021),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -454,7 +456,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                   'Clean Import. All existing items will be permanently removed and replaced by the imported items. Use this if you want to start fresh.',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF4B5563),
+                    color: Color(0xFF686B67),
                     height: 1.4,
                   ),
                 ),
@@ -464,7 +466,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1F2937),
+                    color: Color(0xFF1E2021),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -472,7 +474,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                   'Append Items. The imported items will be added alongside your existing items without affecting them. Recommended for merging data.',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF4B5563),
+                    color: Color(0xFF686B67),
                     height: 1.4,
                   ),
                 ),
@@ -482,7 +484,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                   child: TextButton(
                     onPressed: () => Navigator.pop(context),
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF0A3B48),
+                      foregroundColor: const Color(0xFFFF5B22),
                       textStyle: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -511,7 +513,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF4B5563),
+              color: Color(0xFF686B67),
             ),
           ),
           const SizedBox(width: 8),
@@ -526,7 +528,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
               offset: const Offset(0, 40),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
-                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                side: const BorderSide(color: Color(0xFFD8D2C7)),
               ),
               color: Colors.white,
               elevation: 4,
@@ -545,8 +547,8 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                       Icon(TablerIcons.replace,
                           size: 18,
                           color: _importMode == ImportMode.replace
-                              ? const Color(0xFF0A3B48)
-                              : const Color(0xFF6B7280)),
+                              ? const Color(0xFFFF5B22)
+                              : const Color(0xFF74766F)),
                       const SizedBox(width: 8),
                       Text('Replace',
                           style: TextStyle(
@@ -555,8 +557,8 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                                   ? FontWeight.w600
                                   : FontWeight.w500,
                               color: _importMode == ImportMode.replace
-                                  ? const Color(0xFF0A3B48)
-                                  : const Color(0xFF374151))),
+                                  ? const Color(0xFFFF5B22)
+                                  : const Color(0xFF4F524E))),
                     ],
                   ),
                 ),
@@ -568,8 +570,8 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                       Icon(TablerIcons.row_insert_bottom,
                           size: 18,
                           color: _importMode == ImportMode.append
-                              ? const Color(0xFF0A3B48)
-                              : const Color(0xFF6B7280)),
+                              ? const Color(0xFFFF5B22)
+                              : const Color(0xFF74766F)),
                       const SizedBox(width: 8),
                       Text('Append',
                           style: TextStyle(
@@ -578,8 +580,8 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                                   ? FontWeight.w600
                                   : FontWeight.w500,
                               color: _importMode == ImportMode.append
-                                  ? const Color(0xFF0A3B48)
-                                  : const Color(0xFF374151))),
+                                  ? const Color(0xFFFF5B22)
+                                  : const Color(0xFF4F524E))),
                     ],
                   ),
                 ),
@@ -592,8 +594,8 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: _importMode != null
-                        ? const Color(0xFF0A3B48)
-                        : const Color(0xFFD1D5DB),
+                        ? const Color(0xFFFF5B22)
+                        : const Color(0xFFCEC7BB),
                     width: _importMode != null ? 1.5 : 1.0,
                   ),
                 ),
@@ -602,10 +604,10 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                   children: [
                     if (_importMode == ImportMode.replace)
                       const Icon(TablerIcons.replace,
-                          size: 16, color: Color(0xFF0A3B48))
+                          size: 16, color: Color(0xFFFF5B22))
                     else if (_importMode == ImportMode.append)
                       const Icon(TablerIcons.row_insert_bottom,
-                          size: 16, color: Color(0xFF0A3B48)),
+                          size: 16, color: Color(0xFFFF5B22)),
                     if (_importMode != null) const SizedBox(width: 6),
                     Text(
                       _importMode == ImportMode.replace
@@ -619,8 +621,8 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                             ? FontWeight.w600
                             : FontWeight.w500,
                         color: _importMode != null
-                            ? const Color(0xFF0A3B48)
-                            : const Color(0xFF9CA3AF),
+                            ? const Color(0xFFFF5B22)
+                            : const Color(0xFFA09D95),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -628,8 +630,8 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
                       TablerIcons.chevron_down,
                       size: 16,
                       color: _importMode != null
-                          ? const Color(0xFF0A3B48)
-                          : const Color(0xFF6B7280),
+                          ? const Color(0xFFFF5B22)
+                          : const Color(0xFF74766F),
                     ),
                   ],
                 ),
@@ -643,15 +645,15 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
             child: const Padding(
               padding: EdgeInsets.all(4.0),
               child: Icon(TablerIcons.info_circle,
-                  size: 20, color: Color(0xFF9CA3AF)),
+                  size: 20, color: Color(0xFFA09D95)),
             ),
           ),
           const Spacer(),
           _FooterButton(
             label: 'Back',
             backgroundColor: Colors.transparent,
-            textColor: const Color(0xFF6B7280),
-            borderColor: const Color(0xFFD1D5DB),
+            textColor: const Color(0xFF74766F),
+            borderColor: const Color(0xFFCEC7BB),
             onTap: () {
               ref
                   .read(importStateProvider.notifier)
@@ -663,8 +665,8 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen>
           _FooterButton(
             label: 'Next',
             backgroundColor:
-                canImport ? const Color(0xFF0A3B48) : const Color(0xFFE5E7EB),
-            textColor: canImport ? Colors.white : const Color(0xFF9CA3AF),
+                canImport ? const Color(0xFFFF5B22) : const Color(0xFFD8D2C7),
+            textColor: canImport ? Colors.white : const Color(0xFFA09D95),
             onTap: canImport ? widget.onStartImport : null,
           ),
         ],
@@ -740,7 +742,7 @@ class _ReadyTabState extends State<_ReadyTab> {
       context: context,
       builder: (context) {
         return Dialog(
-          backgroundColor: Colors.white,
+          backgroundColor: const Color(0xFFFFFCF6),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -756,7 +758,7 @@ class _ReadyTabState extends State<_ReadyTab> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF1E2021),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -765,23 +767,23 @@ class _ReadyTabState extends State<_ReadyTab> {
                   autofocus: true,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF1F2937),
+                    color: Color(0xFF1E2021),
                   ),
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: const Color(0xFFF9FAFB),
+                    fillColor: const Color(0xFFF8F3EA),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      borderSide: const BorderSide(color: Color(0xFFD8D2C7)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      borderSide: const BorderSide(color: Color(0xFFD8D2C7)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(
-                          color: Color(0xFF0A3B48), width: 1.5),
+                          color: Color(0xFFFF5B22), width: 1.5),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 12),
@@ -795,7 +797,7 @@ class _ReadyTabState extends State<_ReadyTab> {
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF6B7280),
+                        foregroundColor: const Color(0xFF74766F),
                         textStyle: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -807,7 +809,7 @@ class _ReadyTabState extends State<_ReadyTab> {
                     ElevatedButton(
                       onPressed: () => Navigator.pop(context, controller.text),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0A3B48),
+                        backgroundColor: const Color(0xFFFF5B22),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -854,14 +856,14 @@ class _ReadyTabState extends State<_ReadyTab> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(TablerIcons.inbox, size: 40, color: Colors.grey.shade300),
+            Icon(TablerIcons.inbox, size: 40, color: const Color(0xFFCEC7BB)),
             const SizedBox(height: 12),
             Text(
               'No items ready for import',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey.shade500,
+                color: const Color(0xFFA09D95),
               ),
             ),
           ],
@@ -893,7 +895,7 @@ class _ReadyTabState extends State<_ReadyTab> {
                         child: Theme(
                           data: Theme.of(context).copyWith(
                             iconTheme:
-                                const IconThemeData(color: Color(0xFF374151)),
+                                const IconThemeData(color: Color(0xFF4F524E)),
                           ),
                           child: DataTable(
                             headingRowHeight: 40,
@@ -905,12 +907,12 @@ class _ReadyTabState extends State<_ReadyTab> {
                             headingTextStyle: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF374151),
+                              color: Color(0xFF4F524E),
                             ),
                             dataTextStyle: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w400,
-                              color: Color(0xFF1F2937),
+                              color: Color(0xFF1E2021),
                             ),
                             horizontalMargin: 16,
                             columnSpacing: 24,
@@ -1000,10 +1002,10 @@ class _ReadyTabState extends State<_ReadyTab> {
                                     (states) {
                                       if (states
                                           .contains(WidgetState.hovered)) {
-                                        return const Color(0xFFEEF2FF);
+                                        return const Color(0xFFFFF3E8);
                                       }
                                       return globalIndex.isOdd
-                                          ? const Color(0xFFF9FAFB)
+                                          ? const Color(0xFFF8F3EA)
                                           : Colors.white;
                                     },
                                   ),
@@ -1012,7 +1014,7 @@ class _ReadyTabState extends State<_ReadyTab> {
                                       '${globalIndex + 1}',
                                       style: const TextStyle(
                                         fontSize: 12,
-                                        color: Color(0xFF9CA3AF),
+                                        color: Color(0xFFA09D95),
                                         fontWeight: FontWeight.w500,
                                       ),
                                     )),
@@ -1040,7 +1042,7 @@ class _ReadyTabState extends State<_ReadyTab> {
                                           isPlaceholder: false,
                                           textStyle: const TextStyle(
                                             fontWeight: FontWeight.w600,
-                                            color: Color(0xFF1F2937),
+                                            color: Color(0xFF1E2021),
                                           ),
                                           onEdit: () => _editItemField(
                                               globalIndex, 'Title', item.title),
@@ -1056,8 +1058,8 @@ class _ReadyTabState extends State<_ReadyTab> {
                                           isPlaceholder: !item.hasUsername,
                                           textStyle: TextStyle(
                                             color: item.hasUsername
-                                                ? const Color(0xFF1F2937)
-                                                : const Color(0xFFD1D5DB),
+                                                ? const Color(0xFF1E2021)
+                                                : const Color(0xFFCEC7BB),
                                           ),
                                           onEdit: () => _editItemField(
                                               globalIndex,
@@ -1077,8 +1079,8 @@ class _ReadyTabState extends State<_ReadyTab> {
                                           isPlaceholder: !item.hasPassword,
                                           textStyle: TextStyle(
                                             color: item.hasPassword
-                                                ? const Color(0xFF1F2937)
-                                                : const Color(0xFFD1D5DB),
+                                                ? const Color(0xFF1E2021)
+                                                : const Color(0xFFCEC7BB),
                                           ),
                                           onEdit: () => _editItemField(
                                               globalIndex,
@@ -1097,7 +1099,7 @@ class _ReadyTabState extends State<_ReadyTab> {
                                           textStyle: TextStyle(
                                             color: item.hasUrl
                                                 ? const Color(0xFF2563EB)
-                                                : const Color(0xFFD1D5DB),
+                                                : const Color(0xFFCEC7BB),
                                           ),
                                           onEdit: () => _editItemField(
                                               globalIndex,
@@ -1123,8 +1125,8 @@ class _ReadyTabState extends State<_ReadyTab> {
                                                     item.notes!
                                                         .trim()
                                                         .isNotEmpty
-                                                ? const Color(0xFF1F2937)
-                                                : const Color(0xFFD1D5DB),
+                                                ? const Color(0xFF1E2021)
+                                                : const Color(0xFFCEC7BB),
                                           ),
                                           onEdit: () => _editItemField(
                                               globalIndex,
@@ -1153,7 +1155,7 @@ class _ReadyTabState extends State<_ReadyTab> {
                                                         .trim()
                                                         .isNotEmpty
                                                 ? const Color(0xFF16A34A)
-                                                : const Color(0xFFD1D5DB),
+                                                : const Color(0xFFCEC7BB),
                                             fontWeight:
                                                 item.otpAuthUrl != null &&
                                                         item.otpAuthUrl!
@@ -1178,8 +1180,8 @@ class _ReadyTabState extends State<_ReadyTab> {
                                           style: TextStyle(
                                             fontSize: 13,
                                             color: item.tags.isNotEmpty
-                                                ? const Color(0xFF1F2937)
-                                                : const Color(0xFFD1D5DB),
+                                                ? const Color(0xFF1E2021)
+                                                : const Color(0xFFCEC7BB),
                                           ),
                                         ),
                                       ),
@@ -1197,8 +1199,8 @@ class _ReadyTabState extends State<_ReadyTab> {
                                           style: TextStyle(
                                             fontSize: 13,
                                             color: item.customFields.isNotEmpty
-                                                ? const Color(0xFF1F2937)
-                                                : const Color(0xFFD1D5DB),
+                                                ? const Color(0xFF1E2021)
+                                                : const Color(0xFFCEC7BB),
                                           ),
                                         ),
                                       ),
@@ -1229,32 +1231,32 @@ class _ReadyTabState extends State<_ReadyTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        border: Border(top: BorderSide(color: const Color(0xFFD8D2C7))),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           Text(
             'Total items: $totalItems',
-            style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF74766F)),
           ),
           const SizedBox(width: 24),
           const Text(
             'Items per page:',
-            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            style: TextStyle(fontSize: 13, color: Color(0xFF74766F)),
           ),
           const SizedBox(width: 8),
           DropdownButton<int>(
             value: _pageSize,
             isDense: true,
-            dropdownColor: Colors.white,
+            dropdownColor: const Color(0xFFFFFCF6),
             underline: const SizedBox(),
             items: [10, 20, 50, 100].map((size) {
               return DropdownMenuItem<int>(
                 value: size,
                 child: Text('$size',
                     style: const TextStyle(
-                        fontSize: 13, color: Color(0xFF1F2937))),
+                        fontSize: 13, color: Color(0xFF1E2021))),
               );
             }).toList(),
             onChanged: (value) {
@@ -1282,7 +1284,7 @@ class _ReadyTabState extends State<_ReadyTab> {
           ),
           Text(
             '${_currentPage + 1} of ${totalPages == 0 ? 1 : totalPages}',
-            style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF74766F)),
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right, size: 20),
@@ -1379,7 +1381,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
       context: context,
       builder: (context) {
         return Dialog(
-          backgroundColor: Colors.white,
+          backgroundColor: const Color(0xFFFFFCF6),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -1395,7 +1397,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF111827),
+                    color: Color(0xFF1E2021),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -1404,23 +1406,23 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                   autofocus: true,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF1F2937),
+                    color: Color(0xFF1E2021),
                   ),
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: const Color(0xFFF9FAFB),
+                    fillColor: const Color(0xFFF8F3EA),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      borderSide: const BorderSide(color: Color(0xFFD8D2C7)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      borderSide: const BorderSide(color: Color(0xFFD8D2C7)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(
-                          color: Color(0xFF0A3B48), width: 1.5),
+                          color: Color(0xFFFF5B22), width: 1.5),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 12),
@@ -1434,7 +1436,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF6B7280),
+                        foregroundColor: const Color(0xFF74766F),
                         textStyle: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -1446,7 +1448,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                     ElevatedButton(
                       onPressed: () => Navigator.pop(context, controller.text),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0A3B48),
+                        backgroundColor: const Color(0xFFFF5B22),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -1540,7 +1542,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFFFCF6),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
           width: 440,
@@ -1567,7 +1569,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 18,
-                        color: Color(0xFF111827),
+                        color: Color(0xFF1E2021),
                       ),
                     ),
                   ),
@@ -1578,7 +1580,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                 'Are you sure you want to force import all unresolved items?\n\nItems with missing titles will use "Untitled", and items without credentials will be imported as-is. This action cannot be undone.',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF4B5563),
+                  color: Color(0xFF686B67),
                   height: 1.5,
                 ),
               ),
@@ -1596,7 +1598,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                     ),
                     child: const Text('Cancel',
                         style: TextStyle(
-                            color: Color(0xFF6B7280),
+                            color: Color(0xFF74766F),
                             fontWeight: FontWeight.w600)),
                   ),
                   const SizedBox(width: 12),
@@ -1642,7 +1644,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey.shade500,
+                color: const Color(0xFFA09D95),
               ),
             ),
           ],
@@ -1693,7 +1695,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                             dataTextStyle: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w400,
-                              color: Color(0xFF1F2937),
+                              color: Color(0xFF1E2021),
                             ),
                             horizontalMargin: 16,
                             columnSpacing: 24,
@@ -1775,7 +1777,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                                         return const Color(0xFFFEF2F2);
                                       }
                                       return globalIndex.isOdd
-                                          ? const Color(0xFFF9FAFB)
+                                          ? const Color(0xFFF8F3EA)
                                           : Colors.white;
                                     },
                                   ),
@@ -1784,7 +1786,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                                       '${globalIndex + 1}',
                                       style: const TextStyle(
                                         fontSize: 12,
-                                        color: Color(0xFF9CA3AF),
+                                        color: Color(0xFFA09D95),
                                         fontWeight: FontWeight.w500,
                                       ),
                                     )),
@@ -1998,7 +2000,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                                           isPlaceholder: false,
                                           textStyle: const TextStyle(
                                             fontWeight: FontWeight.w600,
-                                            color: Color(0xFF1F2937),
+                                            color: Color(0xFF1E2021),
                                           ),
                                           onEdit: () => _editItemField(
                                               globalIndex, 'Title', item.title),
@@ -2014,8 +2016,8 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                                           isPlaceholder: !item.hasUsername,
                                           textStyle: TextStyle(
                                             color: item.hasUsername
-                                                ? const Color(0xFF1F2937)
-                                                : const Color(0xFFD1D5DB),
+                                                ? const Color(0xFF1E2021)
+                                                : const Color(0xFFCEC7BB),
                                           ),
                                           onEdit: () => _editItemField(
                                               globalIndex,
@@ -2035,8 +2037,8 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                                           isPlaceholder: !item.hasPassword,
                                           textStyle: TextStyle(
                                             color: item.hasPassword
-                                                ? const Color(0xFF1F2937)
-                                                : const Color(0xFFD1D5DB),
+                                                ? const Color(0xFF1E2021)
+                                                : const Color(0xFFCEC7BB),
                                           ),
                                           onEdit: () => _editItemField(
                                               globalIndex,
@@ -2055,7 +2057,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                                           textStyle: TextStyle(
                                             color: item.hasUrl
                                                 ? const Color(0xFF2563EB)
-                                                : const Color(0xFFD1D5DB),
+                                                : const Color(0xFFCEC7BB),
                                           ),
                                           onEdit: () => _editItemField(
                                               globalIndex,
@@ -2081,8 +2083,8 @@ class _ErrorsTabState extends State<_ErrorsTab> {
                                                     item.notes!
                                                         .trim()
                                                         .isNotEmpty
-                                                ? const Color(0xFF1F2937)
-                                                : const Color(0xFFD1D5DB),
+                                                ? const Color(0xFF1E2021)
+                                                : const Color(0xFFCEC7BB),
                                           ),
                                           onEdit: () => _editItemField(
                                               globalIndex,
@@ -2117,7 +2119,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        border: Border(top: BorderSide(color: const Color(0xFFD8D2C7))),
       ),
       child: Row(
         children: [
@@ -2125,11 +2127,11 @@ class _ErrorsTabState extends State<_ErrorsTab> {
             child: Row(
               children: [
                 const Icon(TablerIcons.info_circle,
-                    size: 14, color: Color(0xFF6B7280)),
+                    size: 14, color: Color(0xFF74766F)),
                 const SizedBox(width: 6),
                 const Text(
                   'Unresolved items will not be imported.',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                  style: TextStyle(fontSize: 13, color: Color(0xFF74766F)),
                 ),
                 const SizedBox(width: 12),
                 TextButton.icon(
@@ -2153,25 +2155,25 @@ class _ErrorsTabState extends State<_ErrorsTab> {
           ),
           Text(
             'Total items: $totalItems',
-            style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF74766F)),
           ),
           const SizedBox(width: 24),
           const Text(
             'Items per page:',
-            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            style: TextStyle(fontSize: 13, color: Color(0xFF74766F)),
           ),
           const SizedBox(width: 8),
           DropdownButton<int>(
             value: _pageSize,
             isDense: true,
-            dropdownColor: Colors.white,
+            dropdownColor: const Color(0xFFFFFCF6),
             underline: const SizedBox(),
             items: [10, 20, 50, 100].map((size) {
               return DropdownMenuItem<int>(
                 value: size,
                 child: Text('$size',
                     style: const TextStyle(
-                        fontSize: 13, color: Color(0xFF1F2937))),
+                        fontSize: 13, color: Color(0xFF1E2021))),
               );
             }).toList(),
             onChanged: (value) {
@@ -2199,7 +2201,7 @@ class _ErrorsTabState extends State<_ErrorsTab> {
           ),
           Text(
             '${_currentPage + 1} of ${totalPages == 0 ? 1 : totalPages}',
-            style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF74766F)),
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right, size: 20),
@@ -2234,7 +2236,7 @@ class _SectionDivider extends StatelessWidget {
     return const Divider(
       height: 1,
       thickness: 1,
-      color: Color(0xFFEDF0F4),
+      color: Color(0xFFD8D2C7),
     );
   }
 }
@@ -2322,7 +2324,7 @@ class _ItemTypeDropdown extends StatelessWidget {
         offset: const Offset(0, 36),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: const BorderSide(color: Color(0xFFE5E7EB)),
+          side: const BorderSide(color: Color(0xFFD8D2C7)),
         ),
         color: Colors.white,
         elevation: 4,
@@ -2342,14 +2344,14 @@ class _ItemTypeDropdown extends StatelessWidget {
                     fontSize: 13,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                     color: selected
-                        ? const Color(0xFF0A3B48)
-                        : const Color(0xFF374151),
+                        ? const Color(0xFFFF5B22)
+                        : const Color(0xFF4F524E),
                   ),
                 ),
                 if (selected) ...<Widget>[
                   const Spacer(),
                   const Icon(TablerIcons.check,
-                      size: 14, color: Color(0xFF0A3B48)),
+                      size: 14, color: Color(0xFFFF5B22)),
                 ],
               ],
             ),
@@ -2361,7 +2363,7 @@ class _ItemTypeDropdown extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFD1D5DB)),
+            border: Border.all(color: const Color(0xFFCEC7BB)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -2376,13 +2378,13 @@ class _ItemTypeDropdown extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF374151),
+                    color: Color(0xFF4F524E),
                   ),
                 ),
               ),
               const SizedBox(width: 4),
               const Icon(TablerIcons.chevron_down,
-                  size: 14, color: Color(0xFF6B7280)),
+                  size: 14, color: Color(0xFF74766F)),
             ],
           ),
         ),
@@ -2443,7 +2445,7 @@ class _HoverEditableCellState extends State<_HoverEditableCell> {
                     child: Icon(
                       TablerIcons.pencil,
                       size: 14,
-                      color: Color(0xFF0A3B48),
+                      color: Color(0xFFFF5B22),
                     ),
                   ),
                 ),
@@ -2477,14 +2479,14 @@ class _EditField extends StatelessWidget {
           width: 100,
           child: Row(
             children: <Widget>[
-              Icon(icon, size: 13, color: const Color(0xFF9CA3AF)),
+              Icon(icon, size: 13, color: const Color(0xFFA09D95)),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF6B7280),
+                  color: Color(0xFF74766F),
                 ),
               ),
               if (isRequired)
@@ -2505,23 +2507,23 @@ class _EditField extends StatelessWidget {
             controller: controller,
             style: const TextStyle(
               fontSize: 13,
-              color: Color(0xFF1F2937),
+              color: Color(0xFF1E2021),
             ),
             decoration: InputDecoration(
               filled: true,
-              fillColor: const Color(0xFFF9FAFB),
+              fillColor: const Color(0xFFF8F3EA),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                borderSide: const BorderSide(color: Color(0xFFD8D2C7)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                borderSide: const BorderSide(color: Color(0xFFD8D2C7)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide:
-                    const BorderSide(color: Color(0xFF0A3B48), width: 1.5),
+                    const BorderSide(color: Color(0xFFFF5B22), width: 1.5),
               ),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -2562,11 +2564,11 @@ class _IconButtonState extends State<_IconButton> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: _hovered ? const Color(0xFFF3F4F6) : Colors.transparent,
+              color: _hovered ? const Color(0xFFF3EDE4) : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
-            child: Icon(widget.icon, size: 16, color: const Color(0xFF9CA3AF)),
+            child: Icon(widget.icon, size: 16, color: const Color(0xFFA09D95)),
           ),
         ),
       ),

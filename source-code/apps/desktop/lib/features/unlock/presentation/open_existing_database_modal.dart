@@ -20,13 +20,19 @@ import 'sftp_config_dialog.dart';
 import 'webdav_config_dialog.dart';
 import 's3_config_dialog.dart';
 
-const Color _kCanvas = Color(0xFFF6F8FB);
-const Color _kBorderSoft = Color(0xFFE1E7F0);
-const Color _kBorderRow = Color(0xFFE6EAF0);
-const Color _kTitle = Color(0xFF22314A);
-const Color _kLabel = Color(0xFF73839D);
-const Color _kIcon = Color(0xFF8A97AC);
-const Color _kBlue = Color(0xFF4B6CFF);
+const Color _kCanvas = Color(0xFFF7F4EC);
+const Color _kPaperBright = Color(0xFFFFFCF5);
+const Color _kBorderSoft = Color(0xFFB8B1A5);
+const Color _kBorderRow = Color(0xFFCAC3B7);
+const Color _kTitle = Color(0xFF191A1B);
+const Color _kLabel = Color(0xFF626560);
+const Color _kIcon = Color(0xFF777A75);
+const Color _kBlue = Color(0xFFFF5B22);
+const Color _kInkBorder = Color(0xFF252628);
+const Color _kMint = Color(0xFF21A98F);
+const Color _kMintSoft = Color(0xFFDFF2EC);
+const Color _kPeach = Color(0xFFF4D7C8);
+const Color _kYellow = Color(0xFFF4E2A4);
 
 TextStyle _uText(
   double size,
@@ -38,8 +44,21 @@ TextStyle _uText(
     fontSize: size,
     color: color,
     fontWeight: fontWeight,
-    fontFamily: 'Inter',
+    fontFamily: 'Ubuntu Sans',
     letterSpacing: letterSpacing,
+  );
+}
+
+TextStyle _serifText(
+  double size,
+  Color color, {
+  FontWeight fontWeight = FontWeight.w700,
+}) {
+  return TextStyle(
+    fontSize: size,
+    color: color,
+    fontWeight: fontWeight,
+    fontFamily: 'Ubuntu Sans',
   );
 }
 
@@ -126,13 +145,14 @@ class _OpenExistingDatabaseModalState
         insetPadding: const EdgeInsets.symmetric(horizontal: 80, vertical: 40),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            color: _kCanvas,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _kInkBorder, width: 1.5),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: Color(0x22000000),
-                blurRadius: 40,
-                offset: Offset(0, 16),
+                color: Color(0x33252628),
+                blurRadius: 0,
+                offset: Offset(6, 6),
               ),
             ],
           ),
@@ -170,9 +190,14 @@ class _OpenExistingDatabaseModalState
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 16, 14),
+      padding: const EdgeInsets.fromLTRB(20, 17, 16, 14),
       decoration: const BoxDecoration(
+        color: _kPaperBright,
         border: Border(bottom: BorderSide(color: _kBorderSoft)),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(17),
+          topRight: Radius.circular(17),
+        ),
       ),
       child: Row(
         children: <Widget>[
@@ -180,17 +205,17 @@ class _OpenExistingDatabaseModalState
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[Color(0xFF4B6CFF), Color(0xFF7B52FF)],
-              ),
-              borderRadius: BorderRadius.circular(9),
+              color: _kPeach,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _kInkBorder),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: _kInkBorder, offset: Offset(2, 2)),
+              ],
             ),
             child: const Icon(
               TablerIcons.folder_open,
               size: 16,
-              color: Colors.white,
+              color: _kTitle,
             ),
           ),
           const SizedBox(width: 12),
@@ -200,7 +225,7 @@ class _OpenExistingDatabaseModalState
               children: <Widget>[
                 Text(
                   'Open Existing Database',
-                  style: _uText(15, _kTitle, fontWeight: FontWeight.w700),
+                  style: _serifText(17, _kTitle),
                 ),
                 Text(
                   'Choose a database file from local storage, Google Drive, Dropbox, OneDrive, WebDAV, or SFTP.',
@@ -209,17 +234,22 @@ class _OpenExistingDatabaseModalState
               ],
             ),
           ),
-          GestureDetector(
-            onTap: _isOpening ? null : () => Navigator.of(context).pop(),
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: _kCanvas,
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(color: _kBorderSoft),
+          MouseRegion(
+            cursor: _isOpening
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: _isOpening ? null : () => Navigator.of(context).pop(),
+              child: Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: _kPaperBright,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _kInkBorder),
+                ),
+                child: const Icon(TablerIcons.x, size: 14, color: _kTitle),
               ),
-              child: const Icon(TablerIcons.x, size: 14, color: _kIcon),
             ),
           ),
         ],
@@ -237,59 +267,128 @@ class _OpenExistingDatabaseModalState
         const SizedBox(height: 16),
         Text(
           'Database Source',
-          style: _uText(12, _kTitle, fontWeight: FontWeight.w600),
+          style: _serifText(14, _kTitle),
         ),
         const SizedBox(height: 8),
-        _StorageRow(
-          iconChild:
-              Image.asset('assets/images/dir.png', width: 16, height: 16),
-          label: selectedFile?.storage == _StorageType.local
-              ? _shortenPath(selectedFile!.displayPath)
-              : 'Local File',
-          selected: _storage == _StorageType.local,
-          actionLabel: selectedFile?.storage == _StorageType.local
-              ? 'Change'
-              : 'Browse...',
-          onAction: _pickLocalFile,
-        ),
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild: Image.asset(
-            'assets/images/google-drive.png',
-            width: 16,
-            height: 16,
-          ),
-          provider: 'Google Drive',
-          selected: _storage == _StorageType.googleDrive,
-          account: _googleAccount,
-          selectedFileLabel: selectedFile?.storage == _StorageType.googleDrive
-              ? selectedFile!.displayPath
-              : null,
-          isConnecting: _isConnectingGoogle,
-          onConnect: _connectGoogle,
-          onDisconnect: _disconnectGoogle,
-          onPickFile: _googleAccount != null ? _pickGoogleDriveFile : null,
-          onSelect: _googleAccount != null
-              ? () => _selectStorage(_StorageType.googleDrive)
-              : null,
-        ),
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild:
-              Image.asset('assets/images/dropbox.png', width: 16, height: 16),
-          provider: 'Dropbox',
-          selected: _storage == _StorageType.dropbox,
-          account: _dropboxAccount,
-          selectedFileLabel: selectedFile?.storage == _StorageType.dropbox
-              ? selectedFile!.displayPath
-              : null,
-          isConnecting: _isConnectingDropbox,
-          onConnect: dropboxConfigured ? _connectDropbox : null,
-          onDisconnect: _disconnectDropbox,
-          onPickFile: _dropboxAccount != null ? _pickDropboxFile : null,
-          onSelect: _dropboxAccount != null
-              ? () => _selectStorage(_StorageType.dropbox)
-              : null,
+        _DestinationGrid(
+          children: <Widget>[
+            _StorageRow(
+              iconChild:
+                  Image.asset('assets/images/dir.png', width: 18, height: 18),
+              label: 'Local File',
+              detail: selectedFile?.storage == _StorageType.local
+                  ? _shortenPath(selectedFile!.displayPath)
+                  : 'Choose a database on this Mac',
+              selected: _storage == _StorageType.local,
+              actionLabel: selectedFile?.storage == _StorageType.local
+                  ? 'Change'
+                  : 'Browse',
+              onAction: _pickLocalFile,
+            ),
+            _CloudStorageRow(
+              iconChild: Image.asset('assets/images/google-drive.png',
+                  width: 18, height: 18),
+              provider: 'Google Drive',
+              selected: _storage == _StorageType.googleDrive,
+              account: _googleAccount,
+              selectedFileLabel:
+                  selectedFile?.storage == _StorageType.googleDrive
+                      ? selectedFile!.displayPath
+                      : null,
+              isConnecting: _isConnectingGoogle,
+              onConnect: _connectGoogle,
+              onDisconnect: _disconnectGoogle,
+              onPickFile: _googleAccount != null ? _pickGoogleDriveFile : null,
+              onSelect: _googleAccount != null
+                  ? () => _selectStorage(_StorageType.googleDrive)
+                  : null,
+            ),
+            _CloudStorageRow(
+              iconChild: Image.asset('assets/images/dropbox.png',
+                  width: 18, height: 18),
+              provider: 'Dropbox',
+              selected: _storage == _StorageType.dropbox,
+              account: _dropboxAccount,
+              selectedFileLabel: selectedFile?.storage == _StorageType.dropbox
+                  ? selectedFile!.displayPath
+                  : null,
+              isConnecting: _isConnectingDropbox,
+              onConnect: dropboxConfigured ? _connectDropbox : null,
+              onDisconnect: _disconnectDropbox,
+              onPickFile: _dropboxAccount != null ? _pickDropboxFile : null,
+              onSelect: _dropboxAccount != null
+                  ? () => _selectStorage(_StorageType.dropbox)
+                  : null,
+            ),
+            _CloudStorageRow(
+              iconChild: Image.asset('assets/images/onedrive.png',
+                  width: 18, height: 18),
+              provider: 'OneDrive',
+              selected: _storage == _StorageType.oneDrive,
+              account: _oneDriveAccount,
+              selectedFileLabel: selectedFile?.storage == _StorageType.oneDrive
+                  ? selectedFile!.displayPath
+                  : null,
+              isConnecting: _isConnectingOneDrive,
+              onConnect: _connectOneDrive,
+              onDisconnect: _disconnectOneDrive,
+              onPickFile: _oneDriveAccount != null ? _pickOneDriveFile : null,
+              onSelect: _oneDriveAccount != null
+                  ? () => _selectStorage(_StorageType.oneDrive)
+                  : null,
+            ),
+            _CloudStorageRow(
+              iconChild: Image.asset('assets/images/webdav.png',
+                  width: 18, height: 18),
+              provider: 'WebDAV',
+              selected: _storage == _StorageType.webDav,
+              account: _webDavAccount,
+              selectedFileLabel: selectedFile?.storage == _StorageType.webDav
+                  ? selectedFile!.displayPath
+                  : null,
+              isConnecting: _isConnectingWebDav,
+              onConnect: _connectWebDav,
+              onDisconnect: _disconnectWebDav,
+              onPickFile: _webDavAccount != null ? _pickWebDavFile : null,
+              onSelect: _webDavAccount != null
+                  ? () => _selectStorage(_StorageType.webDav)
+                  : null,
+            ),
+            _CloudStorageRow(
+              iconChild:
+                  Image.asset('assets/images/sftp.png', width: 18, height: 18),
+              provider: 'SFTP',
+              selected: _storage == _StorageType.sftp,
+              account: _sftpAccount,
+              selectedFileLabel: selectedFile?.storage == _StorageType.sftp
+                  ? selectedFile!.displayPath
+                  : null,
+              isConnecting: _isConnectingSftp,
+              onConnect: _connectSftp,
+              onDisconnect: _disconnectSftp,
+              onPickFile: _sftpAccount != null ? _pickSftpFile : null,
+              onSelect: _sftpAccount != null
+                  ? () => _selectStorage(_StorageType.sftp)
+                  : null,
+            ),
+            _CloudStorageRow(
+              iconChild: Image.asset('assets/images/aws-s3-icon.png',
+                  width: 18, height: 18),
+              provider: 'Amazon S3',
+              selected: _storage == _StorageType.s3,
+              account: _s3Account,
+              selectedFileLabel: selectedFile?.storage == _StorageType.s3
+                  ? selectedFile!.displayPath
+                  : null,
+              isConnecting: _isConnectingS3,
+              onConnect: _connectS3,
+              onDisconnect: _disconnectS3,
+              onPickFile: _s3Account != null ? _pickS3File : null,
+              onSelect: _s3Account != null
+                  ? () => _selectStorage(_StorageType.s3)
+                  : null,
+            ),
+          ],
         ),
         if (!dropboxConfigured) ...<Widget>[
           const SizedBox(height: 8),
@@ -298,80 +397,6 @@ class _OpenExistingDatabaseModalState
             style: _uText(11, _kLabel),
           ),
         ],
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild: Image.asset(
-            'assets/images/onedrive.png',
-            width: 16,
-            height: 16,
-          ),
-          provider: 'OneDrive',
-          selected: _storage == _StorageType.oneDrive,
-          account: _oneDriveAccount,
-          selectedFileLabel: selectedFile?.storage == _StorageType.oneDrive
-              ? selectedFile!.displayPath
-              : null,
-          isConnecting: _isConnectingOneDrive,
-          onConnect: _connectOneDrive,
-          onDisconnect: _disconnectOneDrive,
-          onPickFile: _oneDriveAccount != null ? _pickOneDriveFile : null,
-          onSelect: _oneDriveAccount != null
-              ? () => _selectStorage(_StorageType.oneDrive)
-              : null,
-        ),
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild:
-              Image.asset('assets/images/webdav.png', width: 16, height: 16),
-          provider: 'WebDAV',
-          selected: _storage == _StorageType.webDav,
-          account: _webDavAccount,
-          selectedFileLabel: selectedFile?.storage == _StorageType.webDav
-              ? selectedFile!.displayPath
-              : null,
-          isConnecting: _isConnectingWebDav,
-          onConnect: _connectWebDav,
-          onDisconnect: _disconnectWebDav,
-          onPickFile: _webDavAccount != null ? _pickWebDavFile : null,
-          onSelect: _webDavAccount != null
-              ? () => _selectStorage(_StorageType.webDav)
-              : null,
-        ),
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild:
-              Image.asset('assets/images/sftp.png', width: 16, height: 16),
-          provider: 'SFTP',
-          selected: _storage == _StorageType.sftp,
-          account: _sftpAccount,
-          selectedFileLabel: selectedFile?.storage == _StorageType.sftp
-              ? selectedFile!.displayPath
-              : null,
-          isConnecting: _isConnectingSftp,
-          onConnect: _connectSftp,
-          onDisconnect: _disconnectSftp,
-          onPickFile: _sftpAccount != null ? _pickSftpFile : null,
-          onSelect: _sftpAccount != null
-              ? () => _selectStorage(_StorageType.sftp)
-              : null,
-        ),
-        const SizedBox(height: 6),
-        _CloudStorageRow(
-          iconChild: Image.asset('assets/images/aws-s3-icon.png',
-              width: 16, height: 16),
-          provider: 'Amazon S3',
-          selected: _storage == _StorageType.s3,
-          account: _s3Account,
-          selectedFileLabel: selectedFile?.storage == _StorageType.s3
-              ? selectedFile!.displayPath
-              : null,
-          isConnecting: _isConnectingS3,
-          onConnect: _connectS3,
-          onDisconnect: _disconnectS3,
-          onPickFile: _s3Account != null ? _pickS3File : null,
-          onSelect:
-              _s3Account != null ? () => _selectStorage(_StorageType.s3) : null,
-        ),
       ],
     );
   }
@@ -388,9 +413,9 @@ class _OpenExistingDatabaseModalState
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFF),
+            color: _kMintSoft,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFDCE5FF)),
+            border: Border.all(color: _kInkBorder),
           ),
           child: Row(
             children: <Widget>[
@@ -398,8 +423,9 @@ class _OpenExistingDatabaseModalState
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEF3FF),
+                  color: _kYellow,
                   borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: _kInkBorder),
                 ),
                 alignment: Alignment.center,
                 child: _storageIcon(selectedFile.storage),
@@ -470,10 +496,11 @@ class _OpenExistingDatabaseModalState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: const BoxDecoration(
+        color: _kPaperBright,
         border: Border(top: BorderSide(color: _kBorderSoft)),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(14),
-          bottomRight: Radius.circular(14),
+          bottomLeft: Radius.circular(17),
+          bottomRight: Radius.circular(17),
         ),
       ),
       child: Row(
@@ -481,10 +508,11 @@ class _OpenExistingDatabaseModalState
           OutlinedButton(
             onPressed: _isOpening ? null : () => Navigator.of(context).pop(),
             style: OutlinedButton.styleFrom(
-              foregroundColor: _kLabel,
-              side: const BorderSide(color: _kBorderSoft),
+              foregroundColor: _kTitle,
+              side: const BorderSide(color: _kInkBorder),
+              backgroundColor: _kPaperBright,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(22),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
@@ -495,13 +523,14 @@ class _OpenExistingDatabaseModalState
           ElevatedButton(
             onPressed: enabled ? _submit : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A3B48),
+              backgroundColor: _kBlue,
               foregroundColor: Colors.white,
-              disabledBackgroundColor: const Color(0xFF6F8991),
-              elevation: 0,
+              disabledBackgroundColor: _kBorderSoft,
+              shadowColor: _kInkBorder,
+              elevation: 2,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(22),
               ),
               textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
             ),
@@ -1171,10 +1200,36 @@ class _SelectedDatabaseFile {
   String get nickname => _baseDatabaseName(displayName);
 }
 
+class _DestinationGrid extends StatelessWidget {
+  const _DestinationGrid({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 10.0;
+        final width = (constraints.maxWidth - gap) / 2;
+        final height = (width * 0.50).clamp(148.0, 164.0).toDouble();
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: <Widget>[
+            for (final child in children)
+              SizedBox(width: width, height: height, child: child),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _StorageRow extends StatelessWidget {
   const _StorageRow({
     required this.iconChild,
     required this.label,
+    required this.detail,
     required this.selected,
     required this.actionLabel,
     required this.onAction,
@@ -1182,65 +1237,79 @@ class _StorageRow extends StatelessWidget {
 
   final Widget iconChild;
   final String label;
+  final String detail;
   final bool selected;
   final String actionLabel;
   final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: selected ? const Color(0xFFEEF3FF) : Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        color: selected ? _kMintSoft : _kPaperBright,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: selected ? const Color(0xFFB5C3F8) : _kBorderRow,
-          width: selected ? 1.5 : 1.0,
+          color: selected ? _kInkBorder : _kBorderRow,
+          width: selected ? 1.5 : 1,
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Container(
-            width: 28,
-            height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color:
-                  selected ? const Color(0xFFE8F0FE) : const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: iconChild,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _uText(
-                12,
-                selected ? _kBlue : _kTitle,
-                fontWeight: FontWeight.w500,
+          Row(
+            children: <Widget>[
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? _kYellow : _kPeach,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: iconChild,
               ),
-            ),
-          ),
-          OutlinedButton(
-            onPressed: onAction,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF374151),
-              side: const BorderSide(color: Color(0xFFD1D5DB)),
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _uText(13, _kTitle, fontWeight: FontWeight.w700),
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-              minimumSize: const Size(0, 36),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              if (selected)
+                const Icon(TablerIcons.circle_check_filled,
+                    size: 18, color: _kMint),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            detail,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: _uText(10.5, _kLabel),
+          ),
+          const Spacer(),
+          Align(
+            alignment: Alignment.bottomRight,
+            child: OutlinedButton(
+              onPressed: onAction,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _kTitle,
+                side: const BorderSide(color: _kInkBorder),
+                backgroundColor: _kPaperBright,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                minimumSize: const Size(88, 34),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: _uText(11, _kTitle, fontWeight: FontWeight.w700),
+              ),
+              child: Text(actionLabel),
             ),
-            child: Text(actionLabel),
           ),
         ],
       ),
@@ -1277,110 +1346,124 @@ class _CloudStorageRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final connected = account != null;
 
-    return GestureDetector(
-      onTap: onSelect,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFEEF3FF) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? const Color(0xFFB5C3F8) : _kBorderRow,
-            width: selected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Container(
-                  width: 28,
-                  height: 28,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? const Color(0xFFE8F0FE)
-                        : const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: iconChild,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        provider,
-                        style: _uText(
-                          12,
-                          selected ? _kBlue : _kTitle,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (connected) Text(account!, style: _uText(10, _kLabel)),
-                    ],
-                  ),
-                ),
-                if (isConnecting)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 1.5),
-                  )
-                else if (!connected)
-                  _FilledButton(label: 'Connect', onPressed: onConnect)
-                else
-                  _TextDestructiveButton(
-                    label: 'Disconnect',
-                    onPressed: onDisconnect,
-                  ),
-              ],
+    return MouseRegion(
+      cursor: onSelect == null
+          ? SystemMouseCursors.basic
+          : SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onSelect,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: selected ? _kMintSoft : _kPaperBright,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? _kInkBorder : _kBorderRow,
+              width: selected ? 1.5 : 1,
             ),
-            if (connected) ...<Widget>[
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? _kYellow : _kPeach,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: iconChild,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          provider,
+                          style: _uText(
+                            13,
+                            _kTitle,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (connected)
+                          Text(
+                            account!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: _uText(10, _kLabel),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (isConnecting)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 1.5),
+                    )
+                  else if (selected)
+                    const Icon(TablerIcons.circle_check_filled,
+                        size: 18, color: _kMint),
+                ],
+              ),
               const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
+              Row(
+                children: <Widget>[
+                  Icon(connected ? TablerIcons.file : TablerIcons.cloud,
+                      size: 12, color: _kIcon),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      connected
+                          ? (selectedFileLabel ?? 'No file selected')
+                          : 'Not connected',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _uText(10.5, _kLabel),
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              if (!isConnecting)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: <Widget>[
-                    const Icon(TablerIcons.file, size: 12, color: _kIcon),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        selectedFileLabel ?? 'No file selected',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: _uText(11, _kLabel),
+                    if (connected) ...<Widget>[
+                      _TextDestructiveButton(
+                        label: 'Disconnect',
+                        onPressed: onDisconnect,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: onPickFile ?? () {},
-                      child: Text(
-                        selectedFileLabel != null ? 'Change' : 'Select File',
-                        style: _uText(10, _kBlue, fontWeight: FontWeight.w600),
+                      const SizedBox(width: 8),
+                      _TilePrimaryButton(
+                        label: selectedFileLabel != null
+                            ? 'Change'
+                            : 'Select file',
+                        onPressed: onPickFile,
                       ),
-                    ),
+                    ] else
+                      _TilePrimaryButton(
+                        label: 'Connect',
+                        onPressed: onConnect,
+                      ),
                   ],
                 ),
-              ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _FilledButton extends StatelessWidget {
-  const _FilledButton({required this.label, required this.onPressed});
+class _TilePrimaryButton extends StatelessWidget {
+  const _TilePrimaryButton({required this.label, required this.onPressed});
 
   final String label;
   final VoidCallback? onPressed;
@@ -1392,14 +1475,14 @@ class _FilledButton extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         backgroundColor: _kBlue,
         foregroundColor: Colors.white,
-        disabledBackgroundColor: const Color(0xFFB9C6FF),
-        disabledForegroundColor: Colors.white,
+        disabledBackgroundColor: _kBorderSoft,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        minimumSize: Size.zero,
+        side: const BorderSide(color: _kInkBorder),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        minimumSize: const Size(104, 34),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        textStyle: _uText(11, Colors.white, fontWeight: FontWeight.w600),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        textStyle: _uText(10.5, Colors.white, fontWeight: FontWeight.w700),
       ),
       child: Text(label),
     );
@@ -1414,17 +1497,20 @@ class _TextDestructiveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
+    return OutlinedButton(
       onPressed: onPressed,
-      style: TextButton.styleFrom(
-        foregroundColor: const Color(0xFFEF4444),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        minimumSize: Size.zero,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFFB93827),
+        backgroundColor: const Color(0xFFFFE8DF),
+        side: const BorderSide(color: Color(0xFFE36A54)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        minimumSize: const Size(104, 34),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         textStyle: _uText(
-          11,
-          const Color(0xFFEF4444),
-          fontWeight: FontWeight.w600,
+          10.5,
+          const Color(0xFFB93827),
+          fontWeight: FontWeight.w700,
         ),
       ),
       child: Text(label),
@@ -1882,7 +1968,7 @@ class _DatabaseFileTileState extends State<_DatabaseFileTile> {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: _hovered ? const Color(0xFFEEF3FF) : _kCanvas,
+                  color: _hovered ? _kYellow : _kCanvas,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,

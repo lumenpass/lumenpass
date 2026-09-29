@@ -285,6 +285,10 @@ void QuickSearchPanel::Hide() {
   }
   visible_ = false;
   gtk_widget_hide(window_);
+  if (channel_ != nullptr) {
+    fl_method_channel_invoke_method(channel_, "clearSnapshot", nullptr,
+                                    nullptr, nullptr, nullptr);
+  }
   if (main_channel_ != nullptr) {
     fl_method_channel_invoke_method(main_channel_, "quickSearchPanelClosed",
                                     nullptr, nullptr, nullptr, nullptr);

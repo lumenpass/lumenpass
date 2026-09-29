@@ -225,6 +225,10 @@ void WindowChannelHandler::HandleMethodCall(
     HideQuickSearchPanel();
     result->Success();
 
+  } else if (method == "clearQuickSearchData") {
+    HideQuickSearchPanel();
+    result->Success();
+
   } else if (method == "enterQuickSearchMode") {
     ShowQuickSearchWindow();
     result->Success();

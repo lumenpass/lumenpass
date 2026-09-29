@@ -10,6 +10,7 @@ import '../application/import_executor.dart';
 
 class ImportConfirmationModal extends ConsumerWidget {
   const ImportConfirmationModal({
+    super.key,
     required this.onCancel,
     required this.onConfirm,
   });
@@ -56,13 +57,14 @@ class ImportConfirmationModal extends ConsumerWidget {
         width: 440,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          color: const Color(0xFFFFFCF6),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFCEC7BB)),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x22172033),
-              blurRadius: 40,
-              offset: Offset(0, 16),
+              color: Color(0x295B4638),
+              blurRadius: 32,
+              offset: Offset(0, 14),
             ),
           ],
         ),
@@ -96,7 +98,7 @@ class ImportConfirmationModal extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1D23),
+                          color: Color(0xFF1E2021),
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -104,28 +106,30 @@ class ImportConfirmationModal extends ConsumerWidget {
                         '$readyCount items ready for import',
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey.shade600,
+                          color: const Color(0xFF74766F),
                         ),
                       ),
                       const SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
+                          color: const Color(0xFFF3EDE4),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          border: Border.all(color: const Color(0xFFD8D2C7)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(TablerIcons.database, size: 12, color: Color(0xFF6B7280)),
+                            const Icon(TablerIcons.database,
+                                size: 12, color: Color(0xFF74766F)),
                             const SizedBox(width: 6),
                             Text(
                               'Target Vault: $vaultName',
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: Color(0xFF374151),
+                                color: Color(0xFF4F524E),
                               ),
                             ),
                           ],
@@ -142,7 +146,7 @@ class ImportConfirmationModal extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF4B5563),
+                color: Color(0xFF686B67),
               ),
             ),
             const SizedBox(height: 10),
@@ -199,16 +203,16 @@ class ImportConfirmationModal extends ConsumerWidget {
               ),
             ],
             const SizedBox(height: 20),
-            Container(height: 1, color: const Color(0xFFE5E7EB)),
+            Container(height: 1, color: const Color(0xFFD8D2C7)),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: <Widget>[
                 _FooterButton(
                   label: 'Back',
-                  backgroundColor: Colors.white,
-                  textColor: const Color(0xFF374151),
-                  borderColor: const Color(0xFFD1D5DB),
+                  backgroundColor: const Color(0xFFFFFCF6),
+                  textColor: const Color(0xFF4F524E),
+                  borderColor: const Color(0xFFCEC7BB),
                   onTap: onCancel,
                 ),
                 const SizedBox(width: 10),
@@ -216,7 +220,7 @@ class ImportConfirmationModal extends ConsumerWidget {
                   label: 'Start Import',
                   backgroundColor: mode == ImportMode.replace
                       ? const Color(0xFFEF4444)
-                      : const Color(0xFF0A3B48),
+                      : const Color(0xFFFF5B22),
                   textColor: Colors.white,
                   onTap: onConfirm,
                 ),
@@ -251,55 +255,55 @@ class _ModeOption extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              size: 18,
+              color: accentColor,
+            ),
           ),
-          child: Row(
-            children: <Widget>[
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E2021),
+                  ),
                 ),
-                alignment: Alignment.center,
-                child: Icon(
-                  icon,
-                  size: 18,
-                  color: accentColor,
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF74766F),
+                    height: 1.4,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1F2937),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      description,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF6B7280),
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        );
+        ],
+      ),
+    );
   }
 }
 
@@ -338,8 +342,7 @@ class _FooterButtonState extends State<_FooterButton> {
           borderRadius: BorderRadius.circular(12),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
             decoration: BoxDecoration(
               color: _hovered && isEnabled
                   ? widget.backgroundColor.withValues(alpha: 0.8)

@@ -6,7 +6,7 @@ const String appearanceTextSizeDeltaKey = 'appearance.textSizeDelta';
 const String appearanceFontFamilyKey = 'appearance.fontFamily';
 
 const int appearanceTextSizeDeltaDefault = 0;
-const String appearanceFontFamilyDefault = 'Inter';
+const String appearanceFontFamilyDefault = 'Ubuntu Sans';
 
 /// Live globals read by _text() helper in vault_screen_theme.dart.
 /// Updated by LumenPassApp every build cycle before descendent builds run.
