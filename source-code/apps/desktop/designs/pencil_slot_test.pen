@@ -1,0 +1,35 @@
+{
+  "version": "2.9",
+  "children": [
+    {
+      "id": "root_frame",
+      "type": "frame",
+      "x": 100,
+      "y": 100,
+      "width": 500,
+      "height": "fit_content(200)",
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "slot_comp",
+          "type": "frame",
+          "reusable": true,
+          "layout": "vertical",
+          "width": 300,
+          "height": "fit_content(100)",
+          "children": [
+            {
+              "id": "slot_body",
+              "type": "frame",
+              "layout": "vertical",
+              "width": "fill_container",
+              "height": "fit_content(50)",
+              "slot": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

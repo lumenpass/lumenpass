@@ -1,11 +1,11 @@
 /**
- * Generates LumenPass PNG icons from an inline SVG at 16, 32, 48, 128 px.
+ * Generates the shared LumenPass extension icons at 16, 32, 48, and 128 px.
  * Run: node scripts/generate-icons.mjs
- * Requires: sharp  (npm i -D sharp)
+ * Requires: sharp (npm i -D sharp)
  */
 
 import sharp from "sharp";
-import { writeFileSync, mkdirSync } from "fs";
+import { mkdirSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
@@ -15,54 +15,72 @@ mkdirSync(iconsDir, { recursive: true });
 
 const SIZES = [16, 32, 48, 128];
 
-function makeSvg(size) {
-  const r = Math.round(size * 0.14); // corner radius
-  const iconColor = "#444ce7";
+const COLORS = {
+  outerStart: "#3B3E44",
+  outerEnd: "#2D3035",
+  ring: "#AFAFAF",
+  red: "#CE2C26",
+  key: "#D8D8D8",
+};
+
+const GREY_COLORS = {
+  outerStart: "#45484F",
+  outerEnd: "#36383D",
+  ring: "#8A8C90",
+  red: "#777B80",
+  key: "#B8B9BC",
+};
+
+function makeSvg(size, muted = false) {
+  const colors = muted ? GREY_COLORS : COLORS;
+  const radius = Math.round(size * 0.21);
+  const center = size / 2;
+  const ringOuter = size * 0.33;
+  const ringInner = size * 0.27;
+  const keyHeadY = size * 0.405;
+  const keyHeadRadius = size * 0.095;
+  const keyStemX = center - size * 0.028;
+  const keyStemY = size * 0.465;
+  const keyStemWidth = size * 0.056;
+  const keyStemHeight = size * 0.215;
+  const toothX = center + size * 0.028;
+  const toothWidth = size * 0.064;
+  const toothHeight = size * 0.035;
+  const gradientId = `outer-${size}-${muted ? "muted" : "active"}`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-  <rect width="${size}" height="${size}" rx="${r}" fill="${iconColor}"/>
-  <g transform="translate(${size * 0.21} ${size * 0.2}) scale(${size / 24 * 0.58})">
-    <path
-      d="M7.5 10V7.75a4.5 4.5 0 1 1 9 0V10"
-      fill="none"
-      stroke="white"
-      stroke-width="2.2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-    <rect
-      x="5.5"
-      y="10"
-      width="13"
-      height="9"
-      rx="2.5"
-      fill="none"
-      stroke="white"
-      stroke-width="2.2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </g>
+  <defs>
+    <linearGradient id="${gradientId}" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="${colors.outerStart}"/>
+      <stop offset="1" stop-color="${colors.outerEnd}"/>
+    </linearGradient>
+  </defs>
+  <rect width="${size}" height="${size}" rx="${radius}" fill="url(#${gradientId})"/>
+  <circle cx="${center}" cy="${center}" r="${ringOuter}" fill="${colors.ring}"/>
+  <circle cx="${center}" cy="${center}" r="${ringInner}" fill="${colors.red}"/>
+  <rect x="${keyStemX}" y="${keyStemY}" width="${keyStemWidth}" height="${keyStemHeight}" rx="${keyStemWidth / 2}" fill="${colors.key}"/>
+  <rect x="${toothX}" y="${size * 0.55}" width="${toothWidth}" height="${toothHeight}" rx="${toothHeight / 2}" fill="${colors.key}"/>
+  <rect x="${toothX}" y="${size * 0.625}" width="${toothWidth}" height="${toothHeight}" rx="${toothHeight / 2}" fill="${colors.key}"/>
+  <circle cx="${center}" cy="${keyHeadY}" r="${keyHeadRadius}" fill="${colors.key}"/>
+  <circle cx="${center}" cy="${keyHeadY}" r="${size * 0.040}" fill="${colors.red}"/>
 </svg>`;
+}
+
+async function writeIcon(size, muted = false) {
+  const svg = makeSvg(size, muted);
+  const outputName = muted ? `icon${size}-grey.png` : `icon${size}.png`;
+  await sharp(Buffer.from(svg, "utf-8"))
+    .resize(size, size)
+    .png()
+    .toFile(join(iconsDir, outputName));
+  console.log(`✓ ${outputName}`);
 }
 
 async function generate() {
   for (const size of SIZES) {
-    const svg = makeSvg(size);
-    const buf = Buffer.from(svg, "utf-8");
-    const outPath = join(iconsDir, `icon${size}.png`);
-    await sharp(buf).resize(size, size).png().toFile(outPath);
-    console.log(`✓  icon${size}.png`);
+    await writeIcon(size);
   }
-
-  // Grey variant for "disconnected" state
-  async function makeGreyIcon(size) {
-    const svg = makeSvg(size).replace(/#444ce7/g, "#9ca3af");
-    const buf = Buffer.from(svg, "utf-8");
-    await sharp(buf).resize(size, size).png().toFile(join(iconsDir, `icon${size}-grey.png`));
-  }
-  await makeGreyIcon(32);
-  console.log("✓  icon32-grey.png");
+  await writeIcon(32, true);
   console.log("\nAll icons written to public/icons/");
 }
 

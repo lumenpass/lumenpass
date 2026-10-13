@@ -22,6 +22,7 @@ import {
   isOtpLikeFieldLabel,
 } from "../../lib/totp-display";
 import { formatVersionLabel } from "../../lib/version";
+import { isSensitiveFinancialField } from "../../lib/sensitive-financial-field";
 import type { EntryItem, EntryDetail } from "../../lib/api";
 import type { ExtensionSettings } from "../../lib/storage";
 
@@ -291,6 +292,9 @@ export default function SearchView({ settings, currentUrl, connected, vaultOpen,
       payload: {
         tabId,
         entry: {
+          id: detail.id,
+          title: detail.title,
+          kind: detail.kind,
           username: detail.username,
           password: detail.password ?? "",
           totp: detail.totp,
@@ -986,7 +990,9 @@ function DetailPanel({
           {/* Custom fields */}
           {visibleCustomFields.map((f, index) => {
             const fieldKey = `custom:${index}:${f.label}`;
-            const secret = f.secret || isProtectedCustomFieldLabel(f.label);
+            const secret = f.secret
+              || isProtectedCustomFieldLabel(f.label)
+              || isSensitiveFinancialField(f.label, entryKind);
             return (
               <CredentialRow
                 key={fieldKey}

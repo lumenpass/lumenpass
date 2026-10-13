@@ -3088,11 +3088,19 @@ class _DetailMoreMenu extends StatelessWidget {
   }
 }
 
-class _EmptyDetailPane extends StatelessWidget {
+class _EmptyDetailPane extends ConsumerWidget {
   const _EmptyDetailPane();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final copy = vaultEmptyStateCopy(
+      totalItemCount: ref.watch(vaultDatabaseEntriesProvider).length,
+      groupId: ref.watch(vaultSelectedGroupProvider),
+      itemTypeId: ref.watch(vaultSelectedItemTypeIdProvider),
+      tag: ref.watch(vaultSelectedTagProvider),
+      searchQuery: ref.watch(vaultSearchQueryProvider),
+      passwordAuditIssue: ref.watch(vaultPasswordAuditSelectionProvider)?.name,
+    );
     return Container(
       color: _VaultColors.canvas,
       child: Column(
@@ -3126,22 +3134,18 @@ class _EmptyDetailPane extends StatelessWidget {
                       color: _kPrimaryButtonColor,
                     ),
                   ),
-
                   const SizedBox(height: 22),
-
                   Text(
-                    'Your vault is empty',
+                    copy.title,
                     style: _text(
                       15,
                       _VaultColors.title,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
                   Text(
-                    'Add your first item using the\n"+ New Item" button above.',
+                    copy.description,
                     textAlign: TextAlign.center,
                     style: _text(
                       12,
@@ -3150,42 +3154,42 @@ class _EmptyDetailPane extends StatelessWidget {
                       height: 1.65,
                     ),
                   ),
-
-                  const SizedBox(height: 28),
-
-                  // Item type pills
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
-                    children: const <Widget>[
-                      _EmptyTypePill(
-                        icon: TablerIcons.key,
-                        label: 'SSH Keys',
-                        iconColor: Color(0xFF2E5ECC),
-                      ),
-                      _EmptyTypePill(
-                        icon: TablerIcons.notebook,
-                        label: 'Secure Notes',
-                        iconColor: Color(0xFF6B5FC0),
-                      ),
-                      _EmptyTypePill(
-                        icon: TablerIcons.fingerprint,
-                        label: 'Passkeys',
-                        iconColor: Color(0xFF0891B2),
-                      ),
-                      _EmptyTypePill(
-                        icon: TablerIcons.id_badge_2,
-                        label: 'Identities',
-                        iconColor: Color(0xFF059669),
-                      ),
-                      _EmptyTypePill(
-                        icon: TablerIcons.clock,
-                        label: 'TOTP Codes',
-                        iconColor: Color(0xFFD97706),
-                      ),
-                    ],
-                  ),
+                  if (copy.showSuggestions) ...<Widget>[
+                    const SizedBox(height: 28),
+                    // Item type pills
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: const <Widget>[
+                        _EmptyTypePill(
+                          icon: TablerIcons.key,
+                          label: 'SSH Keys',
+                          iconColor: Color(0xFF2E5ECC),
+                        ),
+                        _EmptyTypePill(
+                          icon: TablerIcons.notebook,
+                          label: 'Secure Notes',
+                          iconColor: Color(0xFF6B5FC0),
+                        ),
+                        _EmptyTypePill(
+                          icon: TablerIcons.fingerprint,
+                          label: 'Passkeys',
+                          iconColor: Color(0xFF0891B2),
+                        ),
+                        _EmptyTypePill(
+                          icon: TablerIcons.id_badge_2,
+                          label: 'Identities',
+                          iconColor: Color(0xFF059669),
+                        ),
+                        _EmptyTypePill(
+                          icon: TablerIcons.clock,
+                          label: 'TOTP Codes',
+                          iconColor: Color(0xFFD97706),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -1,18 +1,15 @@
-import 'dart:convert';
-
 import '../domain/import_parsed_item.dart';
 
 class CsvParser {
   const CsvParser();
 
   List<ImportParsedItem> parse(String csvContent) {
-    final lines = _splitLines(csvContent);
-    if (lines.isEmpty) {
+    final records = _parseRecords(csvContent);
+    if (records.isEmpty) {
       throw FormatException('CSV file is empty');
     }
 
-    final headerLine = lines.first;
-    final headers = _parseCsvLine(headerLine);
+    final headers = records.first;
     final columnIndices = _mapColumnIndices(headers);
 
     if (!columnIndices.containsKey('title')) {
@@ -23,16 +20,15 @@ class CsvParser {
     final items = <ImportParsedItem>[];
     final errors = <String>[];
 
-    for (var i = 1; i < lines.length; i++) {
+    for (var i = 1; i < records.length; i++) {
       try {
-        final values = _parseCsvLine(lines[i]);
+        final values = records[i];
 
         final title = _getValue(values, columnIndices['title']);
         final url = _getValue(values, columnIndices['url']);
         final username = _getValue(values, columnIndices['username']);
         final password = _getValue(values, columnIndices['password']);
-        final otpAuth =
-            _getOtpValue(values, columnIndices['otp']);
+        final otpAuth = _getOtpValue(values, columnIndices['otp']);
         final tagsRaw = _getValue(values, columnIndices['tags']);
         final notes = _getValue(values, columnIndices['notes']);
 
@@ -73,64 +69,56 @@ class CsvParser {
     return items;
   }
 
-  List<String> _splitLines(String content) {
-    if (content.isEmpty) return const <String>[];
-    return const LineSplitter().convert(content);
-  }
+  List<List<String>> _parseRecords(String content) {
+    final records = <List<String>>[];
+    var fields = <String>[];
+    var field = StringBuffer();
+    var inQuotes = false;
+    var fieldStarted = false;
 
-  List<String> _parseCsvLine(String line) {
-    final fields = <String>[];
-    var i = 0;
-    final len = line.length;
-
-    while (i < len) {
-      final ch = line[i];
-
-      if (ch == '"') {
-        i++;
-        final buffer = StringBuffer();
-        while (i < len) {
-          if (line[i] == '"') {
-            if (i + 1 < len && line[i + 1] == '"') {
-              buffer.write('"');
-              i += 2;
-            } else {
-              i++;
-              break;
-            }
-          } else {
-            buffer.write(line[i]);
-            i++;
-          }
+    for (var i = 0; i < content.length; i++) {
+      final char = content[i];
+      if (char == '"') {
+        if (inQuotes && i + 1 < content.length && content[i + 1] == '"') {
+          field.write('"');
+          i++;
+        } else if (inQuotes) {
+          inQuotes = false;
+        } else if (!fieldStarted) {
+          inQuotes = true;
+        } else {
+          field.write(char);
         }
-        fields.add(buffer.toString());
-
-        if (i < len) {
-          if (line[i] == ',') {
-            i++;
-          }
+        fieldStarted = true;
+      } else if (char == ',' && !inQuotes) {
+        fields.add(field.toString());
+        field = StringBuffer();
+        fieldStarted = false;
+      } else if ((char == '\n' || char == '\r') && !inQuotes) {
+        fields.add(field.toString());
+        if (fieldStarted || fields.length > 1 || fields.first.isNotEmpty) {
+          records.add(fields);
         }
-      } else if (ch == ',') {
-        fields.add('');
-        i++;
-      } else {
-        var end = i;
-        while (end < len && line[end] != ',' && line[end] != '"') {
-          end++;
-        }
-        fields.add(line.substring(i, end));
-        i = end;
-        if (i < len && line[i] == ',') {
+        fields = <String>[];
+        field = StringBuffer();
+        fieldStarted = false;
+        if (char == '\r' && i + 1 < content.length && content[i + 1] == '\n') {
           i++;
         }
+      } else {
+        field.write(char);
+        fieldStarted = true;
       }
     }
 
-    if (line.isNotEmpty && line[line.length - 1] == ',') {
-      fields.add('');
+    if (inQuotes) {
+      throw const FormatException('CSV has an unterminated quoted field');
     }
-
-    return fields;
+    if (fieldStarted || fields.isNotEmpty) {
+      fields.add(field.toString());
+      records.add(fields);
+    }
+    return records;
   }
 
   Map<String, int> _mapColumnIndices(List<String> headers) {

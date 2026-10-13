@@ -1290,75 +1290,16 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
     }
   }
 
-  Future<String?> _validatePrivateKeyPassphrase({
-    required String filePath,
-    required String passphrase,
-  }) async {
-    try {
-      final process = await Process.start(
-        'ssh-keygen',
-        <String>['-y', '-f', filePath],
-        runInShell: false,
-      );
-      process.stdin.writeln(passphrase);
-      await process.stdin.close();
-
-      final stdoutFuture = process.stdout.transform(utf8.decoder).join();
-      final stderrFuture = process.stderr.transform(utf8.decoder).join();
-      final exitCode = await process.exitCode;
-      final stdoutText = await stdoutFuture;
-      final stderrText = await stderrFuture;
-
-      if (exitCode == 0 && stdoutText.trim().isNotEmpty) {
-        return null;
-      }
-
-      final normalizedError = stderrText.toLowerCase();
-      if (normalizedError.contains('incorrect passphrase') ||
-          normalizedError.contains('bad passphrase') ||
-          normalizedError.contains('incorrect password')) {
-        return 'That passphrase does not unlock this private key.';
-      }
-
-      return 'Unable to verify the passphrase for this private key.';
-    } on ProcessException {
-      return 'ssh-keygen is unavailable, so this passphrase cannot be verified here.';
-    } catch (_) {
-      return 'Unable to verify the passphrase for this private key.';
-    }
-  }
-
   Future<String?> _validatePrivateKeyPassphraseForKey({
     required String privateKey,
     required String? sourcePath,
     required String passphrase,
   }) async {
-    final path = sourcePath?.trim() ?? '';
-    if (path.isNotEmpty) {
-      return _validatePrivateKeyPassphrase(
-        filePath: path,
-        passphrase: passphrase,
-      );
-    }
-
-    final tempDir = await Directory.systemTemp.createTemp(
-      'lumenpass_sshkey_validate_',
+    return SshPrivateKeyTools.validatePassphrase(
+      privateKey: privateKey,
+      sourcePath: sourcePath,
+      passphrase: passphrase,
     );
-    final tempKeyPath = '${tempDir.path}${Platform.pathSeparator}id_temp';
-    try {
-      await File(tempKeyPath).writeAsString(privateKey);
-      return await _validatePrivateKeyPassphrase(
-        filePath: tempKeyPath,
-        passphrase: passphrase,
-      );
-    } finally {
-      try {
-        await File(tempKeyPath).delete();
-      } catch (_) {}
-      try {
-        await tempDir.delete(recursive: true);
-      } catch (_) {}
-    }
   }
 
   bool _looksLikePrivateKey(String text) {
@@ -1389,7 +1330,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
     );
     final tempKeyPath = '${tempDir.path}${Platform.pathSeparator}id_temp';
     try {
-      await File(tempKeyPath).writeAsString(privateKey);
+      await SshPrivateKeyTools.writeTemporaryKey(tempKeyPath, privateKey);
       return await _runSshFingerprintPreview(
         privateKeyPath: tempKeyPath,
         passphrase: passphrase,
@@ -1461,25 +1402,11 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
     required String privateKeyPath,
     String? passphrase,
   }) async {
-    try {
-      final process = await Process.start(
-        'ssh-keygen',
-        <String>['-y', '-f', privateKeyPath],
-        runInShell: false,
-      );
-      process.stdin.writeln(passphrase ?? '');
-      await process.stdin.close();
-
-      final stdoutText = await process.stdout.transform(utf8.decoder).join();
-      await process.stderr.transform(utf8.decoder).join();
-      final exitCode = await process.exitCode;
-      if (exitCode != 0) {
-        return null;
-      }
-      return stdoutText.trim().isEmpty ? null : stdoutText.trim();
-    } catch (_) {
-      return null;
-    }
+    return SshPrivateKeyTools.derivePublicKey(
+      privateKey: '',
+      sourcePath: privateKeyPath,
+      passphrase: passphrase,
+    );
   }
 
   Future<String?> _derivePublicKeyFromPrivateKeyContent({
@@ -1487,32 +1414,11 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
     required String? sourcePath,
     String? passphrase,
   }) async {
-    final existingPath = sourcePath?.trim() ?? '';
-    if (existingPath.isNotEmpty) {
-      return _derivePublicKeyFromPrivateKey(
-        privateKeyPath: existingPath,
-        passphrase: passphrase,
-      );
-    }
-
-    final tempDir = await Directory.systemTemp.createTemp(
-      'lumenpass_sshkey_pub_',
+    return SshPrivateKeyTools.derivePublicKey(
+      privateKey: privateKey,
+      sourcePath: sourcePath,
+      passphrase: passphrase,
     );
-    final tempKeyPath = '${tempDir.path}${Platform.pathSeparator}id_temp';
-    try {
-      await File(tempKeyPath).writeAsString(privateKey);
-      return await _derivePublicKeyFromPrivateKey(
-        privateKeyPath: tempKeyPath,
-        passphrase: passphrase,
-      );
-    } finally {
-      try {
-        await File(tempKeyPath).delete();
-      } catch (_) {}
-      try {
-        await tempDir.delete(recursive: true);
-      } catch (_) {}
-    }
   }
 
   void _syncDerivedSshMetadataFields({

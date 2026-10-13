@@ -192,7 +192,9 @@ class _ListPaneState extends State<_ListPane> {
                   ),
                 Expanded(
                   child: widget.isPasswordAuditView && widget.entries.isEmpty
-                      ? const _PasswordAuditEmptyState()
+                      ? _PasswordAuditEmptyState(
+                          issue: widget.passwordAuditSelection,
+                        )
                       : widget.entries.isEmpty
                           ? const _ListEmptyState()
                           : ScrollbarTheme(
@@ -1145,7 +1147,9 @@ class _AuditBadge extends StatelessWidget {
 }
 
 class _PasswordAuditEmptyState extends StatelessWidget {
-  const _PasswordAuditEmptyState();
+  const _PasswordAuditEmptyState({this.issue});
+
+  final PasswordAuditIssue? issue;
 
   @override
   Widget build(BuildContext context) {
@@ -1173,7 +1177,12 @@ class _PasswordAuditEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              'All passwords are secure',
+              switch (issue) {
+                PasswordAuditIssue.duplicated => 'No duplicate items',
+                PasswordAuditIssue.weak => 'No weak passwords',
+                PasswordAuditIssue.stale => 'No stale passwords',
+                null => 'No audit results',
+              },
               style: _text(
                 12,
                 const Color(0xFF3A4A5E),
@@ -1182,7 +1191,7 @@ class _PasswordAuditEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 5),
             Text(
-              'No duplicated, weak, or\nstale passwords detected.',
+              'No items match this password audit filter.',
               textAlign: TextAlign.center,
               style: _text(
                 11,
@@ -1490,7 +1499,9 @@ class _PasswordAuditDuplicateGroupsPane extends StatelessWidget {
           ),
           Expanded(
             child: groups.isEmpty
-                ? const _PasswordAuditEmptyState()
+                ? const _PasswordAuditEmptyState(
+                    issue: PasswordAuditIssue.duplicated,
+                  )
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 12),

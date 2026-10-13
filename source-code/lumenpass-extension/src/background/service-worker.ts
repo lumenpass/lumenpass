@@ -1383,14 +1383,15 @@ async function handleMessage(message: ExtMessage, sender?: browser.Runtime.Messa
       case "AUTOFILL": {
         const { tabId, entry } = message.payload as {
           tabId: number;
-          entry: { username: string; password: string; totp?: string };
+          entry: EntryItem;
         };
-        await browser.scripting.executeScript({
-          target: { tabId },
-          func: performAutofill,
-          args: [entry],
-        });
-        return { ok: true };
+        const result = await browser.tabs.sendMessage(tabId, {
+          type: "FILL_POPUP_ENTRY",
+          payload: entry,
+        }) as { ok?: boolean } | undefined;
+        return result?.ok
+          ? { ok: true }
+          : { ok: false, error: "No matching login fields were found on this page." };
       }
 
       case "AUTOFILL_GENERATED_PASSWORD": {
@@ -1630,6 +1631,7 @@ async function handleMessage(message: ExtMessage, sender?: browser.Runtime.Messa
             clientDataJSON: Array.from(clientDataJSON),
             attestationObject: Array.from(attestationObject),
             authData: Array.from(authData),
+            publicKey: Array.from(spki),
           },
         };
       }
@@ -2049,74 +2051,6 @@ async function generatePasskeyAssertion(params: {
     signature: Array.from(signature),
     userHandle,
   };
-}
-
-// ─── Autofill injected function (runs in page context) ────────────────────────
-
-function performAutofill(entry: { username: string; password: string; totp?: string }): void {
-  function fillField(el: HTMLInputElement, value: string): void {
-    el.focus();
-    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype,
-      "value",
-    )?.set;
-    nativeInputValueSetter?.call(el, value);
-    el.dispatchEvent(new Event("focus", { bubbles: true }));
-    try {
-      el.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: value }));
-    } catch (_) {
-      el.dispatchEvent(new Event("beforeinput", { bubbles: true }));
-    }
-    try {
-      el.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: false, inputType: "insertText", data: value }));
-    } catch (_) {
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-    el.dispatchEvent(new Event("blur", { bubbles: true }));
-  }
-
-  // Find password field
-  const passwordFields = Array.from(
-    document.querySelectorAll<HTMLInputElement>("input[type='password']"),
-  ).filter((el) => el.offsetParent !== null);
-
-  if (passwordFields.length === 0) return;
-
-  const passwordField = passwordFields[0];
-
-  // Walk DOM backwards to find the nearest username/email field
-  const usernameSelectors = [
-    "input[type='email']",
-    "input[type='text'][name*='user']",
-    "input[type='text'][name*='email']",
-    "input[type='text'][name*='login']",
-    "input[type='text'][autocomplete*='username']",
-    "input[type='text'][autocomplete*='email']",
-    "input[type='text']",
-  ];
-
-  let usernameField: HTMLInputElement | null = null;
-  for (const selector of usernameSelectors) {
-    const candidates = Array.from(
-      document.querySelectorAll<HTMLInputElement>(selector),
-    ).filter((el) => el.offsetParent !== null && el !== passwordField);
-    if (candidates.length > 0) {
-      usernameField = candidates[candidates.length - 1];
-      break;
-    }
-  }
-
-  if (usernameField && entry.username) fillField(usernameField, entry.username);
-  if (entry.password) fillField(passwordField, entry.password);
-
-  // TOTP field
-  if (entry.totp) {
-    const totpField = document.querySelector<HTMLInputElement>(
-      "input[autocomplete='one-time-code'], input[name*='otp'], input[name*='totp'], input[name*='code']",
-    );
-    if (totpField) fillField(totpField, entry.totp);
-  }
 }
 
 function performGeneratedPasswordFill(password: string): void {

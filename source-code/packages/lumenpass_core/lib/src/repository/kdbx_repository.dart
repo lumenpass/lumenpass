@@ -94,7 +94,9 @@ abstract class KdbxRepository {
     required DateTime createdAt,
   });
 
-  Future<void> restoreEntry(String entryUuid);
+  /// Returns true when the original category no longer exists and the entry
+  /// had to be restored to the vault root instead.
+  Future<bool> restoreEntry(String entryUuid);
 
   Future<void> permanentlyDeleteEntry(String entryUuid);
 
@@ -470,10 +472,31 @@ class KdbxRepositoryImpl implements KdbxRepository {
   }
 
   @override
-  Future<void> restoreEntry(String entryUuid) async {
+  Future<bool> restoreEntry(String entryUuid) async {
     final file = _requireFile();
-    file.move(_findEntry(entryUuid), file.body.rootGroup);
+    final entry = _findEntry(entryUuid);
+    final previousGroupUuid = entry.previousParentGroup.get()?.toString();
+    native.KdbxGroup destination = file.body.rootGroup;
+    var usedFallback = false;
+    if (previousGroupUuid != null) {
+      final matchingGroups = file.body.rootGroup.getAllGroups().where(
+            (group) => group.uuid.toString() == previousGroupUuid,
+          );
+      if (matchingGroups.isNotEmpty) {
+        final previousGroup = matchingGroups.first;
+        if (previousGroup != file.recycleBin &&
+            !previousGroup.isInRecycleBin()) {
+          destination = previousGroup;
+        } else {
+          usedFallback = true;
+        }
+      } else {
+        usedFallback = true;
+      }
+    }
+    file.move(entry, destination);
     _invalidateCaches();
+    return usedFallback;
   }
 
   @override

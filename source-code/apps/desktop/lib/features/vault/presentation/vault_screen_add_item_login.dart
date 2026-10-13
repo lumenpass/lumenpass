@@ -36,6 +36,8 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
   final List<_LoginCustomAttribute> _customAttributes =
       <_LoginCustomAttribute>[];
   final List<_LoginAttachment> _attachments = <_LoginAttachment>[];
+  final Set<String> _removedExistingAttachmentNames = <String>{};
+  Future<void>? _existingAttachmentLoad;
   final List<String> _tags = <String>[];
   String? _selectedCategoryUuid;
   String? _totpAuthUrl;
@@ -89,6 +91,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
       _attachments.addAll(
         edit.attachments.map(_LoginAttachment.fromMockAttachment),
       );
+      _existingAttachmentLoad = _loadExistingBinaryAttachments();
 
       if (kdbx != null) {
         const standardAndSystem = <String>{
@@ -157,6 +160,33 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
       a.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _loadExistingBinaryAttachments() async {
+    final edit = widget.editingEntry;
+    if (edit == null || edit.uuid.isEmpty) return;
+    try {
+      final binaries =
+          await ref.read(kdbxRepositoryProvider).getEntryAttachments(edit.uuid);
+      if (!mounted || binaries.isEmpty) return;
+      final merged = _mergeBinaryAttachments(
+        _attachments,
+        binaries
+            .where(
+              (binary) =>
+                  !_removedExistingAttachmentNames.contains(binary.name) ||
+                  _attachments.any((current) => current.name == binary.name),
+            )
+            .toList(growable: false),
+      );
+      setState(() {
+        _attachments
+          ..clear()
+          ..addAll(merged);
+      });
+    } catch (_) {
+      // Metadata remains visible if binary extraction fails.
+    }
   }
 
   void _handlePasswordFocusChanged() {
@@ -686,8 +716,54 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
   void _removeAttachment(_LoginAttachment attachment) {
     setState(() {
       _isDirty = true;
+      if (_isEditing) _removedExistingAttachmentNames.add(attachment.name);
       _attachments.remove(attachment);
     });
+  }
+
+  Future<void> _replaceAttachment(_LoginAttachment attachment) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        dialogTitle: 'Replace ${attachment.name}',
+        lockParentWindow: true,
+        type: FileType.any,
+      );
+      final replacement = result?.files.firstOrNull;
+      if (!mounted || replacement?.path == null) return;
+      final index = _attachments.indexOf(attachment);
+      if (index < 0) return;
+      setState(() {
+        _isDirty = true;
+        if (_isEditing) _removedExistingAttachmentNames.add(attachment.name);
+        _attachments[index] = _LoginAttachment.fromPlatformFile(replacement!);
+      });
+    } catch (error) {
+      widget.onShowToast('Unable to replace attachment: $error');
+    }
+  }
+
+  Future<void> _downloadAttachment(_LoginAttachment attachment) async {
+    try {
+      final bytes = attachment.bytes ??
+          (attachment.path == null
+              ? null
+              : await File(attachment.path!).readAsBytes());
+      if (bytes == null) {
+        widget.onShowToast('Attachment bytes are unavailable');
+        return;
+      }
+      final outputPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save attachment',
+        fileName: attachment.name,
+        lockParentWindow: true,
+        type: FileType.any,
+      );
+      if (outputPath == null || outputPath.trim().isEmpty) return;
+      await File(outputPath).writeAsBytes(bytes, flush: true);
+      if (mounted) widget.onShowToast('Attachment saved');
+    } catch (error) {
+      widget.onShowToast('Unable to save attachment: $error');
+    }
   }
 
   void _appendAttachmentFields(List<EntryField> fields) {
@@ -793,13 +869,17 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
 
   Future<void> _saveEdit() async {
     final edit = widget.editingEntry;
-    if (edit == null) return;
+    if (edit == null || _isSaving) return;
 
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       widget.onShowToast('Title is required');
       return;
     }
+
+    setState(() => _isSaving = true);
+    await _existingAttachmentLoad;
+    if (!mounted) return;
 
     final fields = <EntryField>[
       EntryField(key: AppKdbxFieldKeys.title, value: title, isStandard: true),
@@ -861,7 +941,6 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
     }
     _appendAttachmentFields(fields);
 
-    setState(() => _isSaving = true);
     try {
       final repository = ref.read(kdbxRepositoryProvider);
       final entryAttachments =
@@ -1299,6 +1378,8 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
                               attachments: _attachments,
                               onAddPressed: _pickAttachments,
                               onRemove: _removeAttachment,
+                              onReplace: _replaceAttachment,
+                              onDownload: _downloadAttachment,
                             ),
                             const SizedBox(height: 10),
                             Align(

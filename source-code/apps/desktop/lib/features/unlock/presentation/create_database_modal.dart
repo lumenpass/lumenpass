@@ -228,8 +228,10 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _restoreCloudState());
   }
 
-  void _restoreCloudState() {
-    final googleEmail = ref.read(backupGoogleAccountProvider);
+  Future<void> _restoreCloudState() async {
+    final googleEmail =
+        await BackupService.instance.restoreGoogleSessionEmail();
+    if (!mounted) return;
     final dropboxEmail = ref.read(backupDropboxAccountProvider);
     final oneDriveEmail = ref.read(backupOneDriveAccountProvider);
     final oneDriveFolderId = ref.read(backupOneDriveFolderIdProvider);

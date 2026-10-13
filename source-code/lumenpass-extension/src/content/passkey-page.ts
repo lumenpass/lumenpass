@@ -214,6 +214,21 @@
     });
 
     (cred as unknown as Record<string, unknown>).getClientExtensionResults = () => ({});
+    // Native WebAuthn methods require browser-owned internal slots. A credential
+    // assembled from the prototype has none, so the inherited toJSON throws.
+    (cred as unknown as Record<string, unknown>).toJSON = () => ({
+      id: b64url(r.credentialId),
+      rawId: b64url(r.credentialId),
+      type: "public-key",
+      authenticatorAttachment: "platform",
+      response: {
+        clientDataJSON: b64url(r.clientDataJSON),
+        authenticatorData: b64url(r.authenticatorData),
+        signature: b64url(r.signature),
+        userHandle: r.userHandle ? b64url(r.userHandle) : null,
+      },
+      clientExtensionResults: {},
+    });
 
     console.log("[LumenPass Passkey] built credential id:", b64url(r.credentialId).slice(0, 12) + "…");
     return cred;
@@ -224,6 +239,7 @@
     clientDataJSON: number[];
     attestationObject: number[];
     authData: number[];
+    publicKey?: number[];
   }): PublicKeyCredential {
     const response = Object.create(
       AuthenticatorAttestationResponse.prototype,
@@ -235,7 +251,7 @@
       attestationObject: { value: toBuffer(r.attestationObject), enumerable: true, configurable: true },
     });
     (response as unknown as Record<string, unknown>).getAuthenticatorData = () => adBuf;
-    (response as unknown as Record<string, unknown>).getPublicKey = () => null;
+    (response as unknown as Record<string, unknown>).getPublicKey = () => r.publicKey ? toBuffer(r.publicKey) : null;
     (response as unknown as Record<string, unknown>).getPublicKeyAlgorithm = () => -7;
     (response as unknown as Record<string, unknown>).getTransports = () => ["internal"];
 
@@ -248,6 +264,21 @@
       response: { value: response, enumerable: true, configurable: true },
     });
     (cred as unknown as Record<string, unknown>).getClientExtensionResults = () => ({});
+    (cred as unknown as Record<string, unknown>).toJSON = () => ({
+      id: b64url(r.credentialId),
+      rawId: b64url(r.credentialId),
+      type: "public-key",
+      authenticatorAttachment: "platform",
+      response: {
+        clientDataJSON: b64url(r.clientDataJSON),
+        attestationObject: b64url(r.attestationObject),
+        authenticatorData: b64url(r.authData),
+        transports: ["internal"],
+        ...(r.publicKey ? { publicKey: b64url(r.publicKey) } : {}),
+        publicKeyAlgorithm: -7,
+      },
+      clientExtensionResults: {},
+    });
 
     console.log("[LumenPass Passkey] built attestation credential id:", b64url(r.credentialId).slice(0, 12) + "…");
     return cred;

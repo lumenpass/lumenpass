@@ -35,6 +35,8 @@ import {
   type LoginSurfaceSignals,
 } from "./login-surface";
 import { findBestSelectOptionIndex } from "./select-option-match";
+import { selectCredentialPair } from "./credential-pair";
+import { ADDRESS_FIELD_MATCHERS } from "./address-field-match";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -871,6 +873,15 @@ function getFieldScopeFillFields(anchor: FillableField): FillableField[] {
   return nearby.length > 0 ? nearby : getVisibleFillFields();
 }
 
+function getCreditCardFillFields(): FillableField[] {
+  // A toolbar action may retain focus in an unrelated identity form. Select a
+  // form with a card number rather than letting that focus dictate the scope.
+  const fields = getVisibleFillFields();
+  const cardNumber = fields.find(isCardNumberField);
+  if (!cardNumber) return [];
+  return getFieldScopeFillFields(cardNumber);
+}
+
 function findFallbackUsernameField(passwordField: HTMLInputElement): HTMLInputElement | null {
   const scopeInputs = getFieldScopeInputs(passwordField);
   const passwordIndex = scopeInputs.indexOf(passwordField);
@@ -950,45 +961,6 @@ function getAutofillIconFields(): FillableField[] {
 
 function getPrimaryAutofillField(): FillableField | null {
   return getAutofillIconFields()[0] ?? getAutofillFields()[0] ?? null;
-}
-
-function getPreferredUsernameField(anchor: HTMLInputElement): HTMLInputElement | null {
-  if (isLikelyUsernameField(anchor)) return anchor;
-
-  const scopeInputs = getFieldScopeInputs(anchor);
-  const explicitCandidates = scopeInputs.filter((field) => field !== anchor && isLikelyUsernameField(field));
-  const fallbackCandidates = scopeInputs.filter((field) => (
-    field !== anchor
-    && isTextualField(field)
-    && !isOneTimeCodeField(field)
-    && !/search/.test(getFieldDescriptor(field))
-  ));
-  const candidates = explicitCandidates.length > 0 ? explicitCandidates : fallbackCandidates;
-  if (candidates.length === 0) return null;
-
-  const anchorIndex = scopeInputs.indexOf(anchor);
-  if (anchorIndex !== -1) {
-    const beforeAnchor = candidates.filter((field) => scopeInputs.indexOf(field) < anchorIndex);
-    if (beforeAnchor.length > 0) return beforeAnchor[beforeAnchor.length - 1];
-  }
-
-  return candidates[0] ?? null;
-}
-
-function getPreferredPasswordField(anchor: HTMLInputElement): HTMLInputElement | null {
-  if (isPasswordField(anchor)) return anchor;
-
-  const scopeInputs = getFieldScopeInputs(anchor);
-  const passwordFields = scopeInputs.filter(isPasswordField);
-  if (passwordFields.length === 0) return null;
-
-  const anchorIndex = scopeInputs.indexOf(anchor);
-  if (anchorIndex !== -1) {
-    const nextPassword = passwordFields.find((field) => scopeInputs.indexOf(field) > anchorIndex);
-    if (nextPassword) return nextPassword;
-  }
-
-  return passwordFields[0] ?? null;
 }
 
 function getCurrentAutofillAnchor(): HTMLInputElement | null {
@@ -3452,7 +3424,7 @@ function getCardTypeCandidates(storedType: string, cardNumber: string): string[]
   return Array.from(new Set(candidates.filter((candidate) => candidate.trim().length > 0)));
 }
 
-function findFillTarget(
+function findFillTargets(
   fields: FillableField[],
   {
     autocomplete,
@@ -3463,23 +3435,25 @@ function findFillTarget(
     matcher?: RegExp;
     exclude?: Set<FillableField>;
   },
-): FillableField | null {
+): FillableField[] {
+  const matches: FillableField[] = [];
   if (autocomplete && autocomplete.length > 0) {
     for (const field of fields) {
       if (exclude.has(field)) continue;
-      if (autocomplete.includes(getFieldAutocomplete(field))) return field;
+      if (autocomplete.includes(getFieldAutocomplete(field))) matches.push(field);
     }
   }
 
   if (matcher) {
     for (const field of fields) {
       if (exclude.has(field)) continue;
+      if (matches.includes(field)) continue;
       if (field instanceof HTMLInputElement && isPasswordField(field)) continue;
-      if (matcher.test(getFieldDescriptor(field))) return field;
+      if (matcher.test(getFieldDescriptor(field))) matches.push(field);
     }
   }
 
-  return null;
+  return matches;
 }
 
 function fillMatchingField(
@@ -3498,14 +3472,13 @@ function fillMatchingField(
   const normalizedCandidates = candidates.filter((candidate) => candidate.trim().length > 0);
   if (normalizedCandidates.length === 0) return false;
 
-  const field = findFillTarget(fields, { autocomplete, matcher, exclude: usedFields });
-  if (!field) return false;
-
-  for (const candidate of normalizedCandidates) {
-    if (simulateFill(field, candidate)) {
-      usedFields.add(field);
-      autofilledFields.add(field);
-      return true;
+  for (const field of findFillTargets(fields, { autocomplete, matcher, exclude: usedFields })) {
+    for (const candidate of normalizedCandidates) {
+      if (simulateFill(field, candidate)) {
+        usedFields.add(field);
+        autofilledFields.add(field);
+        return true;
+      }
     }
   }
 
@@ -3546,7 +3519,7 @@ async function fillPostalAddressFields(
 
   const countryFilled = !!country && fillWithCurrentFields(country, {
     autocomplete: ["country", "country-name"],
-    matcher: /^country$|country.?name|country.?or.?region|region.?country|country.?region/,
+    matcher: ADDRESS_FIELD_MATCHERS.country,
   });
 
   // Stripe and similar checkouts often re-render locality/state options after country changes.
@@ -3569,7 +3542,7 @@ async function fillPostalAddressFields(
   if (city) {
     const filledCity = fillWithCurrentFields(city, {
       autocomplete: ["address-level2"],
-      matcher: /^city$|^town$|town.?city|municipality|suburb|locality/,
+      matcher: ADDRESS_FIELD_MATCHERS.city,
     });
     if (!filledCity && options.allowAddressLine1CityFallback) {
       fillWithCurrentFields(city, {
@@ -3581,7 +3554,7 @@ async function fillPostalAddressFields(
   if (state) {
     fillWithCurrentFields(state, {
       autocomplete: ["address-level1"],
-      matcher: /^state$|province|state.?or.?province|state.?or.?territory|region|county|district|prefecture|territory/,
+      matcher: ADDRESS_FIELD_MATCHERS.state,
     });
   }
   if (postalCode) {
@@ -3682,32 +3655,31 @@ async function fillCreditCardEntry(entry: EntryItem): Promise<boolean> {
   );
   const cardTypeCandidates = getCardTypeCandidates(cardType, cardNumber);
 
-  const getScopeFields = () => activeAutofillField
-    ? getFieldScopeFillFields(activeAutofillField)
-    : getVisibleFillFields();
+  const getScopeFields = getCreditCardFillFields;
   const scopeFields = getScopeFields();
+  const cardFields = scopeFields.filter(isCardField);
   const usedFields = new Set<FillableField>();
 
   if (cardTypeCandidates.length > 0) {
-    fillMatchingField(scopeFields, usedFields, cardTypeCandidates, {
+    fillMatchingField(cardFields, usedFields, cardTypeCandidates, {
       autocomplete: ["cc-type"],
       matcher: /cc.?type|card.?type|credit.?card.?type|payment.?type|card.?brand|card.?network|\btype\b/,
     });
   }
   if (cardNumber) {
-    fillMatchingField(scopeFields, usedFields, cardNumber, {
+    fillMatchingField(cardFields, usedFields, cardNumber, {
       autocomplete: ["cc-number"],
       matcher: CARD_NUMBER_DESCRIPTOR_PATTERN,
     });
   }
   if (cvc) {
-    fillMatchingField(scopeFields, usedFields, cvc, {
+    fillMatchingField(cardFields, usedFields, cvc, {
       autocomplete: ["cc-csc"],
       matcher: /^cvv$|^cvc$|^cvn$|^csc$|^cid$|cvv2|cc.?csc|card.?cvv|card.?cvc|card.?verification|security.?code|security.?number|verification.?number|verification.?code|^ccv$/,
     });
   }
   if (cardholder) {
-    fillMatchingField(scopeFields, usedFields, cardholder, {
+    fillMatchingField(cardFields, usedFields, cardholder, {
       autocomplete: ["cc-name"],
       matcher: /cardholder|card.?holder|card.?user.?name|card.?owner|billing.?name|cc.?uname|cc.?name|name.?on.?card|card.?name/,
     });
@@ -3716,7 +3688,7 @@ async function fillCreditCardEntry(entry: EntryItem): Promise<boolean> {
     const expiry = parseCardExpiry(expiryRaw);
     if (expiry) {
       const shortYear = expiry.year.substring(2);
-      if (!fillMatchingField(scopeFields, usedFields, [
+      if (!fillMatchingField(cardFields, usedFields, [
         `${expiry.month}/${shortYear}`,
         `${expiry.month} / ${shortYear}`,
         `${expiry.month}${shortYear}`,
@@ -3724,11 +3696,11 @@ async function fillCreditCardEntry(entry: EntryItem): Promise<boolean> {
         autocomplete: ["cc-exp"],
         matcher: CARD_EXPIRY_DESCRIPTOR_PATTERN,
       })) {
-        fillMatchingField(scopeFields, usedFields, [expiry.month, String(parseInt(expiry.month, 10))], {
+        fillMatchingField(cardFields, usedFields, [expiry.month, String(parseInt(expiry.month, 10))], {
           autocomplete: ["cc-exp-month"],
           matcher: /exp.?month|cc.?exp.?month|cc.?exp.?(mm|mo)|card.?month|card.?exp.?(mm|mo)|expiry.?month|expiry.?(mm|mo)|\bexp.?mm\b|\bccexp.?mm\b/,
         });
-        fillMatchingField(scopeFields, usedFields, [expiry.year, expiry.year.substring(2)], {
+        fillMatchingField(cardFields, usedFields, [expiry.year, expiry.year.substring(2)], {
           autocomplete: ["cc-exp-year"],
           matcher: /exp.?year|cc.?exp.?year|cc.?exp.?(yy|yyyy)|card.?year|card.?exp.?(yy|yyyy)|expiry.?year|expiry.?(yy|yyyy)|\bexp.?yy\b|\bccexp.?yy\b/,
         });
@@ -3881,7 +3853,16 @@ async function fillEntry(entry: EntryItem): Promise<boolean> {
     return false;
   }
 
-  const passwordField = getPreferredPasswordField(anchorField);
+  const pair = selectCredentialPair(
+    getFieldScopeInputs(anchorField),
+    anchorField,
+    isLikelyUsernameField,
+    isPasswordField,
+    (field) => isTextualField(field)
+      && !isOneTimeCodeField(field)
+      && !/search/.test(getFieldDescriptor(field)),
+  );
+  const passwordField = pair.password;
   const passwordFilled = !!(passwordField && fullEntry.password && simulateFill(passwordField, fullEntry.password));
   if (passwordFilled) {
     const trimmedPw = fullEntry.password!.trim();
@@ -3891,7 +3872,7 @@ async function fillEntry(entry: EntryItem): Promise<boolean> {
     autofilledFields.add(passwordField);
   }
 
-  const usernameField = getPreferredUsernameField(anchorField);
+  const usernameField = pair.username;
   const usernameFilled = !!(usernameField && fullEntry.username && simulateFill(usernameField, fullEntry.username));
   if (usernameFilled) {
     autofilledFields.add(usernameField);
@@ -3899,7 +3880,11 @@ async function fillEntry(entry: EntryItem): Promise<boolean> {
 
   let totpFilled = false;
   if (fullEntry.totp) {
-    const totpField = getTotpInputField();
+    const form = passwordField?.form ?? usernameField?.form ?? anchorField.form;
+    const totpField = form
+      ? Array.from(form.querySelectorAll<HTMLInputElement>(TOTP_SELECTOR))
+        .find((field) => isEditableInput(field) && !isPasswordField(field)) ?? null
+      : getTotpInputField();
     if (totpField) {
       totpFilled = simulateFill(totpField, fullEntry.totp);
       if (totpFilled) {
@@ -4304,6 +4289,14 @@ let proactiveLoginPromptShown = false;
 let proactiveLoginPromptRetryTimer: number | null = null;
 let proactiveLoginPromptDismissedKey: string | null = null;
 let proactiveLoginPromptLastAttemptAt = 0;
+let pageLoadAutofillRetryCount = 0;
+const PAGE_LOAD_AUTOFILL_MAX_RETRIES = 3;
+
+function retryPageLoadAutofill(): void {
+  if (pageLoadAutofillRetryCount >= PAGE_LOAD_AUTOFILL_MAX_RETRIES) return;
+  pageLoadAutofillRetryCount += 1;
+  scheduleProactiveLoginPromptCheck(1200, { force: true });
+}
 
 function getProactiveLoginPromptPageKey(): string {
   return `${window.location.origin}${window.location.pathname}${window.location.search}`;
@@ -4431,7 +4424,7 @@ type SaveLoginEditedValues = {
 
 function showSaveLoginPrompt(
   info: SaveLoginPromptInfo,
-  onSave: (values: SaveLoginEditedValues, categoryUuid: string, opts?: { existingEntryId?: string }) => void,
+  onSave: (values: SaveLoginEditedValues, categoryUuid: string, opts?: { existingEntryId?: string }) => Promise<boolean>,
   onCancel: () => void,
 ): void {
   proactiveLoginPromptShown = false;
@@ -4708,23 +4701,31 @@ function showSaveLoginPrompt(
     };
   };
 
-  const saveWith = (opts: { existingEntryId?: string }): void => {
+  let saving = false;
+  const saveWith = async (opts: { existingEntryId?: string }): Promise<void> => {
+    if (saving) return;
     const values = collectValues();
     if (!values) return;
-    closePrompt();
-    onSave(values, selectedCategoryId, opts);
+    saving = true;
+    primaryButtons.forEach((button) => { button.disabled = true; });
+    try {
+      if (await onSave(values, selectedCategoryId, opts)) closePrompt();
+    } finally {
+      saving = false;
+      primaryButtons.forEach((button) => { button.disabled = false; });
+    }
   };
 
-  el.querySelector("#lp-save-btn")?.addEventListener("click", () => saveWith({}));
+  el.querySelector("#lp-save-btn")?.addEventListener("click", () => { void saveWith({}); });
   el.querySelector("#lp-save-update-btn")?.addEventListener("click", () => {
     if (isMultiChoice) {
       const selected = el.querySelector<HTMLInputElement>("input[name='lp-save-candidate']:checked");
-      saveWith({ existingEntryId: selected?.value });
+      void saveWith({ existingEntryId: selected?.value });
     } else {
-      saveWith({ existingEntryId: info.existingEntryId });
+      void saveWith({ existingEntryId: info.existingEntryId });
     }
   });
-  el.querySelector("#lp-save-newdup-btn")?.addEventListener("click", () => saveWith({}));
+  el.querySelector("#lp-save-newdup-btn")?.addEventListener("click", () => { void saveWith({}); });
   el.querySelector("#lp-save-cancel")?.addEventListener("click", () => { closePrompt(); onCancel(); });
   el.querySelector("#lp-save-close")?.addEventListener("click", () => { closePrompt(); onCancel(); });
 
@@ -7670,29 +7671,46 @@ async function checkForLoginsOnLoad(): Promise<void> {
   try {
     // Read the autofill-on-page-load setting from the service worker's cached settings.
     let autofillOnPageLoad = false;
+    let settingsAvailable = false;
     try {
       const settingsRes = await browser.runtime.sendMessage({ type: "GET_SETTINGS" });
       if (settingsRes?.ok && settingsRes.data) {
+        settingsAvailable = true;
         autofillOnPageLoad = (settingsRes.data as { autofillOnPageLoad?: boolean }).autofillOnPageLoad ?? false;
       }
     } catch {
       // Keep the fresh-install default.
     }
 
+    if (!settingsAvailable) {
+      retryPageLoadAutofill();
+      return;
+    }
+
     await fetchEntriesForPage();
     if (socialEntries.length > 0) {
       maybeShowSocialFloatingSuggestion();
     }
-    if (!entries.length || passkeyPromptEl || isInlineAutofillPopupVisible()) return;
+    if (!entries.length) {
+      if (autofillOnPageLoad) retryPageLoadAutofill();
+      return;
+    }
+    if (passkeyPromptEl || isInlineAutofillPopupVisible()) return;
     // Only autofill silently when the user has enabled autofill-on-page-load.
     // The floating login picker panel has been removed; inline field autofill
     // remains available via the field icon and anchored popup.
     if (!autofillOnPageLoad) return;
 
+    pageLoadAutofillRetryCount = 0;
     activeAutofillField = activeAutofillField ?? getPrimaryAutofillField();
+    if (entries.length > 1 && activeAutofillField) {
+      showPopup(activeAutofillField);
+      return;
+    }
     await fillEntry(entries[0]);
   } catch {
-    // Ignore if the extension is disconnected or the page is no longer valid.
+    // The service worker may still be starting after a normal page reload.
+    retryPageLoadAutofill();
   }
 }
 
@@ -7802,6 +7820,12 @@ async function checkForPasskeysOnLoad(): Promise<void> {
 
 browser.runtime.onMessage.addListener((rawMessage: unknown) => {
   const message = rawMessage as { type: string; payload?: unknown };
+
+  if (message.type === "FILL_POPUP_ENTRY") {
+    return fillEntry(message.payload as EntryItem)
+      .then((filled) => ({ ok: filled }))
+      .catch(() => ({ ok: false }));
+  }
 
   if (message.type === "DISABLED_AUTOFILL_DOMAINS_UPDATED") {
     const payload = message.payload as { disabledAutofillDomains?: DisabledAutofillDomain[] };
@@ -8064,11 +8088,14 @@ browser.runtime.onMessage.addListener((rawMessage: unknown) => {
               ? "Login updated in LumenPass"
               : "Login saved to LumenPass";
           showSaveResultToast(true, okMsg);
+          return true;
         } else {
           showSaveResultToast(false, response?.error ?? "Failed to save login");
+          return false;
         }
-      } catch {
-        showSaveResultToast(false, "Failed to save login");
+      } catch (error) {
+        showSaveResultToast(false, error instanceof Error ? error.message : "Failed to save login");
+        return false;
       }
     },
     () => { /* user dismissed */ },

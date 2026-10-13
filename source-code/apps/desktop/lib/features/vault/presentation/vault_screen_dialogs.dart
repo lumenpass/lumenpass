@@ -310,18 +310,21 @@ class _RemoveAttributeConfirmationOverlay extends StatelessWidget {
   }
 }
 
-class _DeleteConfirmationOverlay extends StatelessWidget {
-  const _DeleteConfirmationOverlay({
+class VaultDeleteConfirmationOverlay extends StatelessWidget {
+  const VaultDeleteConfirmationOverlay({
+    super.key,
     required this.entryTitle,
     required this.isDeleting,
     required this.onCancel,
     required this.onConfirm,
+    this.isPermanent = false,
   });
 
   final String entryTitle;
   final bool isDeleting;
   final VoidCallback onCancel;
   final VoidCallback onConfirm;
+  final bool isPermanent;
 
   @override
   Widget build(BuildContext context) {
@@ -355,7 +358,9 @@ class _DeleteConfirmationOverlay extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      'Are you sure you want to delete\n"$entryTitle"?',
+                      isPermanent
+                          ? 'Permanently delete\n"$entryTitle"?'
+                          : 'Are you sure you want to delete\n"$entryTitle"?',
                       style: _text(
                         18,
                         const Color(0xFF202939),
@@ -365,7 +370,9 @@ class _DeleteConfirmationOverlay extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      "Once deleted, you can restore this item from Trash later. This confirmation is shown to prevent accidental removal.",
+                      isPermanent
+                          ? 'This item will be removed from Trash and cannot be recovered.'
+                          : 'Once deleted, you can restore this item from Trash later. This confirmation is shown to prevent accidental removal.',
                       style: _text(
                         14,
                         const Color(0xFF4B5565),
@@ -387,7 +394,11 @@ class _DeleteConfirmationOverlay extends StatelessWidget {
                           ),
                         ),
                         child: Text(
-                          isDeleting ? 'Deleting...' : 'Delete Item',
+                          isDeleting
+                              ? 'Deleting...'
+                              : isPermanent
+                                  ? 'Delete permanently'
+                                  : 'Delete Item',
                           style: _text(
                             14,
                             Colors.white,

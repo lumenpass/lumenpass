@@ -1,0 +1,15 @@
+{
+  "version": "2.9",
+  "children": [
+    {
+      "id": "smoke_frame",
+      "type": "frame",
+      "x": 100,
+      "y": 100,
+      "width": 400,
+      "height": 300,
+      "fill": "#0F172A",
+      "children": []
+    }
+  ]
+}

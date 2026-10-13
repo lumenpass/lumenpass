@@ -208,7 +208,7 @@ export async function saveEntry(
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify(data),
-  });
+  }, 30_000);
   if (!response.ok) throw buildError("SERVER_ERROR", `Server returned ${response.status}`);
   return response.json() as Promise<{ ok: boolean; id?: string; mode?: "created" | "updated" }>;
 }

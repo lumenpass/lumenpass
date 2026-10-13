@@ -51,6 +51,49 @@ void main() {
       expect(repository.currentDatabase, isNull);
     });
 
+    test('restoring a trashed entry returns it to its original category',
+        () async {
+      final categoryUuid = await repository.createGroup(
+        parentGroupUuid: repository.rootGroupUuid!,
+        name: 'QA Category',
+      );
+      final entry = await repository.createEntry(
+        groupUuid: categoryUuid,
+        fields: const <EntryField>[
+          EntryField(key: AppKdbxFieldKeys.title, value: 'Recover me'),
+        ],
+      );
+
+      await repository.deleteEntry(entry.uuid);
+      expect(await repository.restoreEntry(entry.uuid), isFalse);
+
+      final restored = (await repository.searchEntries())
+          .singleWhere((candidate) => candidate.uuid == entry.uuid);
+      expect(restored.groupUuid, categoryUuid);
+    });
+
+    test('restoring falls back to root when the original category is trashed',
+        () async {
+      final categoryUuid = await repository.createGroup(
+        parentGroupUuid: repository.rootGroupUuid!,
+        name: 'Removed Category',
+      );
+      final entry = await repository.createEntry(
+        groupUuid: categoryUuid,
+        fields: const <EntryField>[
+          EntryField(key: AppKdbxFieldKeys.title, value: 'Recover me'),
+        ],
+      );
+
+      await repository.deleteEntry(entry.uuid);
+      await repository.deleteGroup(categoryUuid);
+      expect(await repository.restoreEntry(entry.uuid), isTrue);
+
+      final restored = (await repository.searchEntries())
+          .singleWhere((candidate) => candidate.uuid == entry.uuid);
+      expect(restored.groupUuid, repository.rootGroupUuid);
+    });
+
     test('favicon cache writes do not change usage timestamps', () async {
       final entry = await repository.createEntry(
         groupUuid: repository.rootGroupUuid!,

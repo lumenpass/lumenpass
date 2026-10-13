@@ -23,4 +23,4 @@ if let existing = _others.first {
 }
 
 // Not a duplicate — proceed with normal full launch.
-NSApplicationMain(CommandLine.argc, CommandLine.unsafeArgv)
+_ = NSApplicationMain(CommandLine.argc, CommandLine.unsafeArgv)

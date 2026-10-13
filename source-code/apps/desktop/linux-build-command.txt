@@ -1,0 +1,9 @@
+
+
+GPG_KEY_ID=6709A866C744182C  SKIP_DOCKER_TESTS=1 ./release-deb.sh
+GPG_KEY_ID=6709A866C744182C ./release-appimage.sh
+GPG_KEY_ID=6709A866C744182C ./release-rpm.sh
+
+
+# Ubuntu remove lumenpass package
+sudo apt remove --purge lumenpass

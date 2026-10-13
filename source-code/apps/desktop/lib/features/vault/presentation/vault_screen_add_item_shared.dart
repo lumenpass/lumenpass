@@ -2042,11 +2042,15 @@ class _AttachmentSection extends StatelessWidget {
     required this.attachments,
     required this.onAddPressed,
     required this.onRemove,
+    this.onReplace,
+    this.onDownload,
   });
 
   final List<_LoginAttachment> attachments;
   final Future<void> Function() onAddPressed;
   final ValueChanged<_LoginAttachment> onRemove;
+  final ValueChanged<_LoginAttachment>? onReplace;
+  final ValueChanged<_LoginAttachment>? onDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -2139,6 +2143,12 @@ class _AttachmentSection extends StatelessWidget {
             _LoginAttachmentTile(
               attachment: attachments[index],
               onRemove: () => onRemove(attachments[index]),
+              onReplace: onReplace == null
+                  ? null
+                  : () => onReplace!(attachments[index]),
+              onDownload: onDownload == null
+                  ? null
+                  : () => onDownload!(attachments[index]),
             ),
             if (index != attachments.length - 1) const SizedBox(height: 8),
           ],
@@ -2152,10 +2162,14 @@ class _LoginAttachmentTile extends StatelessWidget {
   const _LoginAttachmentTile({
     required this.attachment,
     required this.onRemove,
+    this.onReplace,
+    this.onDownload,
   });
 
   final _LoginAttachment attachment;
   final VoidCallback onRemove;
+  final VoidCallback? onReplace;
+  final VoidCallback? onDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -2198,6 +2212,18 @@ class _LoginAttachmentTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
+          if (onDownload != null)
+            IconButton(
+              tooltip: 'Download ${attachment.name}',
+              onPressed: onDownload,
+              icon: const Icon(TablerIcons.download, size: 16),
+            ),
+          if (onReplace != null)
+            IconButton(
+              tooltip: 'Replace ${attachment.name}',
+              onPressed: onReplace,
+              icon: const Icon(TablerIcons.replace, size: 16),
+            ),
           _WebsiteRemoveButton(onTap: onRemove),
         ],
       ),

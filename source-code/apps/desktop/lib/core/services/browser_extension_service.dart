@@ -1292,6 +1292,7 @@ class BrowserExtensionService {
       'title': entry.title,
       'username': entry.username ?? '',
       'password': password,
+      'kind': _entryKind(entry),
       'url': entry.url ?? '',
       'totp': totp,
       'notes': entry.notes ?? '',

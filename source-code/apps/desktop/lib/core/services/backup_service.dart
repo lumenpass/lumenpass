@@ -1983,6 +1983,17 @@ class BackupService {
 
   String? get currentGoogleEmail => _googleAuth.currentEmail;
 
+  /// Resolves the actual OAuth session before a picker advertises a connected
+  /// account. The saved account email alone does not prove that a usable token
+  /// still exists on this device.
+  Future<String?> restoreGoogleSessionEmail() async {
+    try {
+      return (await _googleAuth.signInSilently())?.email;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<Map<String, String>> _requireGoogleAuthHeaders() async {
     var creds = _googleAuth.currentUser;
     creds ??= await _googleAuth.signInSilently();

@@ -56,6 +56,8 @@ import '../../unlock/application/database_registry.dart';
 import '../application/vault_item_type.dart';
 import '../application/vault_providers.dart';
 import '../application/vault_search_ranking.dart';
+import '../infrastructure/ssh_private_key_tools.dart';
+import 'vault_empty_state_copy.dart';
 import '../../../presentation/theme/app_theme.dart';
 import '../../../presentation/widgets/lumenpass_wordmark.dart';
 
@@ -124,6 +126,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
   bool _toastIsDanger = false;
   _MockEntry? _pendingDeleteEntry;
   bool _isDeletingEntry = false;
+  _MockEntry? _pendingPermanentDeleteEntry;
+  bool _isPermanentlyDeletingEntry = false;
   _MockEntry? _pendingPasskeyRemovalEntry;
   bool _isNewItemModalOpen = false;
   bool _isAddCategoryModalOpen = false;
@@ -649,11 +653,21 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
                     ),
                   if (_pendingDeleteEntry != null)
                     Positioned.fill(
-                      child: _DeleteConfirmationOverlay(
+                      child: VaultDeleteConfirmationOverlay(
                         entryTitle: _pendingDeleteEntry!.title,
                         isDeleting: _isDeletingEntry,
                         onCancel: _dismissDeleteDialog,
                         onConfirm: _confirmDeleteEntry,
+                      ),
+                    ),
+                  if (_pendingPermanentDeleteEntry != null)
+                    Positioned.fill(
+                      child: VaultDeleteConfirmationOverlay(
+                        entryTitle: _pendingPermanentDeleteEntry!.title,
+                        isDeleting: _isPermanentlyDeletingEntry,
+                        isPermanent: true,
+                        onCancel: _dismissPermanentDeleteDialog,
+                        onConfirm: _confirmPermanentDeleteEntry,
                       ),
                     ),
                   if (_pendingPasskeyRemovalEntry != null)
@@ -1274,35 +1288,53 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
     if (_entries.isEmpty) return;
     final entry = _entries[_selectedIndex];
     if (entry.uuid.isEmpty) return;
-    _doPermanentDelete(entry);
+    setState(() {
+      _pendingPermanentDeleteEntry = entry;
+      _isPermanentlyDeletingEntry = false;
+    });
   }
 
-  Future<void> _doPermanentDelete(_MockEntry entry) async {
-    setState(() {
-      _entries = List<_MockEntry>.of(_entries)..remove(entry);
-      if (_entries.isEmpty) {
-        _selectedIndex = 0;
-      } else if (_selectedIndex >= _entries.length) {
-        _selectedIndex = _entries.length - 1;
-      }
-    });
+  void _dismissPermanentDeleteDialog() {
+    if (_isPermanentlyDeletingEntry) return;
+    setState(() => _pendingPermanentDeleteEntry = null);
+  }
+
+  Future<void> _confirmPermanentDeleteEntry() async {
+    final entry = _pendingPermanentDeleteEntry;
+    if (entry == null || _isPermanentlyDeletingEntry) return;
+    setState(() => _isPermanentlyDeletingEntry = true);
     try {
       await ref.read(kdbxRepositoryProvider).permanentlyDeleteEntry(entry.uuid);
       _evictMockEntryCache(entry.uuid);
       publishAndScheduleSave(ref, ref.read(kdbxRepositoryProvider));
       if (!mounted) return;
+      setState(() {
+        _entries = List<_MockEntry>.of(_entries)..remove(entry);
+        if (_entries.isEmpty) {
+          _selectedIndex = 0;
+        } else if (_selectedIndex >= _entries.length) {
+          _selectedIndex = _entries.length - 1;
+        }
+        _pendingPermanentDeleteEntry = null;
+        _isPermanentlyDeletingEntry = false;
+      });
       _showToast('${entry.title} permanently deleted');
     } catch (e) {
-      if (mounted) _showToast('Failed to delete item: $e', danger: true);
+      if (!mounted) return;
+      setState(() => _isPermanentlyDeletingEntry = false);
+      _showToast('Failed to delete item: $e', danger: true);
     }
   }
 
   Future<void> _doRestoreEntry(_MockEntry entry) async {
     try {
-      await ref.read(kdbxRepositoryProvider).restoreEntry(entry.uuid);
+      final usedFallback =
+          await ref.read(kdbxRepositoryProvider).restoreEntry(entry.uuid);
       publishAndScheduleSave(ref, ref.read(kdbxRepositoryProvider));
       if (!mounted) return;
-      _showToast('${entry.title} restored');
+      _showToast(usedFallback
+          ? '${entry.title} restored to All Items because its original category is unavailable'
+          : '${entry.title} restored');
     } catch (e) {
       if (mounted) _showToast('Failed to restore item: $e', danger: true);
     }
@@ -1625,6 +1657,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
 
   void _openNewItemModal() {
     setState(() {
+      // Extension and tray requests can arrive while Settings covers the vault.
+      _isSettingsOpen = false;
       _isNewItemModalOpen = true;
     });
   }

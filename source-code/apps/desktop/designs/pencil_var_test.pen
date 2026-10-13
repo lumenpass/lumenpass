@@ -1,0 +1,18 @@
+{
+  "version": "2.9",
+  "variables": {
+    "--background": { "type": "color", "value": "#0F172A" }
+  },
+  "children": [
+    {
+      "id": "var_frame",
+      "type": "frame",
+      "x": 100,
+      "y": 100,
+      "width": 400,
+      "height": 300,
+      "fill": "$--background",
+      "children": []
+    }
+  ]
+}
