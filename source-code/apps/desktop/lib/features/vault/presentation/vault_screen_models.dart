@@ -287,33 +287,33 @@ const List<_NewItemType> _allNewItemTypes = <_NewItemType>[
     id: 'login',
     label: 'Login',
     icon: TablerIcons.lock,
-    iconColor: Color(0xFF2DA8B6),
+    iconColor: DcColors.cyan,
   ),
   _NewItemType(
     id: 'secure-note',
     label: 'Secure Note',
     icon: TablerIcons.notes,
-    iconColor: Color(0xFFE0A433),
+    iconColor: DcColors.orange,
     imagePath: 'assets/images/item_type_note.png',
   ),
   _NewItemType(
     id: 'credit-card',
     label: 'Credit Card',
     icon: TablerIcons.credit_card,
-    iconColor: Color(0xFF4A9EE8),
+    iconColor: DcColors.selection,
   ),
   _NewItemType(
     id: 'identity',
     label: 'Identity',
     icon: TablerIcons.id,
-    iconColor: Color(0xFF56B676),
+    iconColor: DcColors.green,
     imagePath: 'assets/images/item_type_identity.png',
   ),
   _NewItemType(
     id: 'ssh-key',
     label: 'SSH Key',
     icon: TablerIcons.key,
-    iconColor: Color(0xFF1D6570),
+    iconColor: DcColors.teal,
     showPlus: true,
     imagePath: 'assets/images/item_type_ssh.png',
   ),
@@ -321,38 +321,38 @@ const List<_NewItemType> _allNewItemTypes = <_NewItemType>[
     id: 'document',
     label: 'Document',
     icon: TablerIcons.file_description,
-    iconColor: Color(0xFF4F97F1),
+    iconColor: DcColors.selection,
   ),
   _NewItemType(
     id: 'bank-account',
     label: 'Bank Account',
     icon: TablerIcons.building_bank,
-    iconColor: Color(0xFF1F9A76),
+    iconColor: DcColors.teal,
     imagePath: 'assets/images/item_type_bank.png',
   ),
   _NewItemType(
     id: 'api-credential',
     label: 'API Credential',
     icon: TablerIcons.key,
-    iconColor: Color(0xFF8C57D9),
+    iconColor: DcColors.purple,
   ),
   _NewItemType(
     id: 'server',
     label: 'Server',
     icon: TablerIcons.server,
-    iconColor: Color(0xFF4F97F1),
+    iconColor: DcColors.selection,
   ),
   _NewItemType(
     id: 'wifi-password',
     label: 'Wi-Fi Password',
     icon: TablerIcons.wifi,
-    iconColor: Color(0xFFE0A433),
+    iconColor: DcColors.orange,
   ),
   _NewItemType(
     id: 'passport',
     label: 'Passport',
     icon: Icons.menu_book_outlined,
-    iconColor: Color(0xFF2DA8B6),
+    iconColor: DcColors.cyan,
   ),
 ];
 
@@ -371,16 +371,16 @@ const List<String> _sshKeyAddMoreOptions = <String>[
 ];
 
 const List<(Color, Color)> _tilePalette = <(Color, Color)>[
-  (Color(0xFFE5D6A4), Color(0xFF6E6546)),
-  (Color(0xFFDDD7CC), Color(0xFF6A645A)),
-  (Color(0xFFD7EACF), Color(0xFF5F7855)),
-  (Color(0xFFE6DBF8), Color(0xFF6A5D86)),
-  (Color(0xFFDCE5FA), Color(0xFF566789)),
-  (Color(0xFFE4E8EF), Color(0xFF626B77)),
-  (Color(0xFFFFE4E4), Color(0xFF885050)),
-  (Color(0xFFE4F4FF), Color(0xFF476880)),
-  (Color(0xFFFFF0D6), Color(0xFF7A5B1A)),
-  (Color(0xFFD6F5EE), Color(0xFF2E6B58)),
+  (DcColors.amber, DcColors.text),
+  (DcColors.well, DcColors.muted),
+  (DcColors.well, DcColors.muted),
+  (DcColors.well, DcColors.muted),
+  (DcColors.well, DcColors.selection),
+  (DcColors.well, DcColors.muted),
+  (DcColors.rowAlternate, DcColors.red),
+  (DcColors.rowAlternate, DcColors.selection),
+  (Color(0x38FC9942), DcColors.amber),
+  (Color(0x3847C7B8), DcColors.teal),
 ];
 
 const List<String> _monthAbbr = <String>[
@@ -1444,14 +1444,14 @@ String _displayLabelForFieldKey(String key) {
   if (normalized.contains('url') || normalized.contains('website')) {
     return (
       icon: TablerIcons.world_www,
-      iconColor: const Color(0xFF635BDB),
-      labelColor: const Color(0xFF635BDB),
+      iconColor: DcColors.indigo,
+      labelColor: DcColors.indigo,
     );
   }
   if (normalized.contains('email')) {
     return (
       icon: Icons.alternate_email_rounded,
-      iconColor: const Color(0xFF5C7CFA),
+      iconColor: DcColors.selection,
       labelColor: null,
     );
   }
@@ -1462,7 +1462,7 @@ String _displayLabelForFieldKey(String key) {
       normalized.contains('holder')) {
     return (
       icon: TablerIcons.user,
-      iconColor: const Color(0xFF5C7CFA),
+      iconColor: DcColors.selection,
       labelColor: null,
     );
   }
@@ -1472,7 +1472,7 @@ String _displayLabelForFieldKey(String key) {
       itemType == VaultItemType.creditCard) {
     return (
       icon: TablerIcons.credit_card,
-      iconColor: const Color(0xFF4A9EE8),
+      iconColor: DcColors.selection,
       labelColor: null,
     );
   }
@@ -1481,7 +1481,7 @@ String _displayLabelForFieldKey(String key) {
       normalized.contains('date')) {
     return (
       icon: Icons.calendar_today_outlined,
-      iconColor: const Color(0xFF2DA8B6),
+      iconColor: DcColors.cyan,
       labelColor: null,
     );
   }
@@ -1492,7 +1492,7 @@ String _displayLabelForFieldKey(String key) {
       normalized.contains('bic')) {
     return (
       icon: TablerIcons.building_bank,
-      iconColor: const Color(0xFF1F9A76),
+      iconColor: DcColors.teal,
       labelColor: null,
     );
   }
@@ -1502,21 +1502,21 @@ String _displayLabelForFieldKey(String key) {
       normalized.contains('ip')) {
     return (
       icon: TablerIcons.server,
-      iconColor: const Color(0xFF4F97F1),
+      iconColor: DcColors.selection,
       labelColor: null,
     );
   }
   if (normalized.contains('wifi') || normalized.contains('ssid')) {
     return (
       icon: TablerIcons.wifi,
-      iconColor: const Color(0xFFE0A433),
+      iconColor: DcColors.orange,
       labelColor: null,
     );
   }
   if (normalized.contains('passport') || normalized.contains('identity')) {
     return (
       icon: TablerIcons.id_badge_2,
-      iconColor: const Color(0xFF56B676),
+      iconColor: DcColors.green,
       labelColor: null,
     );
   }
@@ -1526,42 +1526,42 @@ String _displayLabelForFieldKey(String key) {
       normalized.contains('ssh')) {
     return (
       icon: TablerIcons.key,
-      iconColor: const Color(0xFF1D6570),
+      iconColor: DcColors.teal,
       labelColor: null,
     );
   }
   if (normalized.contains('password') || normalized.contains('passphrase')) {
     return (
       icon: TablerIcons.lock,
-      iconColor: const Color(0xFF5E6B7D),
+      iconColor: DcColors.muted,
       labelColor: null,
     );
   }
   if (normalized.contains('phone')) {
     return (
       icon: Icons.phone_outlined,
-      iconColor: const Color(0xFF2DA8B6),
+      iconColor: DcColors.cyan,
       labelColor: null,
     );
   }
   if (normalized.contains('address')) {
     return (
       icon: Icons.location_on_outlined,
-      iconColor: const Color(0xFF56B676),
+      iconColor: DcColors.green,
       labelColor: null,
     );
   }
   if (isSecret) {
     return (
       icon: TablerIcons.key,
-      iconColor: const Color(0xFFC08A1A),
+      iconColor: DcColors.amber,
       labelColor: null,
     );
   }
 
   return (
     icon: Icons.label_outline_rounded,
-    iconColor: const Color(0xFF8A97AC),
+    iconColor: DcColors.muted,
     labelColor: null,
   );
 }
@@ -1573,13 +1573,13 @@ const List<_MockEntry> _mockEntries = <_MockEntry>[
     subtitle: 'alex@example.com',
     dateLabel: 'Today',
     initials: 'Mi',
-    tileColor: Color(0xFFE5D6A4),
-    tileTextColor: Color(0xFF6E6546),
+    tileColor: DcColors.amber,
+    tileTextColor: DcColors.text,
     hasPasskeyChip: true,
     metricLine: '132 • 132',
     metricBadge: '04',
     metricIcon: TablerIcons.clock,
-    metricIconColor: Color(0xFFDE8A2E),
+    metricIconColor: DcColors.orange,
     website: 'https://github.com/login',
     username: 'alex@lumenpass.app',
     password: '••••••••••••',
@@ -1607,8 +1607,8 @@ const List<_MockEntry> _mockEntries = <_MockEntry>[
     subtitle: 'workspace account — long note preview...',
     dateLabel: 'Yesterday',
     initials: 'No',
-    tileColor: Color(0xFFDDD7CC),
-    tileTextColor: Color(0xFF6A645A),
+    tileColor: DcColors.well,
+    tileTextColor: DcColors.muted,
     website: 'https://notion.so/login',
     username: 'workspace@company.com',
     password: '••••••••••••',
@@ -1633,8 +1633,8 @@ const List<_MockEntry> _mockEntries = <_MockEntry>[
     subtitle: 'root+prod@company.io',
     dateLabel: 'Mar 27',
     initials: 'Aw',
-    tileColor: Color(0xFFD7EACF),
-    tileTextColor: Color(0xFF5F7855),
+    tileColor: DcColors.well,
+    tileTextColor: DcColors.muted,
     hasPasskeyChip: true,
     website: 'https://signin.aws.amazon.com',
     username: 'root+prod@company.io',
@@ -1660,8 +1660,8 @@ const List<_MockEntry> _mockEntries = <_MockEntry>[
     subtitle: 'design-team@company.com',
     dateLabel: 'Mar 22',
     initials: 'Fi',
-    tileColor: Color(0xFFE6DBF8),
-    tileTextColor: Color(0xFF6A5D86),
+    tileColor: DcColors.well,
+    tileTextColor: DcColors.muted,
     website: 'https://www.figma.com/login',
     username: 'design-team@company.com',
     password: '••••••••••••',
@@ -1686,12 +1686,12 @@ const List<_MockEntry> _mockEntries = <_MockEntry>[
     subtitle: 'billing-admin@startup.io',
     dateLabel: 'Mar 19',
     initials: 'St',
-    tileColor: Color(0xFFDCE5FA),
-    tileTextColor: Color(0xFF566789),
+    tileColor: DcColors.well,
+    tileTextColor: DcColors.selection,
     metricLine: '907 • 441',
     metricBadge: '09',
     metricIcon: TablerIcons.shield,
-    metricIconColor: Color(0xFF16A34A),
+    metricIconColor: DcColors.green,
     website: 'https://dashboard.stripe.com/login',
     username: 'billing-admin@startup.io',
     password: '••••••••••••',
@@ -1717,8 +1717,8 @@ const List<_MockEntry> _mockEntries = <_MockEntry>[
     subtitle: 'Project tracker note preview text...',
     dateLabel: 'Mar 14',
     initials: 'Li',
-    tileColor: Color(0xFFE4E8EF),
-    tileTextColor: Color(0xFF626B77),
+    tileColor: DcColors.well,
+    tileTextColor: DcColors.muted,
     hasPasskeyChip: true,
     website: 'https://linear.app/login',
     username: 'ops@company.io',

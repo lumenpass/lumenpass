@@ -1,5 +1,18 @@
 part of 'vault_screen.dart';
 
+/// Light surfaces used only by add/edit-item dialogs, not the vault workspace.
+abstract final class _ItemModalColors {
+  static const Color surface = DcColors.lightSurface;
+  static const Color surfaceMuted = DcColors.lightInset;
+  static const Color peach = DcColors.sidebarHover;
+  static const Color peachSoft = DcColors.lightSelectionFill;
+  static const Color title = DcColors.sidebarText;
+  static const Color headerLabel = DcColors.sidebarMuted;
+  static const Color icon = DcColors.sidebarMuted;
+  static const Color borderSoft = DcColors.sidebarLine;
+  static const Color borderPane = DcColors.lightLineStrong;
+}
+
 const Set<String> _hiddenAddItemTypeIds = <String>{
   'document',
   'api-credential',
@@ -8,8 +21,8 @@ const Set<String> _hiddenAddItemTypeIds = <String>{
   'passport',
 };
 
-class _AddNewItemOverlay extends ConsumerStatefulWidget {
-  const _AddNewItemOverlay({
+class AddNewItemOverlay extends ConsumerStatefulWidget {
+  const AddNewItemOverlay({
     required this.onClose,
     required this.onShowToast,
     required this.onItemCreated,
@@ -20,7 +33,7 @@ class _AddNewItemOverlay extends ConsumerStatefulWidget {
   final ValueChanged<String> onItemCreated;
 
   @override
-  ConsumerState<_AddNewItemOverlay> createState() => _AddNewItemOverlayState();
+  ConsumerState<AddNewItemOverlay> createState() => _AddNewItemOverlayState();
 }
 
 enum _AddItemModalView {
@@ -39,7 +52,7 @@ enum _CreditCardSectionKind {
   additional,
 }
 
-class _AddNewItemOverlayState extends ConsumerState<_AddNewItemOverlay> {
+class _AddNewItemOverlayState extends ConsumerState<AddNewItemOverlay> {
   _AddItemModalView _view = _AddItemModalView.picker;
 
   void _returnToPicker() {
@@ -59,7 +72,7 @@ class _AddNewItemOverlayState extends ConsumerState<_AddNewItemOverlay> {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
               child: Container(
-                color: const Color(0x66000000),
+                color: DcColors.scrim,
                 alignment: Alignment.center,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
@@ -152,8 +165,8 @@ class _AddNewItemOverlayState extends ConsumerState<_AddNewItemOverlay> {
   }
 
   Widget _buildTypePickerModal(BoxConstraints constraints) {
-    final modalWidth = math.min(680.0, constraints.maxWidth);
-    final modalHeight = math.min(540.0, constraints.maxHeight);
+    final modalWidth = math.min(560.0, constraints.maxWidth);
+    final modalHeight = math.min(440.0, constraints.maxHeight);
     final visibleNewItemTypes = _allNewItemTypes
         .where((item) => !_hiddenAddItemTypeIds.contains(item.id))
         .toList(growable: false);
@@ -161,14 +174,13 @@ class _AddNewItemOverlayState extends ConsumerState<_AddNewItemOverlay> {
     return Container(
       width: modalWidth,
       constraints: BoxConstraints(maxHeight: modalHeight),
-      padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: _VaultColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _VaultColors.borderPane),
+        color: _ItemModalColors.surface,
+        borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x1C172033),
+            color: DcColors.shadow,
             blurRadius: 44,
             offset: Offset(0, 20),
           ),
@@ -177,25 +189,10 @@ class _AddNewItemOverlayState extends ConsumerState<_AddNewItemOverlay> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  'Add an item',
-                  style: _displayText(21, _VaultColors.title),
-                ),
-              ),
-              _ModalIconAction(
-                icon: TablerIcons.x,
-                onTap: widget.onClose,
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          const Divider(height: 1, color: _VaultColors.borderSoft),
-          const SizedBox(height: 16),
+          DcDialogTitleBar(title: 'Add an item', onClose: widget.onClose),
           Flexible(
             child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -203,11 +200,11 @@ class _AddNewItemOverlayState extends ConsumerState<_AddNewItemOverlay> {
                     'ITEM TYPE',
                     style: _text(
                       10,
-                      _VaultColors.headerLabel,
+                      _ItemModalColors.headerLabel,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   LayoutBuilder(
                     builder: (context, gridConstraints) {
                       final columns = gridConstraints.maxWidth < 460 ? 1 : 2;
@@ -221,7 +218,7 @@ class _AddNewItemOverlayState extends ConsumerState<_AddNewItemOverlay> {
                                 for (var column = 0;
                                     column < columns;
                                     column++) ...<Widget>[
-                                  if (column > 0) const SizedBox(width: 10),
+                                  if (column > 0) const SizedBox(width: 8),
                                   Expanded(
                                     child: index + column <
                                             visibleNewItemTypes.length
@@ -239,7 +236,7 @@ class _AddNewItemOverlayState extends ConsumerState<_AddNewItemOverlay> {
                               ],
                             ),
                             if (index + columns < visibleNewItemTypes.length)
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 8),
                           ],
                         ],
                       );

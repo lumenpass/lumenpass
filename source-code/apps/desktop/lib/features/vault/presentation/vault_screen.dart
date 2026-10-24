@@ -59,6 +59,9 @@ import '../application/vault_search_ranking.dart';
 import '../infrastructure/ssh_private_key_tools.dart';
 import 'vault_empty_state_copy.dart';
 import '../../../presentation/theme/app_theme.dart';
+import '../../../presentation/theme/drive_clue_tokens.dart';
+import '../../../presentation/widgets/drive_clue/drive_clue_widgets.dart';
+import '../../../presentation/widgets/drive_clue/dc_dialog_title_bar.dart';
 import '../../../presentation/widgets/lumenpass_wordmark.dart';
 
 part 'vault_screen_theme.dart';
@@ -637,7 +640,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
                     ),
                   if (_isNewItemModalOpen)
                     Positioned.fill(
-                      child: _AddNewItemOverlay(
+                      child: AddNewItemOverlay(
                         onClose: _dismissNewItemModal,
                         onShowToast: _showToast,
                         onItemCreated: _focusEntryByUuid,
@@ -2012,145 +2015,151 @@ class _VaultWindow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final compactWorkspace = width < 1120;
-    final sidebarWidth = compactWorkspace ? 256.0 : 272.0;
+    final sidebarWidth = compactWorkspace ? DcMetrics.sidebarWidth : 256.0;
     final listWidth = compactWorkspace ? 312.0 : 328.0;
 
-    // Two-column layout with a compact sidebar and workspace title bar.
+    // DriveClue shell: light sidebar | 1 px divider | dark slate content,
+    // with a gray status bar pinned to the bottom.
     //
-    //   ┌───────────────────────┬─────────────────────────────────────────┐
-    //   │ _SidebarPane          │ _VaultTitleBar  (~56 px)                │
-    //   │ (native-safe inset)   ├─────────────────────────────────────────┤
-    //   │                       │ ┌──────────┬─┬────────────────────────┐ │
-    //   │                       │ │ _ListPane│ │ _DetailPane / _Empty…  │ │
-    //   │   (Expanded)          │ └──────────┴─┴────────────────────────┘ │
-    //   └───────────────────────┴─────────────────────────────────────────┘
-    //
-    // The sidebar starts directly below the native window controls instead
-    // of reserving an empty title strip.
+    //   ┌───────────────────┬┬──────────────────────────────────────────┐
+    //   │ _SidebarPane      ││ _VaultTitleBar  (46 px breadcrumb)       │
+    //   │ (light, 244 px)   │├──────────────────────────────────────────┤
+    //   │                   ││ _ListPane │ _DetailPane / _Empty…        │
+    //   ├───────────────────┴┴──────────────────────────────────────────┤
+    //   │ _VaultStatusBar (28 px)                                       │
+    //   └───────────────────────────────────────────────────────────────┘
     return Container(
       width: width,
       height: height,
       color: _VaultColors.canvas,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: <Widget>[
-          // LEFT column ─ compact sidebar; its own top inset clears native
-          // window controls without reserving an empty header strip.
-          _SidebarPane(
-            width: sidebarWidth,
-            onLockVault: onLockVault,
-            onOpenImport: onOpenImport,
-            onOpenAddCategoryModal: onOpenAddCategoryModal,
-            onEditCategory: onEditCategory,
-            onDeleteCategory: onDeleteCategory,
-          ),
-          // RIGHT column ─ compact header + list/detail content.
           Expanded(
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                _VaultTitleBar(
-                  onImportPressed: onOpenImport,
-                  onSettingsPressed: onOpenSettings,
+                // LEFT column ─ light sidebar; its own top inset clears
+                // native window controls.
+                _SidebarPane(
+                  width: sidebarWidth,
+                  onLockVault: onLockVault,
+                  onOpenImport: onOpenImport,
+                  onOpenAddCategoryModal: onOpenAddCategoryModal,
+                  onEditCategory: onEditCategory,
+                  onDeleteCategory: onDeleteCategory,
                 ),
-                if (isPasswordAuditView && passwordAuditSelection == null)
-                  _PasswordAuditReportPane(
-                    report: passwordAuditReport,
-                    duplicatedCount: passwordAuditDuplicatedCount,
-                    weakCount: passwordAuditWeakCount,
-                    staleCount: passwordAuditStaleCount,
-                    onIssueSelected: onPasswordAuditIssueSelected,
-                  )
-                else if (isPasswordAuditView &&
-                    passwordAuditSelection == PasswordAuditIssue.duplicated &&
-                    passwordAuditDuplicateGroupSelection == null)
-                  _PasswordAuditDuplicateGroupsPane(
-                    groups: passwordAuditDuplicateGroups,
-                    onGroupSelected: onPasswordAuditDuplicateGroupSelected,
-                    onBack: onPasswordAuditBack,
+                const SizedBox(
+                  width: 1,
+                  child: ColoredBox(color: DcColors.lightLineStrong),
+                ),
+                // RIGHT column ─ breadcrumb header + list/detail content.
+                Expanded(
+                  child: _buildContentColumn(listWidth),
+                ),
+              ],
+            ),
+          ),
+          const _VaultStatusBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContentColumn(double listWidth) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _VaultTitleBar(
+          onImportPressed: onOpenImport,
+          onSettingsPressed: onOpenSettings,
+        ),
+        if (isPasswordAuditView && passwordAuditSelection == null)
+          _PasswordAuditReportPane(
+            report: passwordAuditReport,
+            duplicatedCount: passwordAuditDuplicatedCount,
+            weakCount: passwordAuditWeakCount,
+            staleCount: passwordAuditStaleCount,
+            onIssueSelected: onPasswordAuditIssueSelected,
+          )
+        else if (isPasswordAuditView &&
+            passwordAuditSelection == PasswordAuditIssue.duplicated &&
+            passwordAuditDuplicateGroupSelection == null)
+          _PasswordAuditDuplicateGroupsPane(
+            groups: passwordAuditDuplicateGroups,
+            onGroupSelected: onPasswordAuditDuplicateGroupSelected,
+            onBack: onPasswordAuditBack,
+          )
+        else
+          Expanded(
+            child: Row(
+              children: <Widget>[
+                _ListPane(
+                  width: listWidth,
+                  entries: _entriesForListPane(),
+                  selectedIndex: _safeSelectedIndexForListPane(),
+                  onEntrySelected: (clippedIndex) {
+                    final clipped = _entriesForListPane();
+                    if (clippedIndex < 0 || clippedIndex >= clipped.length) {
+                      return;
+                    }
+                    final uuid = clipped[clippedIndex].uuid;
+                    final fullIndex = entries.indexWhere((e) => e.uuid == uuid);
+                    if (fullIndex >= 0) {
+                      onEntrySelected(fullIndex);
+                    }
+                  },
+                  onRefreshEntries: onRefreshEntries,
+                  isRefreshing: isRefreshing,
+                  sortField: sortField,
+                  sortDirection: sortDirection,
+                  onSortChanged: onSortChanged,
+                  searchQuery: searchQuery,
+                  onClearSearch: onClearSearch,
+                  onOpenEntryWebsite: (i) =>
+                      _forwardClippedIndex(i, onOpenEntryWebsite),
+                  onEditEntry: (i) => _forwardClippedIndex(i, onEditEntry),
+                  onDuplicateEntry: (i) =>
+                      _forwardClippedIndex(i, onDuplicateEntry),
+                  onCopyEntryTotp: (i) =>
+                      _forwardClippedIndex(i, onCopyEntryTotp),
+                  onDeleteEntry: (i) => _forwardClippedIndex(i, onDeleteEntry),
+                  isPasswordAuditView: isPasswordAuditView,
+                  passwordAuditReport: passwordAuditReport,
+                  passwordAuditDuplicatedCount: passwordAuditDuplicatedCount,
+                  passwordAuditWeakCount: passwordAuditWeakCount,
+                  passwordAuditStaleCount: passwordAuditStaleCount,
+                  passwordAuditSelection: passwordAuditSelection,
+                  passwordAuditDuplicateGroupLabel: _resolveDuplicateGroupLabel(
+                    passwordAuditDuplicateGroups,
+                    passwordAuditDuplicateGroupSelection,
+                  ),
+                  onPasswordAuditIssueSelected: onPasswordAuditIssueSelected,
+                  onPasswordAuditBack: onPasswordAuditBack,
+                  floatingActionsKey: floatingActionsKey,
+                  onNewItemPressed: onOpenNewItemModal,
+                  onEntryRequested: onEntryRequested,
+                ),
+                const _VaultWorkspaceDivider(),
+                if (_resolveSelectedEntry() != null)
+                  _DetailPane(
+                    entry: _resolveSelectedEntry()!,
+                    onShowToast: onShowToast,
+                    onRequestDelete: onRequestDelete,
+                    onRequestRemovePasskey: onRequestRemovePasskey,
+                    onRequestRestore: onRequestRestore,
+                    onRequestPermanentDelete: onRequestPermanentDelete,
+                    onOpenScanTotp: onOpenScanTotp,
+                    onOpenEditItem: onOpenEditItem,
+                    onOpenSshAgentSettings: onOpenSshAgentSettings,
                   )
                 else
-                  Expanded(
-                    child: Row(
-                      children: <Widget>[
-                        _ListPane(
-                          width: listWidth,
-                          entries: _entriesForListPane(),
-                          selectedIndex: _safeSelectedIndexForListPane(),
-                          onEntrySelected: (clippedIndex) {
-                            final clipped = _entriesForListPane();
-                            if (clippedIndex < 0 ||
-                                clippedIndex >= clipped.length) {
-                              return;
-                            }
-                            final uuid = clipped[clippedIndex].uuid;
-                            final fullIndex =
-                                entries.indexWhere((e) => e.uuid == uuid);
-                            if (fullIndex >= 0) {
-                              onEntrySelected(fullIndex);
-                            }
-                          },
-                          onRefreshEntries: onRefreshEntries,
-                          isRefreshing: isRefreshing,
-                          sortField: sortField,
-                          sortDirection: sortDirection,
-                          onSortChanged: onSortChanged,
-                          searchQuery: searchQuery,
-                          onClearSearch: onClearSearch,
-                          onOpenEntryWebsite: (i) =>
-                              _forwardClippedIndex(i, onOpenEntryWebsite),
-                          onEditEntry: (i) =>
-                              _forwardClippedIndex(i, onEditEntry),
-                          onDuplicateEntry: (i) =>
-                              _forwardClippedIndex(i, onDuplicateEntry),
-                          onCopyEntryTotp: (i) =>
-                              _forwardClippedIndex(i, onCopyEntryTotp),
-                          onDeleteEntry: (i) =>
-                              _forwardClippedIndex(i, onDeleteEntry),
-                          isPasswordAuditView: isPasswordAuditView,
-                          passwordAuditReport: passwordAuditReport,
-                          passwordAuditDuplicatedCount:
-                              passwordAuditDuplicatedCount,
-                          passwordAuditWeakCount: passwordAuditWeakCount,
-                          passwordAuditStaleCount: passwordAuditStaleCount,
-                          passwordAuditSelection: passwordAuditSelection,
-                          passwordAuditDuplicateGroupLabel:
-                              _resolveDuplicateGroupLabel(
-                            passwordAuditDuplicateGroups,
-                            passwordAuditDuplicateGroupSelection,
-                          ),
-                          onPasswordAuditIssueSelected:
-                              onPasswordAuditIssueSelected,
-                          onPasswordAuditBack: onPasswordAuditBack,
-                          floatingActionsKey: floatingActionsKey,
-                          onNewItemPressed: onOpenNewItemModal,
-                          onEntryRequested: onEntryRequested,
-                        ),
-                        const _VaultWorkspaceDivider(),
-                        if (_resolveSelectedEntry() != null)
-                          _DetailPane(
-                            entry: _resolveSelectedEntry()!,
-                            onShowToast: onShowToast,
-                            onRequestDelete: onRequestDelete,
-                            onRequestRemovePasskey: onRequestRemovePasskey,
-                            onRequestRestore: onRequestRestore,
-                            onRequestPermanentDelete: onRequestPermanentDelete,
-                            onOpenScanTotp: onOpenScanTotp,
-                            onOpenEditItem: onOpenEditItem,
-                            onOpenSshAgentSettings: onOpenSshAgentSettings,
-                          )
-                        else
-                          const Expanded(
-                            child: _EmptyDetailPane(),
-                          ),
-                      ],
-                    ),
+                  const Expanded(
+                    child: _EmptyDetailPane(),
                   ),
               ],
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -2241,15 +2250,9 @@ class _VaultWorkspaceDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 8,
-      decoration: const BoxDecoration(
-        color: _VaultColors.canvas,
-        border: Border(
-          left: BorderSide(color: _VaultColors.borderPane),
-          right: BorderSide(color: _VaultColors.borderSoft),
-        ),
-      ),
+    return const SizedBox(
+      width: 1,
+      child: ColoredBox(color: DcColors.lightLineStrong),
     );
   }
 }

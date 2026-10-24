@@ -6,6 +6,8 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../domain/import_provider.dart';
 import '../application/import_state.dart';
+import 'import_light_colors.dart';
+import '../../../presentation/widgets/drive_clue/dc_dialog_title_bar.dart';
 
 enum _ImportStep { chooseProvider, uploadFile }
 
@@ -161,15 +163,14 @@ class _ImportProviderModalState extends ConsumerState<ImportProviderModal> {
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
         child: Container(
-          width: 620,
-          padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
+          width: 520,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFCF6),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFFCEC7BB)),
+            color: ImportColors.panel,
+            borderRadius: BorderRadius.circular(7),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: Color(0x295B4638),
+                color: ImportColors.shadow,
                 blurRadius: 32,
                 offset: Offset(0, 14),
               ),
@@ -179,26 +180,30 @@ class _ImportProviderModalState extends ConsumerState<ImportProviderModal> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              _Header(
-                subtitle: _step == _ImportStep.chooseProvider
-                    ? 'Choose a password manager to import from'
-                    : 'Upload your $providerName export file',
+              DcDialogTitleBar(
+                title: _step == _ImportStep.chooseProvider
+                    ? 'Import Passwords from providers'
+                    : 'Upload $providerName export',
                 onClose: widget.onClose,
               ),
-              const SizedBox(height: 20),
-              _Stepper(currentStep: _step),
-              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                child: _Stepper(currentStep: _step),
+              ),
               Flexible(
                 child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: _step == _ImportStep.chooseProvider
                       ? _buildProviderStep(errorMessage)
                       : _buildUploadStep(errorMessage),
                 ),
               ),
-              const SizedBox(height: 20),
-              Container(height: 1, color: const Color(0xFFCEC7BB)),
-              const SizedBox(height: 16),
-              _buildFooter(),
+              const SizedBox(height: 12),
+              Container(height: 1, color: ImportColors.lineStrong),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+                child: _buildFooter(),
+              ),
             ],
           ),
         ),
@@ -217,7 +222,7 @@ class _ImportProviderModalState extends ConsumerState<ImportProviderModal> {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 8,
           crossAxisSpacing: 8,
-          childAspectRatio: 0.92,
+          childAspectRatio: 1.1,
           children: ImportProviderDefinition.all.map((provider) {
             final isSelected = _selectedProvider?.type == provider.type;
             return _ProviderCard(
@@ -286,82 +291,26 @@ class _ImportProviderModalState extends ConsumerState<ImportProviderModal> {
           _FooterButton(
             label: 'Back',
             backgroundColor: Colors.transparent,
-            textColor: const Color(0xFF74766F),
-            borderColor: const Color(0xFFCEC7BB),
+            textColor: ImportColors.muted,
+            borderColor: ImportColors.lineStrong,
             onTap: _handleBack,
           ),
         const Spacer(),
         _FooterButton(
           label: 'Cancel',
           backgroundColor: Colors.transparent,
-          textColor: const Color(0xFF74766F),
-          borderColor: const Color(0xFFCEC7BB),
+          textColor: ImportColors.muted,
+          borderColor: ImportColors.lineStrong,
           onTap: widget.onClose,
         ),
         const SizedBox(width: 10),
         _FooterButton(
           label: 'Next',
           backgroundColor:
-              _canGoNext ? const Color(0xFFFF5B22) : const Color(0xFFD8D2C7),
-          textColor: _canGoNext ? Colors.white : const Color(0xFFA09D95),
+              _canGoNext ? ImportColors.selection : ImportColors.row,
+          textColor: _canGoNext ? Colors.white : ImportColors.faint,
           onTap: _canGoNext ? _handleNext : null,
         ),
-      ],
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.subtitle, required this.onClose});
-
-  final String subtitle;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: const Color(0xFFFAEDE5),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          alignment: Alignment.center,
-          child: const Icon(
-            TablerIcons.file_import,
-            size: 20,
-            color: Color(0xFFFF5B22),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const Text(
-                'Import Passwords',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E2021),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF74766F),
-                ),
-              ),
-            ],
-          ),
-        ),
-        _IconButton(icon: TablerIcons.x, onTap: onClose),
       ],
     );
   }
@@ -375,8 +324,8 @@ class _Stepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isStep2 = currentStep == _ImportStep.uploadFile;
-    const Color accent = Color(0xFFFF5B22);
-    const Color mutedText = Color(0xFF908D86);
+    const Color accent = ImportColors.selection;
+    const Color mutedText = ImportColors.faint;
     return Row(
       children: <Widget>[
         _StepBadge(
@@ -389,7 +338,7 @@ class _Stepper extends StatelessWidget {
           child: Container(
             height: 2,
             margin: const EdgeInsets.symmetric(horizontal: 12),
-            color: isStep2 ? accent : const Color(0xFFD8D2C7),
+            color: isStep2 ? accent : ImportColors.line,
           ),
         ),
         _StepBadge(
@@ -421,7 +370,7 @@ class _StepBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color accent = Color(0xFFFF5B22);
+    const Color accent = ImportColors.selection;
     final bool filled = isActive || isDone;
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -431,9 +380,9 @@ class _StepBadge extends StatelessWidget {
           height: 26,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: filled ? accent : Colors.white,
+            color: filled ? accent : ImportColors.rowAlternate,
             border: Border.all(
-              color: filled ? accent : const Color(0xFFCEC7BB),
+              color: filled ? accent : ImportColors.lineStrong,
               width: 1.5,
             ),
           ),
@@ -445,7 +394,7 @@ class _StepBadge extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: filled ? Colors.white : const Color(0xFF908D86),
+                    color: filled ? Colors.white : ImportColors.faint,
                   ),
                 ),
         ),
@@ -476,15 +425,15 @@ class _InfoBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E8),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE7CFC0)),
+        color: ImportColors.selectionSoft,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: ImportColors.line),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Icon(TablerIcons.info_circle,
-              size: 16, color: Color(0xFF168B76)),
+              size: 16, color: ImportColors.teal),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -493,7 +442,7 @@ class _InfoBanner extends StatelessWidget {
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
                 height: 1.4,
-                color: Color(0xFF4F524E),
+                color: ImportColors.muted,
               ),
             ),
           ),
@@ -523,9 +472,9 @@ class _ProviderSummary extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F3EA),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFCEC7BB)),
+        color: ImportColors.row,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: ImportColors.lineStrong),
       ),
       child: Row(
         children: <Widget>[
@@ -553,7 +502,7 @@ class _ProviderSummary extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E2021),
+                    color: ImportColors.text,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -562,7 +511,7 @@ class _ProviderSummary extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFF74766F),
+                    color: ImportColors.muted,
                   ),
                 ),
               ],
@@ -587,30 +536,30 @@ class _DropZoneShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color accent = Color(0xFFFF5B22);
-    final Color borderColor = isDragOver ? accent : const Color(0xFFCEC7BB);
+    const Color accent = ImportColors.selection;
+    final Color borderColor = isDragOver ? accent : ImportColors.lineStrong;
     final double borderWidth = isDragOver ? 1.8 : 1.4;
 
     final LinearGradient background = isDragOver
         ? const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFFFFF3E8), Color(0xFFF3E4D6)],
+            colors: <Color>[ImportColors.selectionSoft, ImportColors.row],
           )
         : const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFFFFFCF6), Color(0xFFF8F3EA)],
+            colors: <Color>[ImportColors.rowAlternate, ImportColors.row],
           );
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 180),
+      constraints: const BoxConstraints(minHeight: 140),
       decoration: BoxDecoration(
         gradient: background,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(7),
         boxShadow: <BoxShadow>[
           BoxShadow(
             color: accent.withValues(alpha: isDragOver ? 0.08 : 0.03),
@@ -700,68 +649,36 @@ class _DropAreaPrompt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           _DropIconStack(isDragOver: isDragOver),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(
-                isDragOver
-                    ? 'Release to drop file'
-                    : 'Drag & drop your file here',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E2021),
-                  letterSpacing: -0.1,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFD8D2C7)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const Icon(
-                      TablerIcons.file_type_csv,
-                      size: 12,
-                      color: Color(0xFF74766F),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Supported: $acceptedLabel',
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF74766F),
-                        letterSpacing: 0.1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            isDragOver ? 'Release to drop file' : 'Drag & drop your file here',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: ImportColors.text,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
+          Text(
+            'Supported: $acceptedLabel',
+            style: const TextStyle(fontSize: 11, color: ImportColors.muted),
+          ),
+          const SizedBox(height: 6),
           Text(
             'or',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: const Color(0xFFA09D95),
+              color: ImportColors.faint,
               letterSpacing: 0.4,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           _BrowseButton(onTap: onBrowse),
         ],
       ),
@@ -776,17 +693,17 @@ class _DropIconStack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color accent = Color(0xFFFF5B22);
+    const Color accent = ImportColors.selection;
     return SizedBox(
-      width: 56,
-      height: 56,
+      width: 42,
+      height: 42,
       child: Stack(
         alignment: Alignment.center,
         children: <Widget>[
           AnimatedContainer(
             duration: const Duration(milliseconds: 220),
-            width: isDragOver ? 56 : 52,
-            height: isDragOver ? 56 : 52,
+            width: isDragOver ? 42 : 40,
+            height: isDragOver ? 42 : 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: accent.withValues(alpha: isDragOver ? 0.10 : 0.06),
@@ -794,8 +711,8 @@ class _DropIconStack extends StatelessWidget {
           ),
           AnimatedContainer(
             duration: const Duration(milliseconds: 220),
-            width: isDragOver ? 46 : 42,
-            height: isDragOver ? 46 : 42,
+            width: isDragOver ? 36 : 34,
+            height: isDragOver ? 36 : 34,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: accent.withValues(alpha: isDragOver ? 0.16 : 0.10),
@@ -804,18 +721,16 @@ class _DropIconStack extends StatelessWidget {
           AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOut,
-            width: 34,
-            height: 34,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: <Color>[
-                  isDragOver ? const Color(0xFF0F5060) : Colors.white,
-                  isDragOver
-                      ? const Color(0xFFFF5B22)
-                      : const Color(0xFFF3EDE4),
+                  isDragOver ? ImportColors.teal : ImportColors.rowAlternate,
+                  isDragOver ? ImportColors.selection : ImportColors.row,
                 ],
               ),
               boxShadow: <BoxShadow>[
@@ -859,16 +774,17 @@ class _BrowseButtonState extends State<_BrowseButton> {
         color: Colors.transparent,
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(6),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              color:
-                  _hovered ? const Color(0xFFFFF0E7) : const Color(0xFFFFFCF6),
-              borderRadius: BorderRadius.circular(10),
+              color: _hovered
+                  ? ImportColors.selectionSoft
+                  : ImportColors.rowAlternate,
+              borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: const Color(0xFFFF5B22),
+                color: ImportColors.selection,
                 width: 1.2,
               ),
             ),
@@ -876,14 +792,14 @@ class _BrowseButtonState extends State<_BrowseButton> {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 const Icon(TablerIcons.folder_open,
-                    size: 16, color: Color(0xFFFF5B22)),
+                    size: 16, color: ImportColors.selection),
                 const SizedBox(width: 8),
                 const Text(
                   'Browse files',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFFF5B22),
+                    color: ImportColors.selection,
                   ),
                 ),
               ],
@@ -919,7 +835,7 @@ class _DropAreaSelectedFile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
@@ -927,14 +843,14 @@ class _DropAreaSelectedFile extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: const BoxDecoration(
-              color: Color(0xFFFFF3E8),
+              color: ImportColors.selectionSoft,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
             child: const Icon(
               TablerIcons.file_check,
               size: 26,
-              color: Color(0xFFFF5B22),
+              color: ImportColors.selection,
             ),
           ),
           const SizedBox(height: 10),
@@ -947,7 +863,7 @@ class _DropAreaSelectedFile extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E2021),
+                    color: ImportColors.text,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -956,16 +872,16 @@ class _DropAreaSelectedFile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ImportColors.rowAlternate,
                   borderRadius: BorderRadius.circular(5),
-                  border: Border.all(color: const Color(0xFFD1FAE5)),
+                  border: Border.all(color: ImportColors.greenSoft),
                 ),
                 child: Text(
                   _fileBadgeLabel(fileName),
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF16A34A),
+                    color: ImportColors.green,
                     letterSpacing: 0.3,
                   ),
                 ),
@@ -993,21 +909,19 @@ class _ProviderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        isSelected ? const Color(0xFFFF5B22) : const Color(0xFFD8D2C7);
-    final bgColor =
-        isSelected ? const Color(0xFFFFF0E7) : const Color(0xFFF8F3EA);
+    final borderColor = isSelected ? ImportColors.selection : ImportColors.line;
+    final bgColor = isSelected ? ImportColors.selectionSoft : ImportColors.row;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
               color: borderColor,
               width: isSelected ? 2 : 1,
@@ -1025,17 +939,17 @@ class _ProviderCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     Container(
-                      width: 68,
-                      height: 68,
+                      width: 46,
+                      height: 46,
                       decoration: BoxDecoration(
                         color: provider.primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(7),
                       ),
                       alignment: Alignment.center,
                       child: Image.asset(
                         provider.assetPath,
-                        width: 36,
-                        height: 36,
+                        width: 28,
+                        height: 28,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -1047,7 +961,7 @@ class _ProviderCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF1E2021),
+                        color: ImportColors.text,
                       ),
                     ),
                   ],
@@ -1073,10 +987,10 @@ class _ProviderCheckbox extends StatelessWidget {
       width: 18,
       height: 18,
       decoration: BoxDecoration(
-        color: checked ? const Color(0xFFFF5B22) : Colors.white,
+        color: checked ? ImportColors.selection : ImportColors.rowAlternate,
         borderRadius: BorderRadius.circular(5),
         border: Border.all(
-          color: checked ? const Color(0xFFFF5B22) : const Color(0xFFCEC7BB),
+          color: checked ? ImportColors.selection : ImportColors.lineStrong,
           width: 1.5,
         ),
       ),
@@ -1099,15 +1013,15 @@ class _InlineError extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFECACA)),
+        color: ImportColors.redSoft,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: ImportColors.redLine),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Icon(TablerIcons.alert_triangle,
-              size: 18, color: Color(0xFFDC2626)),
+              size: 18, color: ImportColors.red),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -1116,53 +1030,11 @@ class _InlineError extends StatelessWidget {
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
                 height: 1.4,
-                color: Color(0xFFB91C1C),
+                color: ImportColors.red,
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _IconButton extends StatefulWidget {
-  const _IconButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  State<_IconButton> createState() => _IconButtonState();
-}
-
-class _IconButtonState extends State<_IconButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(999),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color:
-                  _hovered ? const Color(0xFFFAEDE5) : const Color(0xFFF8F3EA),
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFD8D2C7)),
-            ),
-            alignment: Alignment.center,
-            child: Icon(widget.icon, size: 17, color: const Color(0xFF686B67)),
-          ),
-        ),
       ),
     );
   }
@@ -1200,15 +1072,15 @@ class _FooterButtonState extends State<_FooterButton> {
         color: Colors.transparent,
         child: InkWell(
           onTap: isEnabled ? widget.onTap : null,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(6),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: _hovered && isEnabled
                   ? widget.backgroundColor.withValues(alpha: 0.85)
                   : widget.backgroundColor,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(6),
               border: widget.borderColor != null
                   ? Border.all(color: widget.borderColor!)
                   : null,

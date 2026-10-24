@@ -24,7 +24,7 @@ class _EditItemOverlay extends ConsumerWidget {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
               child: Container(
-                color: const Color(0x52000000),
+                color: DcColors.scrim,
                 alignment: Alignment.center,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 28),

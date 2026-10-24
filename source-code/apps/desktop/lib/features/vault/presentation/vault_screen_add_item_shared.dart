@@ -32,14 +32,13 @@ void _showDiscardDialog(BuildContext context, VoidCallback onDiscard) {
       backgroundColor: Colors.transparent,
       child: Container(
         width: 360,
-        padding: const EdgeInsets.all(24),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: _VaultColors.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _VaultColors.borderPane),
+          color: _ItemModalColors.surface,
+          borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x22172033),
+              color: DcColors.shadow,
               blurRadius: 40,
               offset: Offset(0, 16),
             ),
@@ -49,52 +48,56 @@ void _showDiscardDialog(BuildContext context, VoidCallback onDiscard) {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text(
-              'Discard your changes?',
-              textAlign: TextAlign.center,
-              style: _text(17, _VaultColors.title, fontWeight: FontWeight.w700),
+            DcDialogTitleBar(
+              title: 'Discard changes',
+              onClose: () => Navigator.of(ctx).pop(),
             ),
-            const SizedBox(height: 10),
-            Text(
-              "You'll lose your changes to this item. Keep editing to go back and save.",
-              textAlign: TextAlign.center,
-              style: _text(13, _VaultColors.headerLabel,
-                  fontWeight: FontWeight.w400),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 18),
+              child: Text(
+                "You'll lose your changes to this item. Keep editing to go back and save.",
+                style: _text(13, _ItemModalColors.headerLabel),
+              ),
             ),
-            const SizedBox(height: 22),
-            GestureDetector(
-              onTap: () {
-                Navigator.of(ctx).pop();
-                onDiscard();
-              },
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: _kDangerButtonColor,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Discard Changes',
-                  style: _text(14, Colors.white, fontWeight: FontWeight.w600),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  onDiscard();
+                },
+                child: Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _kDangerButtonColor,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Discard Changes',
+                    style: _text(14, Colors.white, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 10),
-            GestureDetector(
-              onTap: () => Navigator.of(ctx).pop(),
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: _VaultColors.surfaceMuted,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: _VaultColors.borderPane),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Keep Editing',
-                  style: _text(14, _VaultColors.title,
-                      fontWeight: FontWeight.w600),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: GestureDetector(
+                onTap: () => Navigator.of(ctx).pop(),
+                child: Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _ItemModalColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: _ItemModalColors.borderPane),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Keep Editing',
+                    style: _text(14, _ItemModalColors.title,
+                        fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ),
@@ -111,8 +114,10 @@ class _CategoryDropdownField extends StatelessWidget {
     required this.rootGroupUuid,
     required this.selectedCategoryUuid,
     required this.onChanged,
+    this.detailRow = false,
   });
 
+  final bool detailRow;
   final List<({String uuid, String name, String notes, int count})> categories;
   final String? rootGroupUuid;
   final String? selectedCategoryUuid;
@@ -120,12 +125,12 @@ class _CategoryDropdownField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const itemTextColor = _VaultColors.title;
-    const labelColor = _VaultColors.headerLabel;
-    const fieldBackgroundColor = _VaultColors.surfaceMuted;
-    const fieldBorderColor = _VaultColors.borderSoft;
-    const hintColor = _VaultColors.icon;
-    const dropdownBackgroundColor = _VaultColors.surface;
+    const itemTextColor = _ItemModalColors.title;
+    const labelColor = _ItemModalColors.headerLabel;
+    const fieldBackgroundColor = _ItemModalColors.surfaceMuted;
+    const fieldBorderColor = _ItemModalColors.borderSoft;
+    const hintColor = _ItemModalColors.icon;
+    const dropdownBackgroundColor = _ItemModalColors.surface;
     final options = <DropdownMenuItem<String>>[];
     if (rootGroupUuid != null) {
       options.add(
@@ -157,6 +162,56 @@ class _CategoryDropdownField extends StatelessWidget {
         ),
       ),
     );
+
+    if (detailRow) {
+      return Container(
+        decoration: const BoxDecoration(
+          border:
+              Border(bottom: BorderSide(color: _ItemModalColors.borderSoft)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 11, 12, 11),
+        child: Row(
+          children: <Widget>[
+            const _CircularDetailIcon(
+              icon: TablerIcons.folder,
+              color: _kPrimaryButtonColor,
+              size: 32,
+              iconSize: 16,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('category',
+                      style:
+                          _text(11, labelColor, fontWeight: FontWeight.w500)),
+                  SizedBox(
+                    height: 28,
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedCategoryUuid,
+                        isExpanded: true,
+                        style: _text(12, itemTextColor,
+                            fontWeight: FontWeight.w500),
+                        dropdownColor: dropdownBackgroundColor,
+                        icon: const Icon(TablerIcons.chevron_down,
+                            size: 14, color: _ItemModalColors.icon),
+                        hint: Text('Select category',
+                            style: _text(12, hintColor,
+                                fontWeight: FontWeight.w500)),
+                        items: options,
+                        onChanged: onChanged,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,7 +256,7 @@ class _CategoryDropdownField extends StatelessWidget {
               icon: const Icon(
                 TablerIcons.chevron_down,
                 size: 14,
-                color: _VaultColors.icon,
+                color: _ItemModalColors.icon,
               ),
               hint: Text(
                 'Select category',
@@ -385,12 +440,13 @@ class _TagEditorState extends State<_TagEditor> {
                         child: Container(
                           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                           decoration: BoxDecoration(
-                            color: _VaultColors.surface,
+                            color: _ItemModalColors.surface,
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: _VaultColors.borderSoft),
+                            border:
+                                Border.all(color: _ItemModalColors.borderSoft),
                             boxShadow: const <BoxShadow>[
                               BoxShadow(
-                                color: Color(0x14172033),
+                                color: DcColors.shadowSoft,
                                 blurRadius: 24,
                                 offset: Offset(0, 10),
                               ),
@@ -406,7 +462,7 @@ class _TagEditorState extends State<_TagEditor> {
                                     : 'Matching tags',
                                 style: _text(
                                   11,
-                                  _VaultColors.headerLabel,
+                                  _ItemModalColors.headerLabel,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -440,12 +496,12 @@ class _TagEditorState extends State<_TagEditor> {
                 height: 38,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  color: _VaultColors.surfaceMuted,
+                  color: _ItemModalColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: _focusNode.hasFocus
                         ? _kPrimaryButtonColor
-                        : _VaultColors.borderSoft,
+                        : _ItemModalColors.borderSoft,
                     width: _focusNode.hasFocus ? 2 : 1,
                   ),
                 ),
@@ -467,14 +523,14 @@ class _TagEditorState extends State<_TagEditor> {
                         onSubmitted: (_) => _commitTagInput(),
                         style: _text(
                           12,
-                          _VaultColors.title,
+                          _ItemModalColors.title,
                           fontWeight: FontWeight.w500,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Add a tag and press Enter',
                           hintStyle: _text(
                             12,
-                            _VaultColors.icon,
+                            _ItemModalColors.icon,
                             fontWeight: FontWeight.w500,
                           ),
                           border: InputBorder.none,
@@ -494,7 +550,7 @@ class _TagEditorState extends State<_TagEditor> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: _VaultColors.peachSoft,
+                          color: _ItemModalColors.peachSoft,
                           borderRadius: BorderRadius.circular(5),
                         ),
                         child: Text(
@@ -547,7 +603,8 @@ class _TagSuggestionChipState extends State<_TagSuggestionChip> {
           curve: Curves.easeOut,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: _hovered ? _VaultColors.peach : _VaultColors.peachSoft,
+            color:
+                _hovered ? _ItemModalColors.peach : _ItemModalColors.peachSoft,
             borderRadius: BorderRadius.circular(5),
           ),
           child: Text(
@@ -578,7 +635,7 @@ class _TagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.only(left: 10, right: 6, top: 6, bottom: 6),
       decoration: BoxDecoration(
-        color: _VaultColors.peachSoft,
+        color: _ItemModalColors.peachSoft,
         borderRadius: BorderRadius.circular(5),
       ),
       child: Row(
@@ -599,7 +656,7 @@ class _TagChip extends StatelessWidget {
             child: const Icon(
               TablerIcons.x,
               size: 12,
-              color: _VaultColors.icon,
+              color: _ItemModalColors.icon,
             ),
           ),
         ],
@@ -635,29 +692,30 @@ class _NewItemTypeRowState extends State<_NewItemTypeRow> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           curve: Curves.easeOut,
-          height: 68,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color:
-                _hovered ? _VaultColors.peachSoft : _VaultColors.surfaceMuted,
+            color: _hovered
+                ? _ItemModalColors.peachSoft
+                : _ItemModalColors.surfaceMuted,
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: _VaultColors.borderSoft),
+            border: Border.all(color: _ItemModalColors.borderSoft),
           ),
           child: Row(
             children: <Widget>[
               _AddItemTypeIcon(
                 icon: widget.option.icon ?? TablerIcons.file_description,
                 color: widget.option.iconColor,
-                size: 36,
-                iconSize: 20,
+                size: 30,
+                iconSize: 17,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   widget.option.label,
                   style: _text(
                     13,
-                    _VaultColors.title,
+                    _ItemModalColors.title,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -665,7 +723,7 @@ class _NewItemTypeRowState extends State<_NewItemTypeRow> {
               const Icon(
                 TablerIcons.chevron_right,
                 size: 16,
-                color: _VaultColors.icon,
+                color: _ItemModalColors.icon,
               ),
             ],
           ),
@@ -762,6 +820,7 @@ class _LoginFormField extends StatefulWidget {
     required this.icon,
     required this.iconColor,
     required this.hintText,
+    this.detailRowKey,
     this.maxLines = 1,
     this.minLines,
     this.obscureText = false,
@@ -774,6 +833,7 @@ class _LoginFormField extends StatefulWidget {
   final IconData icon;
   final Color iconColor;
   final String hintText;
+  final Key? detailRowKey;
   final int maxLines;
   final int? minLines;
   final bool obscureText;
@@ -795,10 +855,16 @@ class _LoginFormFieldState extends State<_LoginFormField> {
     if (widget.maxLines > 1) {
       _effectiveFocusNode.onKeyEvent = _handleMultilineTab;
     }
+    _effectiveFocusNode.addListener(_handleFocusChanged);
+  }
+
+  void _handleFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _effectiveFocusNode.removeListener(_handleFocusChanged);
     if (widget.focusNode == null) {
       _effectiveFocusNode.dispose();
     }
@@ -826,6 +892,47 @@ class _LoginFormFieldState extends State<_LoginFormField> {
     final canTogglePassword = widget.obscureText && widget.maxLines == 1;
     final fieldObscured = canTogglePassword && !_plainPasswordVisible;
 
+    if (widget.detailRowKey != null) {
+      return Container(
+        key: widget.detailRowKey,
+        decoration: BoxDecoration(
+          color: _effectiveFocusNode.hasFocus
+              ? DcColors.selectionSoft
+              : Colors.transparent,
+          border: Border(
+            bottom: const BorderSide(color: _ItemModalColors.borderSoft),
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 11, 12, 11),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            _CircularDetailIcon(
+              icon: widget.icon,
+              color: widget.iconColor,
+              size: 32,
+              iconSize: 16,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    widget.label,
+                    style: _text(11, _ItemModalColors.headerLabel,
+                        fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 3),
+                  _buildInput(fieldObscured, canTogglePassword),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -841,7 +948,7 @@ class _LoginFormFieldState extends State<_LoginFormField> {
               widget.label,
               style: _text(
                 11,
-                _VaultColors.headerLabel,
+                _ItemModalColors.headerLabel,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -854,99 +961,87 @@ class _LoginFormFieldState extends State<_LoginFormField> {
               : const BoxConstraints(minHeight: 40),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: _VaultColors.surfaceMuted,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _VaultColors.borderSoft),
+            color: _ItemModalColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: _ItemModalColors.borderSoft),
           ),
-          child: Row(
-            crossAxisAlignment: widget.maxLines > 1
-                ? CrossAxisAlignment.start
-                : CrossAxisAlignment.center,
-            children: <Widget>[
-              Expanded(
-                child: TextField(
-                  focusNode: _effectiveFocusNode,
-                  controller: widget.controller,
-                  minLines: widget.minLines,
-                  maxLines: widget.maxLines,
-                  obscureText: fieldObscured,
-                  obscuringCharacter: '•',
-                  style: _text(
-                    12,
-                    _VaultColors.title,
-                    height: widget.minLines != null ? 1.4 : null,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: widget.hintText,
-                    hintStyle: _text(
-                      12,
-                      _VaultColors.icon,
-                      fontWeight: FontWeight.w500,
-                      height: widget.minLines != null ? 1.4 : null,
-                    ),
-                    filled: false,
-                    fillColor: Colors.transparent,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    disabledBorder: InputBorder.none,
-                    errorBorder: InputBorder.none,
-                    focusedErrorBorder: InputBorder.none,
-                    isCollapsed: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ),
-              if (canTogglePassword) ...<Widget>[
-                const SizedBox(width: 4),
-                Tooltip(
-                  message:
-                      _plainPasswordVisible ? 'Hide password' : 'Show password',
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => setState(
-                        () => _plainPasswordVisible = !_plainPasswordVisible,
-                      ),
-                      canRequestFocus: false,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Icon(
-                          _plainPasswordVisible
-                              ? TablerIcons.eye_off
-                              : TablerIcons.eye,
-                          size: 18,
-                          color: _VaultColors.icon,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              if (widget.trailing != null) ...<Widget>[
-                const SizedBox(width: 10),
-                widget.trailing!,
-              ],
-            ],
-          ),
+          child: _buildInput(fieldObscured, canTogglePassword),
         ),
       ],
     );
   }
-}
 
-class _PasswordGeneratorIconButton extends StatelessWidget {
-  const _PasswordGeneratorIconButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return _VaultToolbarIconButton(
-      icon: TablerIcons.wand,
-      tooltip: 'Generate password',
-      onPressed: onPressed,
+  Widget _buildInput(bool fieldObscured, bool canTogglePassword) {
+    return Row(
+      crossAxisAlignment: widget.maxLines > 1
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
+      children: <Widget>[
+        Expanded(
+          child: TextField(
+            focusNode: _effectiveFocusNode,
+            controller: widget.controller,
+            minLines: widget.minLines,
+            maxLines: widget.maxLines,
+            obscureText: fieldObscured,
+            obscuringCharacter: '•',
+            style: _text(
+              12,
+              _ItemModalColors.title,
+              height: widget.minLines != null ? 1.4 : null,
+            ),
+            decoration: InputDecoration(
+              hintText: widget.hintText,
+              hintStyle: _text(
+                12,
+                _ItemModalColors.icon,
+                fontWeight: FontWeight.w500,
+                height: widget.minLines != null ? 1.4 : null,
+              ),
+              filled: false,
+              fillColor: Colors.transparent,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              isCollapsed: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        ),
+        if (canTogglePassword) ...<Widget>[
+          const SizedBox(width: 4),
+          Tooltip(
+            message: _plainPasswordVisible ? 'Hide password' : 'Show password',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(
+                  () => _plainPasswordVisible = !_plainPasswordVisible,
+                ),
+                canRequestFocus: false,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    _plainPasswordVisible
+                        ? TablerIcons.eye_off
+                        : TablerIcons.eye,
+                    size: 18,
+                    color: _ItemModalColors.icon,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+        if (widget.trailing != null) ...<Widget>[
+          const SizedBox(width: 10),
+          widget.trailing!,
+        ],
+      ],
     );
   }
 }
@@ -969,7 +1064,8 @@ class _PasswordGenerateSuggestionState
 
   @override
   Widget build(BuildContext context) {
-    final background = _hovered ? _VaultColors.peach : _VaultColors.peachSoft;
+    final background =
+        _hovered ? _ItemModalColors.peach : _ItemModalColors.peachSoft;
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -986,7 +1082,7 @@ class _PasswordGenerateSuggestionState
             decoration: BoxDecoration(
               color: background,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: _VaultColors.peach),
+              border: Border.all(color: _ItemModalColors.peach),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1050,15 +1146,17 @@ class _WebsiteRemoveButtonState extends State<_WebsiteRemoveButton> {
           width: 22,
           height: 22,
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFFEE2E2) : const Color(0xFFFFF1F1),
+            color: _hovered
+                ? _ItemModalColors.peachSoft
+                : _ItemModalColors.surfaceMuted,
             shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFFF4B8B8)),
+            border: Border.all(color: const Color(0x66F75C57)),
           ),
           alignment: Alignment.center,
           child: const Icon(
             TablerIcons.minus,
             size: 12,
-            color: Color(0xFFD94A4A),
+            color: DcColors.redOnLight,
           ),
         ),
       ),
@@ -1081,9 +1179,9 @@ class _AddMoreOptionsCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: _VaultColors.surface,
+        color: _ItemModalColors.surface,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _VaultColors.borderSoft),
+        border: Border.all(color: _ItemModalColors.borderSoft),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1099,7 +1197,7 @@ class _AddMoreOptionsCard extends StatelessWidget {
                   options[index],
                   style: _text(
                     12,
-                    _VaultColors.title,
+                    _ItemModalColors.title,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1111,7 +1209,7 @@ class _AddMoreOptionsCard extends StatelessWidget {
                 child: Divider(
                   height: 1,
                   thickness: 1,
-                  color: _VaultColors.borderSoft,
+                  color: _ItemModalColors.borderSoft,
                 ),
               ),
           ],
@@ -1171,9 +1269,9 @@ class _CreditCardSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: _VaultColors.surfaceMuted,
+        color: _ItemModalColors.surfaceMuted,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _VaultColors.borderSoft),
+        border: Border.all(color: _ItemModalColors.borderSoft),
       ),
       child: Column(
         children: <Widget>[
@@ -1182,7 +1280,7 @@ class _CreditCardSectionCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: const BoxDecoration(
-                color: _VaultColors.peachSoft,
+                color: _ItemModalColors.peachSoft,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
               ),
               child: Row(
@@ -1192,7 +1290,7 @@ class _CreditCardSectionCard extends StatelessWidget {
                       title!,
                       style: _text(
                         13,
-                        _VaultColors.title,
+                        _ItemModalColors.title,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1212,13 +1310,13 @@ class _CreditCardSectionCard extends StatelessWidget {
               const Divider(
                 height: 1,
                 thickness: 1,
-                color: _VaultColors.borderSoft,
+                color: _ItemModalColors.borderSoft,
               ),
           ],
           const Divider(
             height: 1,
             thickness: 1,
-            color: _VaultColors.borderSoft,
+            color: _ItemModalColors.borderSoft,
           ),
           InkWell(
             onTap: onAddField,
@@ -1241,7 +1339,7 @@ class _CreditCardSectionCard extends StatelessWidget {
                   const Icon(
                     TablerIcons.chevron_down,
                     size: 14,
-                    color: _VaultColors.icon,
+                    color: _ItemModalColors.icon,
                   ),
                 ],
               ),
@@ -1281,7 +1379,7 @@ class _CreditCardFieldRow extends StatelessWidget {
             child: Icon(
               TablerIcons.menu_2,
               size: 18,
-              color: Color(0xFF3A3A3A),
+              color: _ItemModalColors.icon,
             ),
           ),
           const SizedBox(width: 14),
@@ -1302,7 +1400,7 @@ class _CreditCardFieldRow extends StatelessWidget {
                           hintText: 'field name',
                           hintStyle: _text(
                             12,
-                            _VaultColors.icon,
+                            _ItemModalColors.icon,
                             fontWeight: FontWeight.w500,
                           ),
                           isCollapsed: true,
@@ -1335,14 +1433,14 @@ class _CreditCardFieldRow extends StatelessWidget {
                       : null,
                   style: _text(
                     16,
-                    _VaultColors.headerLabel,
+                    _ItemModalColors.headerLabel,
                     fontWeight: FontWeight.w400,
                   ),
                   decoration: InputDecoration(
                     hintText: field.valueHint,
                     hintStyle: _text(
                       16,
-                      _VaultColors.icon,
+                      _ItemModalColors.icon,
                       fontWeight: FontWeight.w400,
                     ),
                     isCollapsed: true,
@@ -1360,7 +1458,7 @@ class _CreditCardFieldRow extends StatelessWidget {
               child: Icon(
                 TablerIcons.adjustments_horizontal,
                 size: 18,
-                color: Color(0xFF4B4B4B),
+                color: _ItemModalColors.icon,
               ),
             )
           else if (field.trailingIcon != null)
@@ -1369,7 +1467,7 @@ class _CreditCardFieldRow extends StatelessWidget {
               child: Icon(
                 field.trailingIcon,
                 size: 18,
-                color: _VaultColors.icon,
+                color: _ItemModalColors.icon,
               ),
             )
           else if (field.removable && onRemove != null)
@@ -1415,7 +1513,8 @@ class _CalendarCreditCardFieldRowState
 
   @override
   void dispose() {
-    _removeCalendarOverlay();
+    _calendarOverlayEntry?.remove();
+    _calendarOverlayEntry = null;
     super.dispose();
   }
 
@@ -1471,12 +1570,12 @@ class _CalendarCreditCardFieldRowState
                   width: popupWidth,
                   padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
                   decoration: BoxDecoration(
-                    color: _VaultColors.surface,
+                    color: _ItemModalColors.surface,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: _VaultColors.borderSoft),
+                    border: Border.all(color: _ItemModalColors.borderSoft),
                     boxShadow: const <BoxShadow>[
                       BoxShadow(
-                        color: Color(0x14172033),
+                        color: DcColors.shadowSoft,
                         blurRadius: 20,
                         offset: Offset(0, 8),
                       ),
@@ -1491,8 +1590,8 @@ class _CalendarCreditCardFieldRowState
                           colorScheme: Theme.of(context).colorScheme.copyWith(
                                 primary: _kPrimaryButtonColor,
                                 onPrimary: Colors.white,
-                                surface: _VaultColors.surface,
-                                onSurface: _VaultColors.title,
+                                surface: _ItemModalColors.surface,
+                                onSurface: _ItemModalColors.title,
                               ),
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
@@ -1539,7 +1638,7 @@ class _CalendarCreditCardFieldRowState
             child: Icon(
               TablerIcons.menu_2,
               size: 18,
-              color: Color(0xFF3A3A3A),
+              color: _ItemModalColors.icon,
             ),
           ),
           const SizedBox(width: 14),
@@ -1568,8 +1667,8 @@ class _CalendarCreditCardFieldRowState
                       style: _text(
                         16,
                         widget.field.valueController.text.isEmpty
-                            ? _VaultColors.icon
-                            : _VaultColors.headerLabel,
+                            ? _ItemModalColors.icon
+                            : _ItemModalColors.headerLabel,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -1582,20 +1681,21 @@ class _CalendarCreditCardFieldRowState
           InkWell(
             key: _calendarButtonKey,
             onTap: _toggleCalendar,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(6),
             child: Container(
               width: 30,
               height: 30,
               decoration: BoxDecoration(
-                color:
-                    _showCalendar ? _VaultColors.peachSoft : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+                color: _showCalendar
+                    ? _ItemModalColors.peachSoft
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
               ),
               alignment: Alignment.center,
               child: Icon(
                 widget.field.trailingIcon ?? Icons.calendar_today_outlined,
                 size: 18,
-                color: _VaultColors.icon,
+                color: _ItemModalColors.icon,
               ),
             ),
           ),
@@ -1705,16 +1805,17 @@ class _SectionMinusBadge extends StatelessWidget {
         width: 24,
         height: 24,
         decoration: BoxDecoration(
-          color:
-              onTap == null ? const Color(0xFFFFF5F3) : const Color(0xFFFFF1F1),
+          color: onTap == null
+              ? _ItemModalColors.surfaceMuted
+              : _ItemModalColors.surface,
           shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFFF7A59)),
+          border: Border.all(color: DcColors.redOnLight),
         ),
         alignment: Alignment.center,
         child: const Icon(
           TablerIcons.minus,
           size: 12,
-          color: Color(0xFFFF5A36),
+          color: DcColors.redOnLight,
         ),
       ),
     );
@@ -1821,9 +1922,9 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: _VaultColors.surfaceMuted,
+        color: _ItemModalColors.surfaceMuted,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _VaultColors.borderSoft),
+        border: Border.all(color: _ItemModalColors.borderSoft),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1839,7 +1940,7 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
                   child: const Icon(
                     TablerIcons.menu_2,
                     size: 24,
-                    color: _VaultColors.title,
+                    color: _ItemModalColors.title,
                   ),
                 ),
               ),
@@ -1855,7 +1956,7 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
                   maxLines: 1,
                   style: _text(
                     12,
-                    _VaultColors.title,
+                    _ItemModalColors.title,
                     fontWeight: FontWeight.w500,
                   ),
                   decoration: const InputDecoration(
@@ -1880,14 +1981,14 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
                   enableSuggestions: !isSecretField,
                   style: _text(
                     10,
-                    _VaultColors.headerLabel,
+                    _ItemModalColors.headerLabel,
                     fontWeight: FontWeight.w400,
                   ),
                   decoration: InputDecoration(
                     hintText: 'Enter value',
                     hintStyle: _text(
                       10,
-                      _VaultColors.icon,
+                      _ItemModalColors.icon,
                       fontWeight: FontWeight.w400,
                     ),
                     filled: false,
@@ -1924,7 +2025,7 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
                             ? TablerIcons.eye_off
                             : TablerIcons.eye,
                         size: 16,
-                        color: _VaultColors.icon,
+                        color: _ItemModalColors.icon,
                       ),
                     ),
                   ),
@@ -2069,7 +2170,7 @@ class _AttachmentSection extends StatelessWidget {
               'attachments',
               style: _text(
                 11,
-                _VaultColors.headerLabel,
+                _ItemModalColors.headerLabel,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -2083,9 +2184,9 @@ class _AttachmentSection extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
-              color: _VaultColors.surfaceMuted,
+              color: _ItemModalColors.surfaceMuted,
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: _VaultColors.borderSoft),
+              border: Border.all(color: _ItemModalColors.borderSoft),
             ),
             child: Row(
               children: <Widget>[
@@ -2093,7 +2194,7 @@ class _AttachmentSection extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: _VaultColors.peachSoft,
+                    color: _ItemModalColors.peachSoft,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   alignment: Alignment.center,
@@ -2112,7 +2213,7 @@ class _AttachmentSection extends StatelessWidget {
                         'Add files or images',
                         style: _text(
                           12,
-                          _VaultColors.title,
+                          _ItemModalColors.title,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -2121,7 +2222,7 @@ class _AttachmentSection extends StatelessWidget {
                         'Upload attachments for this item',
                         style: _text(
                           10,
-                          _VaultColors.icon,
+                          _ItemModalColors.icon,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -2177,9 +2278,9 @@ class _LoginAttachmentTile extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _VaultColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _VaultColors.borderSoft),
+        color: _ItemModalColors.surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: _ItemModalColors.borderSoft),
       ),
       child: Row(
         children: <Widget>[
@@ -2195,7 +2296,7 @@ class _LoginAttachmentTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: _text(
                     11,
-                    _VaultColors.title,
+                    _ItemModalColors.title,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -2204,7 +2305,7 @@ class _LoginAttachmentTile extends StatelessWidget {
                   _formatAttachmentSize(attachment.size),
                   style: _text(
                     10,
-                    _VaultColors.icon,
+                    _ItemModalColors.icon,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -2276,15 +2377,15 @@ class _LoginAttachmentThumb extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: attachment.isImage
-            ? _VaultColors.peachSoft
-            : _VaultColors.surfaceMuted,
+            ? _ItemModalColors.peachSoft
+            : _ItemModalColors.surfaceMuted,
         borderRadius: BorderRadius.circular(8),
       ),
       alignment: Alignment.center,
       child: Icon(
         attachment.isImage ? TablerIcons.photo : TablerIcons.file_description,
         size: 18,
-        color: _VaultColors.icon,
+        color: _ItemModalColors.icon,
       ),
     );
   }

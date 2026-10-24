@@ -6,14 +6,15 @@ import '../../../core/services/backup_service.dart';
 
 import '../../../core/services/webdav_service.dart';
 import '../../../presentation/theme/app_theme.dart';
+import '../../../presentation/theme/drive_clue_tokens.dart';
 
-const Color _kCanvas = Color(0xFFF6F8FB);
-const Color _kBorderSoft = Color(0xFFE1E7F0);
-const Color _kBorderRow = Color(0xFFE6EAF0);
-const Color _kTitle = Color(0xFF22314A);
-const Color _kLabel = Color(0xFF73839D);
-const Color _kIcon = Color(0xFF8A97AC);
-const Color _kBlue = Color(0xFF4B6CFF);
+const Color _kCanvas = DcColors.panel;
+const Color _kBorderSoft = DcColors.line;
+const Color _kBorderRow = DcColors.line;
+const Color _kTitle = DcColors.text;
+const Color _kLabel = DcColors.muted;
+const Color _kIcon = DcColors.faint;
+const Color _kBlue = DcColors.selection;
 
 TextStyle _uText(
   double size,
@@ -218,10 +219,10 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClue(),
       child: Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: DcColors.panel,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         child: SizedBox(
           width: 420,
           child: Column(
@@ -364,7 +365,7 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
             height: 30,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF3F8),
+              color: DcColors.selectionSoft,
               borderRadius: BorderRadius.circular(8),
             ),
             child:
@@ -455,7 +456,7 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
             hintText: hint,
             hintStyle: _uText(13, _kIcon),
             filled: true,
-            fillColor: enabled ? _kCanvas : const Color(0xFFEFF1F5),
+            fillColor: enabled ? _kCanvas : DcColors.row,
             isDense: true,
             prefixIcon: Icon(icon, size: 16, color: _kIcon),
             suffixIcon: suffix,
@@ -464,13 +465,13 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? const Color(0xFFEF4444) : _kBorderRow,
+                color: error != null ? DcColors.red : _kBorderRow,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? const Color(0xFFEF4444) : _kBorderRow,
+                color: error != null ? DcColors.red : _kBorderRow,
               ),
             ),
             disabledBorder: OutlineInputBorder(
@@ -480,7 +481,7 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? const Color(0xFFEF4444) : _kBlue,
+                color: error != null ? DcColors.red : _kBlue,
                 width: 1.5,
               ),
             ),
@@ -488,7 +489,7 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
         ),
         if (error != null) ...<Widget>[
           const SizedBox(height: 4),
-          Text(error, style: _uText(10, const Color(0xFFEF4444))),
+          Text(error, style: _uText(10, DcColors.red)),
         ],
       ],
     );
@@ -500,13 +501,13 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
     final bool inProgress = _busy;
     final Color color = inProgress
         ? _kBlue
-        : (_testOk ? const Color(0xFF15803D) : const Color(0xFFEF4444));
+        : (_testOk ? DcColors.green : DcColors.red);
     final Color bg = inProgress
-        ? const Color(0xFFEEF3FF)
-        : (_testOk ? const Color(0xFFEFFDF3) : const Color(0xFFFEF2F2));
+        ? DcColors.selectionSoft
+        : (_testOk ? DcColors.greenSoft : DcColors.redSoft);
     final Color border = inProgress
-        ? const Color(0xFFB5C3F8)
-        : (_testOk ? const Color(0xFFBBF7D0) : const Color(0xFFFECACA));
+        ? DcColors.selectionLine
+        : (_testOk ? DcColors.greenLine : DcColors.redLine);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -552,16 +553,16 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
                 : const Icon(TablerIcons.plug_connected, size: 15),
             label: const Text('Test'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF374151),
-              side: const BorderSide(color: Color(0xFFD1D5DB)),
-              backgroundColor: Colors.white,
+              foregroundColor: DcColors.text,
+              side: const BorderSide(color: DcColors.lineStrong),
+              backgroundColor: DcColors.panel,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
               minimumSize: const Size(0, 38),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: _uText(12, const Color(0xFF374151),
+              textStyle: _uText(12, DcColors.text,
                   fontWeight: FontWeight.w600),
             ),
           ),
@@ -588,7 +589,7 @@ class _WebDavConfigDialogState extends State<WebDavConfigDialog> {
             style: ElevatedButton.styleFrom(
               backgroundColor: _kBlue,
               foregroundColor: Colors.white,
-              disabledBackgroundColor: const Color(0xFFB9C6FF),
+              disabledBackgroundColor: DcColors.selectionLine,
               disabledForegroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -631,12 +632,12 @@ class _BrowseButton extends StatelessWidget {
         icon: const Icon(TablerIcons.folder_search, size: 15),
         label: const Text('Browse'),
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF374151),
+          foregroundColor: DcColors.text,
           disabledForegroundColor: _kIcon,
           side: BorderSide(
-            color: enabled ? const Color(0xFFD1D5DB) : _kBorderRow,
+            color: enabled ? DcColors.lineStrong : _kBorderRow,
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: DcColors.panel,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
@@ -644,7 +645,7 @@ class _BrowseButton extends StatelessWidget {
           minimumSize: const Size(0, 44),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           textStyle:
-              _uText(12, const Color(0xFF374151), fontWeight: FontWeight.w600),
+              _uText(12, DcColors.text, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -740,10 +741,10 @@ class _WebDavFolderPickerDialogState extends State<_WebDavFolderPickerDialog> {
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClue(),
       child: Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: DcColors.panel,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         child: SizedBox(
           width: 400,
           child: Column(
@@ -761,7 +762,7 @@ class _WebDavFolderPickerDialogState extends State<_WebDavFolderPickerDialog> {
                               padding: const EdgeInsets.all(16),
                               child: Text(
                                 _error!,
-                                style: _uText(12, const Color(0xFFEF4444)),
+                                style: _uText(12, DcColors.red),
                                 textAlign: TextAlign.center,
                               ),
                             ),
@@ -898,7 +899,7 @@ class _WebDavFolderPickerDialogState extends State<_WebDavFolderPickerDialog> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: const BoxDecoration(
-        color: Color(0xFFF8FAFF),
+        color: DcColors.rowAlternate,
         border: Border(top: BorderSide(color: _kBorderSoft)),
       ),
       child: Row(
@@ -917,16 +918,16 @@ class _WebDavFolderPickerDialogState extends State<_WebDavFolderPickerDialog> {
                 hintText: 'New folder name',
                 hintStyle: _uText(12, _kIcon),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: DcColors.well,
                 isDense: true,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(6),
                   borderSide: const BorderSide(color: _kBorderRow),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(6),
                   borderSide: const BorderSide(color: _kBlue, width: 1.4),
                 ),
                 prefixIcon: const Icon(TablerIcons.folder_plus,
@@ -952,11 +953,11 @@ class _WebDavFolderPickerDialogState extends State<_WebDavFolderPickerDialog> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _kBlue,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(0xFFB9C6FF),
+                disabledBackgroundColor: DcColors.selectionLine,
                 disabledForegroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(6)),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 textStyle:
                     _uText(12, Colors.white, fontWeight: FontWeight.w600),
@@ -998,9 +999,9 @@ class _WebDavFolderPickerDialogState extends State<_WebDavFolderPickerDialog> {
           OutlinedButton(
             onPressed: () => Navigator.of(context).pop(),
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF374151),
-              side: const BorderSide(color: Color(0xFFD1D5DB)),
-              backgroundColor: Colors.white,
+              foregroundColor: DcColors.text,
+              side: const BorderSide(color: DcColors.lineStrong),
+              backgroundColor: DcColors.panel,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
@@ -1061,7 +1062,7 @@ class _WebDavFolderTileState extends State<_WebDavFolderTile> {
           duration: const Duration(milliseconds: 80),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFF5F7FF) : Colors.white,
+            color: _hovered ? DcColors.selectionSoft : DcColors.rowAlternate,
             border: const Border(bottom: BorderSide(color: _kBorderSoft)),
           ),
           child: Row(

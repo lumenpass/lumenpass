@@ -388,7 +388,7 @@ class _AddSecureNoteItemModalState
           ),
           textSelectionTheme: const TextSelectionThemeData(
             cursorColor: _kPrimaryButtonColor,
-            selectionColor: Color(0x33FF5B22),
+            selectionColor: DcColors.selectionSoft,
             selectionHandleColor: _kPrimaryButtonColor,
           ),
         );
@@ -401,14 +401,13 @@ class _AddSecureNoteItemModalState
               Container(
                 width: modalWidth,
                 constraints: BoxConstraints(maxHeight: modalHeight),
-                padding: const EdgeInsets.all(24),
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  color: _VaultColors.surface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _VaultColors.borderSoft),
+                  color: _ItemModalColors.surface,
+                  borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x1C172033),
+                      color: DcColors.shadow,
                       blurRadius: 44,
                       offset: Offset(0, 20),
                     ),
@@ -417,90 +416,81 @@ class _AddSecureNoteItemModalState
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        if (_isEditing)
-                          const SizedBox(width: 24)
-                        else
-                          _ModalIconAction(
-                            icon: TablerIcons.arrow_left,
-                            onTap: widget.onReturnToPicker ?? () {},
-                          ),
-                        Expanded(
-                          child: Text(
-                            _isEditing ? 'Edit Item' : 'New Item',
-                            textAlign: TextAlign.center,
-                            style: _text(20, _VaultColors.title,
-                                fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        _ModalIconAction(
-                            icon: TablerIcons.x, onTap: _confirmClose),
-                      ],
+                    DcDialogTitleBar(
+                      title:
+                          _isEditing ? 'Edit Secure Note' : 'New Secure Note',
+                      onBack: _isEditing ? null : widget.onReturnToPicker,
+                      onClose: _confirmClose,
                     ),
                     const SizedBox(height: 14),
-                    Row(
-                      children: <Widget>[
-                        const _AddItemTypeIcon(
-                          icon: TablerIcons.notes,
-                          color: Color(0xFFC17800),
-                        ),
-                        const SizedBox(width: 10),
-                        if (!_isEditing) ...<Widget>[
-                          InkWell(
-                            onTap: widget.onReturnToPicker,
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: _VaultColors.surfaceMuted,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              alignment: Alignment.center,
-                              child: const Icon(TablerIcons.chevron_down,
-                                  size: 14, color: _VaultColors.headerLabel),
-                            ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        children: <Widget>[
+                          const _AddItemTypeIcon(
+                            icon: TablerIcons.notes,
+                            color: DcColors.orange,
                           ),
                           const SizedBox(width: 10),
-                        ],
-                        Expanded(
-                          child: Container(
-                            height: 42,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            decoration: BoxDecoration(
-                              color: _VaultColors.surfaceMuted,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                  color: _kPrimaryButtonColor, width: 2),
-                            ),
-                            alignment: Alignment.centerLeft,
-                            child: TextField(
-                              controller: _titleController,
-                              maxLines: 1,
-                              textAlignVertical: TextAlignVertical.center,
-                              style: _displayText(
-                                22,
-                                _VaultColors.title,
-                                height: 1,
+                          if (!_isEditing) ...<Widget>[
+                            InkWell(
+                              onTap: widget.onReturnToPicker,
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: _ItemModalColors.surfaceMuted,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(TablerIcons.chevron_down,
+                                    size: 14,
+                                    color: _ItemModalColors.headerLabel),
                               ),
-                              decoration: const InputDecoration(
-                                filled: false,
-                                fillColor: Colors.transparent,
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                isCollapsed: true,
-                                contentPadding: EdgeInsets.zero,
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Expanded(
+                            child: Container(
+                              height: 42,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 14),
+                              decoration: BoxDecoration(
+                                color: _ItemModalColors.surfaceMuted,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                    color: _kPrimaryButtonColor, width: 2),
+                              ),
+                              alignment: Alignment.centerLeft,
+                              child: TextField(
+                                controller: _titleController,
+                                maxLines: 1,
+                                textAlignVertical: TextAlignVertical.center,
+                                style: _displayText(
+                                  22,
+                                  _ItemModalColors.title,
+                                  height: 1,
+                                ),
+                                decoration: const InputDecoration(
+                                  filled: false,
+                                  fillColor: Colors.transparent,
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  isCollapsed: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Expanded(
                       child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Column(
                           children: <Widget>[
                             _LoginFormField(
@@ -509,7 +499,7 @@ class _AddSecureNoteItemModalState
                               maxLines: 8,
                               minLines: 8,
                               icon: TablerIcons.notes,
-                              iconColor: const Color(0xFFB98A1B),
+                              iconColor: DcColors.amberOnLight,
                               hintText: 'Add any notes about this item here.',
                             ),
                             const SizedBox(height: 12),
@@ -524,7 +514,7 @@ class _AddSecureNoteItemModalState
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12),
                                   decoration: BoxDecoration(
-                                    color: _VaultColors.peachSoft,
+                                    color: _ItemModalColors.peachSoft,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
@@ -540,7 +530,7 @@ class _AddSecureNoteItemModalState
                                             ? TablerIcons.chevron_up
                                             : TablerIcons.chevron_down,
                                         size: 14,
-                                        color: _VaultColors.icon,
+                                        color: _ItemModalColors.icon,
                                       ),
                                     ],
                                   ),
@@ -595,34 +585,37 @@ class _AddSecureNoteItemModalState
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Container(height: 1, color: _VaultColors.borderSoft),
+                    Container(height: 1, color: _ItemModalColors.borderSoft),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: <Widget>[
-                        _LoginFooterButton(
-                          label: 'Cancel',
-                          backgroundColor: _VaultColors.surfaceMuted,
-                          textColor: _VaultColors.headerLabel,
-                          borderColor: _VaultColors.borderPane,
-                          onTap: _isSaving ? null : _confirmClose,
-                        ),
-                        const SizedBox(width: 10),
-                        _LoginFooterButton(
-                          label: _isSaving
-                              ? 'Saving...'
-                              : (_isEditing ? 'Save changes' : 'Save'),
-                          backgroundColor: _kPrimaryButtonColor,
-                          textColor: Colors.white,
-                          onTap: _isSaving
-                              ? null
-                              : () => _save(
-                                    categories: categories,
-                                    rootGroupUuid: rootGroupUuid,
-                                    selectedGroupUuid: selectedGroupUuid,
-                                  ),
-                        ),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: <Widget>[
+                          _LoginFooterButton(
+                            label: 'Cancel',
+                            backgroundColor: _ItemModalColors.surfaceMuted,
+                            textColor: _ItemModalColors.headerLabel,
+                            borderColor: _ItemModalColors.borderPane,
+                            onTap: _isSaving ? null : _confirmClose,
+                          ),
+                          const SizedBox(width: 10),
+                          _LoginFooterButton(
+                            label: _isSaving
+                                ? 'Saving...'
+                                : (_isEditing ? 'Save changes' : 'Save'),
+                            backgroundColor: _kPrimaryButtonColor,
+                            textColor: Colors.white,
+                            onTap: _isSaving
+                                ? null
+                                : () => _save(
+                                      categories: categories,
+                                      rootGroupUuid: rootGroupUuid,
+                                      selectedGroupUuid: selectedGroupUuid,
+                                    ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

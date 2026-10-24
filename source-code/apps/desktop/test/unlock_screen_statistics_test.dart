@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,7 @@ import 'package:lumenpass/core/repository/kdbx_repository_provider.dart';
 import 'package:lumenpass/core/services/local_storage_service.dart';
 import 'package:lumenpass/features/unlock/application/database_connection_health.dart';
 import 'package:lumenpass/features/unlock/presentation/unlock_screen.dart';
+import 'package:lumenpass/presentation/widgets/lumenpass_wordmark.dart';
 
 void main() {
   testWidgets('shows vault counts and the requested supported platforms',
@@ -46,6 +49,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 3500));
     await tester.pumpAndSettle();
 
+    expect(find.text('Your vaults'), findsOneWidget);
+    expect(find.text('YOUR VAULTS'), findsNothing);
+    expect(find.text('/'), findsNothing);
+    if (Platform.isMacOS) {
+      final title = find.text('Your vaults');
+      final actions = find.byTooltip('Search databases');
+      final rightHeader = find
+          .ancestor(
+            of: find.byType(LumenPassWordmark),
+            matching: find.byType(Container),
+          )
+          .first;
+      expect(tester.getTopLeft(title).dx, greaterThanOrEqualTo(94));
+      expect(tester.getCenter(title).dy, closeTo(21, 1));
+      expect(tester.getCenter(actions).dy, closeTo(21, 1));
+      expect(tester.getSize(rightHeader).height, 42);
+    }
     expect(find.bySemanticsLabel('Total vaults: 6'), findsOneWidget);
 
     for (final entry in <String, String>{

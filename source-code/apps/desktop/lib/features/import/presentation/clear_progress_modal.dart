@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../application/import_executor.dart';
+import 'import_light_colors.dart';
+import '../../../presentation/widgets/drive_clue/dc_dialog_title_bar.dart';
 
 /// Modal shown while Replace mode is wiping the existing vault items.
 ///
@@ -58,14 +60,13 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
       backgroundColor: Colors.transparent,
       child: Container(
         width: 400,
-        padding: const EdgeInsets.all(28),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFCF6),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFCEC7BB)),
+          color: ImportColors.panel,
+          borderRadius: BorderRadius.circular(7),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x295B4638),
+              color: ImportColors.shadow,
               blurRadius: 32,
               offset: Offset(0, 14),
             ),
@@ -74,159 +75,152 @@ class _ClearProgressModalState extends State<ClearProgressModal> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            if (isFailed) ...<Widget>[
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  TablerIcons.alert_triangle,
-                  size: 32,
-                  color: Color(0xFFEF4444),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Cleanup Failed',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E2021),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                progress.errorMessage ??
-                    'The vault could not be fully cleared. '
-                        'Try again before importing.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: const Color(0xFF74766F),
-                ),
-              ),
-            ] else ...<Widget>[
-              const Text(
-                'Cleaning Old Items',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E2021),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                progress.total == 0 && progress.current == 0
-                    ? 'Preparing...'
-                    : 'Removing ${progress.current} of ${progress.total} items',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: const Color(0xFF74766F),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  value: progress.fraction,
-                  minHeight: 8,
-                  backgroundColor: const Color(0xFFF3EDE4),
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    Color(0xFFEF4444),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  '${progress.percent}%',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E2021),
-                  ),
-                ),
-              ),
-              if (isRunning && progress.logs.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Cleanup log',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFA09D95),
+            DcDialogTitleBar(
+              title: isFailed ? 'Cleanup Failed' : 'Cleaning Old Items',
+            ),
+            Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  if (isFailed) ...<Widget>[
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: ImportColors.red.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        TablerIcons.alert_triangle,
+                        size: 32,
+                        color: ImportColors.red,
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  width: double.infinity,
-                  height: 132,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8F3EA),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFD8D2C7)),
-                  ),
-                  child: ListView.builder(
-                    controller: _logScrollController,
-                    padding: EdgeInsets.zero,
-                    itemCount: progress.logs.length,
-                    itemBuilder: (context, index) {
-                      final entry = progress.logs[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 1),
+                    const SizedBox(height: 16),
+                    Text(
+                      progress.errorMessage ??
+                          'The vault could not be fully cleared. '
+                              'Try again before importing.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: ImportColors.muted,
+                      ),
+                    ),
+                  ] else ...<Widget>[
+                    Text(
+                      progress.total == 0 && progress.current == 0
+                          ? 'Preparing...'
+                          : 'Removing ${progress.current} of ${progress.total} items',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: ImportColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: progress.fraction,
+                        minHeight: 8,
+                        backgroundColor: ImportColors.row,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          ImportColors.red,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '${progress.percent}%',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: ImportColors.text,
+                        ),
+                      ),
+                    ),
+                    if (isRunning && progress.logs.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
                         child: Text(
-                          entry.message,
+                          'Cleanup log',
                           style: TextStyle(
                             fontSize: 11,
-                            fontFamily: 'monospace',
-                            height: 1.4,
-                            color: entry.isError
-                                ? const Color(0xFFDC2626)
-                                : const Color(0xFF74766F),
+                            fontWeight: FontWeight.w600,
+                            color: ImportColors.faint,
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ],
-            const SizedBox(height: 24),
-            if (isFailed)
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: _FooterButton(
-                      label: 'Cancel',
-                      backgroundColor: const Color(0xFFFFFCF6),
-                      textColor: const Color(0xFF4F524E),
-                      borderColor: const Color(0xFFCEC7BB),
-                      onTap: widget.onCancel,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _FooterButton(
-                      label: 'Retry',
-                      backgroundColor: const Color(0xFFFF5B22),
-                      textColor: Colors.white,
-                      onTap: widget.onRetry,
-                    ),
-                  ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        height: 132,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: ImportColors.row,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: ImportColors.line),
+                        ),
+                        child: ListView.builder(
+                          controller: _logScrollController,
+                          padding: EdgeInsets.zero,
+                          itemCount: progress.logs.length,
+                          itemBuilder: (context, index) {
+                            final entry = progress.logs[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 1),
+                              child: Text(
+                                entry.message,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                  height: 1.4,
+                                  color: entry.isError
+                                      ? ImportColors.red
+                                      : ImportColors.muted,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                  const SizedBox(height: 24),
+                  if (isFailed)
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _FooterButton(
+                            label: 'Cancel',
+                            backgroundColor: ImportColors.rowAlternate,
+                            textColor: ImportColors.muted,
+                            borderColor: ImportColors.lineStrong,
+                            onTap: widget.onCancel,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _FooterButton(
+                            label: 'Retry',
+                            backgroundColor: ImportColors.selection,
+                            textColor: Colors.white,
+                            onTap: widget.onRetry,
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    const _SpinnerHint(),
                 ],
-              )
-            else
-              const _SpinnerHint(),
+              ),
+            ),
           ],
         ),
       ),
@@ -247,15 +241,18 @@ class _SpinnerHint extends StatelessWidget {
           height: 14,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEF4444)),
+            valueColor: AlwaysStoppedAnimation<Color>(ImportColors.red),
           ),
         ),
         const SizedBox(width: 10),
-        Text(
-          'Please wait while the vault is cleaned...',
-          style: TextStyle(
-            fontSize: 12,
-            color: const Color(0xFF74766F),
+        const Flexible(
+          child: Text(
+            'Please wait while the vault is cleaned...',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: ImportColors.muted,
+            ),
           ),
         ),
       ],
@@ -295,7 +292,7 @@ class _FooterButtonState extends State<_FooterButton> {
         color: Colors.transparent,
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
@@ -303,7 +300,7 @@ class _FooterButtonState extends State<_FooterButton> {
               color: _hovered && isEnabled
                   ? widget.backgroundColor.withValues(alpha: 0.8)
                   : widget.backgroundColor,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(6),
               border: widget.borderColor != null
                   ? Border.all(color: widget.borderColor!)
                   : null,

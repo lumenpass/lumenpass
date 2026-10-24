@@ -189,7 +189,7 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            color: const Color(0x52000000),
+            color: DcColors.scrim,
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
             child: GestureDetector(
@@ -212,12 +212,12 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
       width: 520,
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       decoration: BoxDecoration(
-        color: const Color(0xFFFDFDFE),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFDADFE8)),
+        color: DcColors.panel,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: DcColors.line),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x1C172033),
+            color: DcColors.shadow,
             blurRadius: 44,
             offset: Offset(0, 20),
           ),
@@ -233,7 +233,7 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
               Expanded(
                 child: Text(
                   'Add 2FA Code',
-                  style: _text(17, const Color(0xFF202939),
+                  style: _text(17, DcColors.text,
                       fontWeight: FontWeight.w700),
                 ),
               ),
@@ -243,7 +243,7 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
                 child: const Padding(
                   padding: EdgeInsets.all(4),
                   child:
-                      Icon(TablerIcons.x, size: 16, color: Color(0xFF8A97AC)),
+                      Icon(TablerIcons.x, size: 16, color: DcColors.muted),
                 ),
               ),
             ],
@@ -266,13 +266,13 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
               height: 160,
               decoration: BoxDecoration(
                 color: _isDragOver
-                    ? const Color(0xFFEEF4FF)
-                    : const Color(0xFFF8F9FC),
-                borderRadius: BorderRadius.circular(12),
+                    ? DcColors.rowAlternate
+                    : DcColors.panel,
+                borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color: _isDragOver
-                      ? const Color(0xFF4B6CFF)
-                      : const Color(0xFFD8DEE8),
+                      ? DcColors.selection
+                      : DcColors.line,
                   width: _isDragOver ? 2 : 1.5,
                   style: BorderStyle.solid,
                 ),
@@ -284,7 +284,7 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          color: Color(0xFF4B6CFF),
+                          color: DcColors.selection,
                         ),
                       ),
                     )
@@ -295,8 +295,8 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
                           _isDragOver ? TablerIcons.scan : TablerIcons.qrcode,
                           size: 32,
                           color: _isDragOver
-                              ? const Color(0xFF4B6CFF)
-                              : const Color(0xFF9BA8BE),
+                              ? DcColors.selection
+                              : DcColors.selection,
                         ),
                         const SizedBox(height: 10),
                         Text(
@@ -306,8 +306,8 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
                           style: _text(
                             13,
                             _isDragOver
-                                ? const Color(0xFF4B6CFF)
-                                : const Color(0xFF73839D),
+                                ? DcColors.selection
+                                : DcColors.muted,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -338,16 +338,16 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
           // Divider "or"
           Row(
             children: <Widget>[
-              const Expanded(child: Divider(color: Color(0xFFE4E9F2))),
+              const Expanded(child: Divider(color: DcColors.line)),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
                   'or enter setup key manually',
-                  style: _text(12, const Color(0xFF8A97AC),
+                  style: _text(12, DcColors.muted,
                       fontWeight: FontWeight.w500),
                 ),
               ),
-              const Expanded(child: Divider(color: Color(0xFFE4E9F2))),
+              const Expanded(child: Divider(color: DcColors.line)),
             ],
           ),
           const SizedBox(height: 16),
@@ -358,30 +358,30 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
             onChanged: (_) => setState(() => _error = null),
             onSubmitted: (_) => _tryManualInput(),
             style:
-                _text(13, const Color(0xFF1F2937), fontWeight: FontWeight.w500),
+                _text(13, DcColors.text, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               hintText: 'otpauth://totp/... or TOTP secret (Base32)',
-              hintStyle: _text(13, const Color(0xFFADB8CC),
+              hintStyle: _text(13, DcColors.selection,
                   fontWeight: FontWeight.w400),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: DcColors.panel,
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFD8DEE8)),
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: DcColors.line),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFF4B6CFF)),
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: DcColors.selection),
               ),
               errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE53E3E)),
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: DcColors.red),
               ),
               focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE53E3E)),
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: DcColors.red),
               ),
             ),
           ),
@@ -391,12 +391,12 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
             Row(
               children: <Widget>[
                 const Icon(TablerIcons.alert_circle,
-                    size: 13, color: Color(0xFFE53E3E)),
+                    size: 13, color: DcColors.red),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
                     _error!,
-                    style: _text(12, const Color(0xFFE53E3E),
+                    style: _text(12, DcColors.red,
                         fontWeight: FontWeight.w500),
                   ),
                 ),
@@ -440,12 +440,12 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
       width: 480,
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       decoration: BoxDecoration(
-        color: const Color(0xFFFDFDFE),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFDADFE8)),
+        color: DcColors.panel,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: DcColors.line),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x1C172033),
+            color: DcColors.shadow,
             blurRadius: 44,
             offset: Offset(0, 20),
           ),
@@ -470,14 +470,14 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
                 child: const Padding(
                   padding: EdgeInsets.all(4),
                   child: Icon(TablerIcons.arrow_left,
-                      size: 16, color: Color(0xFF8A97AC)),
+                      size: 16, color: DcColors.muted),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Add 2FA Code',
-                  style: _text(17, const Color(0xFF202939),
+                  style: _text(17, DcColors.text,
                       fontWeight: FontWeight.w700),
                 ),
               ),
@@ -487,7 +487,7 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
                 child: const Padding(
                   padding: EdgeInsets.all(4),
                   child:
-                      Icon(TablerIcons.x, size: 16, color: Color(0xFF8A97AC)),
+                      Icon(TablerIcons.x, size: 16, color: DcColors.muted),
                 ),
               ),
             ],
@@ -499,19 +499,19 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFECFDF5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFA7F3D0)),
+              color: DcColors.rowAlternate,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0x6647C7B8)),
             ),
             child: Row(
               children: <Widget>[
                 const Icon(TablerIcons.circle_check,
-                    size: 16, color: Color(0xFF059669)),
+                    size: 16, color: DcColors.teal),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     '2FA code ready to add',
-                    style: _text(13, const Color(0xFF065F46),
+                    style: _text(13, DcColors.teal,
                         fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -524,14 +524,14 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
           if (info.issuer.isNotEmpty) ...<Widget>[
             Text(
               info.issuer,
-              style: _text(15, const Color(0xFF202939),
+              style: _text(15, DcColors.text,
                   fontWeight: FontWeight.w700),
             ),
             if (info.account.isNotEmpty) ...<Widget>[
               const SizedBox(height: 2),
               Text(
                 info.account,
-                style: _text(13, const Color(0xFF73839D),
+                style: _text(13, DcColors.muted,
                     fontWeight: FontWeight.w500),
               ),
             ],
@@ -543,16 +543,16 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE4E9F2)),
+              color: DcColors.panel,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: DcColors.line),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
                   'Current TOTP Code',
-                  style: _text(11, const Color(0xFF8A97AC),
+                  style: _text(11, DcColors.muted,
                       fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 10),
@@ -562,7 +562,7 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
                       formattedCode,
                       style: _text(
                         28,
-                        const Color(0xFF1F2937),
+                        DcColors.text,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 2,
                       ),
@@ -581,7 +581,7 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
                           child: Icon(
                             TablerIcons.copy,
                             size: 16,
-                            color: Color(0xFF8A97AC),
+                            color: DcColors.muted,
                           ),
                         ),
                       ),
@@ -603,7 +603,7 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
                             borderRadius: BorderRadius.circular(999),
                             child: LinearProgressIndicator(
                               value: progress,
-                              backgroundColor: const Color(0xFFE8EDF5),
+                              backgroundColor: DcColors.rowAlternate,
                               valueColor:
                                   AlwaysStoppedAnimation<Color>(countdownColor),
                             ),
@@ -621,7 +621,7 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
           Text(
             'The code refreshes every 30 seconds.',
             style:
-                _text(12, const Color(0xFF8A97AC), fontWeight: FontWeight.w500),
+                _text(12, DcColors.muted, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 24),
 
@@ -675,11 +675,11 @@ class _ScanActionButtonState extends State<_ScanActionButton> {
           height: 32,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFEEF4FF) : Colors.white,
+            color: _hovered ? DcColors.rowAlternate : DcColors.panel,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color:
-                  _hovered ? const Color(0xFF4B6CFF) : const Color(0xFFD0D8E8),
+                  _hovered ? DcColors.selection : DcColors.line,
             ),
           ),
           child: Row(
@@ -689,15 +689,15 @@ class _ScanActionButtonState extends State<_ScanActionButton> {
                 widget.icon,
                 size: 13,
                 color: _hovered
-                    ? const Color(0xFF4B6CFF)
-                    : const Color(0xFF73839D),
+                    ? DcColors.selection
+                    : DcColors.muted,
               ),
               const SizedBox(width: 6),
               Text(
                 widget.label,
                 style: _text(
                   12,
-                  _hovered ? const Color(0xFF4B6CFF) : const Color(0xFF73839D),
+                  _hovered ? DcColors.selection : DcColors.muted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -738,15 +738,15 @@ class _ScanGhostButtonState extends State<_ScanGhostButton> {
           height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFF0F3F8) : Colors.transparent,
+            color: _hovered ? DcColors.rowAlternate : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFD6DCE6)),
+            border: Border.all(color: DcColors.line),
           ),
           alignment: Alignment.center,
           child: Text(
             widget.label,
             style:
-                _text(13, const Color(0xFF3E4A5E), fontWeight: FontWeight.w600),
+                _text(13, DcColors.text, fontWeight: FontWeight.w600),
           ),
         ),
       ),

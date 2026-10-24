@@ -17,6 +17,8 @@ import 'import_provider_modal.dart';
 import 'import_preview_screen.dart';
 import 'import_confirmation_modal.dart';
 import 'import_progress_modal.dart';
+import 'import_light_colors.dart';
+import '../../../presentation/theme/drive_clue_tokens.dart';
 
 class ImportFlowOrchestrator {
   const ImportFlowOrchestrator();
@@ -122,7 +124,7 @@ class _ImportFlowDialogState extends ConsumerState<_ImportFlowDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('No database open. Please open a vault first.'),
-            backgroundColor: Color(0xFFEF4444),
+            backgroundColor: DcColors.red,
           ),
         );
       }
@@ -223,7 +225,7 @@ class _ImportFlowDialogState extends ConsumerState<_ImportFlowDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Import failed: $error'),
-            backgroundColor: const Color(0xFFEF4444),
+            backgroundColor: DcColors.red,
           ),
         );
       },
@@ -334,42 +336,43 @@ class _ImportFlowDialogState extends ConsumerState<_ImportFlowDialog> {
     final base = Theme.of(context);
     final textTheme = base.textTheme.apply(
       fontFamily: currentFontFamily,
-      bodyColor: const Color(0xFF1E2021),
-      displayColor: const Color(0xFF1E2021),
+      bodyColor: ImportColors.text,
+      displayColor: ImportColors.text,
     );
-    final vintageTheme = base.copyWith(
+    final importTheme = base.copyWith(
       colorScheme: base.colorScheme.copyWith(
-        primary: const Color(0xFFFF5B22),
-        secondary: const Color(0xFF168B76),
-        surface: const Color(0xFFFFFCF6),
-        surfaceContainerHighest: const Color(0xFFF8F3EA),
-        onSurface: const Color(0xFF1E2021),
-        onSurfaceVariant: const Color(0xFF686B67),
-        outline: const Color(0xFFCEC7BB),
-        outlineVariant: const Color(0xFFD8D2C7),
+        primary: ImportColors.selection,
+        secondary: ImportColors.teal,
+        surface: ImportColors.panel,
+        surfaceContainerHighest: ImportColors.row,
+        onSurface: ImportColors.text,
+        onSurfaceVariant: ImportColors.muted,
+        outline: ImportColors.lineStrong,
+        outlineVariant: ImportColors.line,
       ),
       textTheme: textTheme,
       dialogTheme: const DialogThemeData(
-        backgroundColor: Color(0xFFFFFCF6),
+        backgroundColor: ImportColors.panel,
         surfaceTintColor: Colors.transparent,
       ),
-      dividerColor: const Color(0xFFD8D2C7),
+      dividerColor: ImportColors.line,
       inputDecorationTheme: base.inputDecorationTheme.copyWith(
         filled: true,
-        fillColor: const Color(0xFFFFFCF6),
+        fillColor: ImportColors.row,
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFCEC7BB)),
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: ImportColors.lineStrong),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFFF5B22), width: 1.6),
+          borderRadius: BorderRadius.circular(6),
+          borderSide:
+              const BorderSide(color: ImportColors.selection, width: 1.6),
         ),
       ),
     );
 
     return Theme(
-      data: vintageTheme,
+      data: importTheme,
       child: DefaultTextStyle.merge(
         style: TextStyle(fontFamily: currentFontFamily),
         child: step,

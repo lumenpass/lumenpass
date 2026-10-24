@@ -783,10 +783,10 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
         height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF7F9FB),
-          borderRadius: BorderRadius.circular(12),
+          color: DcColors.panel,
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: const Color(0xFF8BA9D8),
+            color: DcColors.selection,
             width: 2,
           ),
         ),
@@ -806,7 +806,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                 children: <Widget>[
                   const Icon(
                     TablerIcons.arrow_left,
-                    color: Color(0xFF0F67D6),
+                    color: DcColors.selection,
                     size: 16,
                   ),
                   const SizedBox(width: 4),
@@ -814,7 +814,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                     'Back',
                     style: _quickText(
                       11,
-                      const Color(0xFF0F67D6),
+                      DcColors.selection,
                       weight: FontWeight.w600,
                     ),
                   ),
@@ -825,7 +825,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
               width: 1,
               height: 20,
               margin: const EdgeInsets.symmetric(horizontal: 10),
-              color: const Color(0xFFD0D8E2),
+              color: DcColors.well,
             ),
             _FaviconTile(entry: entry, size: 22),
             const SizedBox(width: 8),
@@ -834,7 +834,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                 entry.title,
                 style: _quickText(
                   13,
-                  const Color(0xFF1F2937),
+                  DcColors.text,
                   weight: FontWeight.w600,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -860,17 +860,17 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
     int? countdownSeconds,
   }) {
     final bgColor =
-        isActive ? const Color(0xFF116CD8) : const Color(0xFFEFF2F6);
-    final iconColor = isActive ? Colors.white : const Color(0xFF5E6B7D);
+        isActive ? DcColors.selection : DcColors.rowAlternate;
+    final iconColor = isActive ? Colors.white : DcColors.muted;
     final labelColor =
-        isActive ? const Color(0xFFBDD9FF) : const Color(0xFF7B8A9B);
+        isActive ? DcColors.selection : DcColors.muted;
     final resolvedValueColor =
-        valueColor ?? (isActive ? Colors.white : const Color(0xFF252C35));
+        valueColor ?? (isActive ? Colors.white : DcColors.text);
     final copyIconColor =
-        isActive ? const Color(0xFFBDD9FF) : const Color(0xFF8A9BB0);
+        isActive ? DcColors.selection : DcColors.muted;
     final countdownColor = countdownSeconds != null
         ? (isActive
-            ? const Color(0xFFBDD9FF)
+            ? const Color(0x383882C2)
             : _totpCountdownColor(countdownSeconds))
         : null;
     final displayValue = isSecret && !isRevealed ? '••••••••' : value;
@@ -1003,7 +1003,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
               'No details available',
               style: _quickText(
                 12,
-                const Color(0xFF5E6B7D),
+                DcColors.muted,
                 weight: FontWeight.w600,
               ),
             ),
@@ -1016,12 +1016,12 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
       child: Container(
         constraints: const BoxConstraints(maxHeight: 240),
         decoration: BoxDecoration(
-          color: const Color(0xFFE2E7ED),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFD0D8E2)),
+          color: DcColors.well,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: DcColors.line),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(6),
           child: ListView(
             shrinkWrap: true,
             physics: const ClampingScrollPhysics(),
@@ -1040,9 +1040,9 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
         height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF7F9FB),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF8BA9D8), width: 2),
+          color: DcColors.panel,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: DcColors.selection, width: 2),
         ),
         child: Row(
           children: <Widget>[
@@ -1053,7 +1053,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                 children: <Widget>[
                   const Icon(
                     TablerIcons.arrow_left,
-                    color: Color(0xFF0F67D6),
+                    color: DcColors.selection,
                     size: 16,
                   ),
                   const SizedBox(width: 4),
@@ -1061,7 +1061,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                     'Back',
                     style: _quickText(
                       11,
-                      const Color(0xFF0F67D6),
+                      DcColors.selection,
                       weight: FontWeight.w600,
                     ),
                   ),
@@ -1072,11 +1072,11 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
               width: 1,
               height: 20,
               margin: const EdgeInsets.symmetric(horizontal: 10),
-              color: const Color(0xFFD0D8E2),
+              color: DcColors.well,
             ),
             const Icon(
               TablerIcons.shield_lock,
-              color: Color(0xFF1F2937),
+              color: DcColors.text,
               size: 16,
             ),
             const SizedBox(width: 6),
@@ -1085,7 +1085,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                 'Generate Password',
                 style: _quickText(
                   13,
-                  const Color(0xFF1F2937),
+                  DcColors.text,
                   weight: FontWeight.w600,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -1102,9 +1102,9 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFE2E7ED),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFD0D8E2)),
+          color: DcColors.well,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: DcColors.line),
         ),
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
         child: Column(
@@ -1122,19 +1122,19 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
                         color: active
-                            ? const Color(0xFF0F67D6)
-                            : const Color(0xFFDDE4EC),
+                            ? DcColors.selection
+                            : DcColors.well,
                         borderRadius: BorderRadius.circular(6),
                         border: active
                             ? null
-                            : Border.all(color: const Color(0xFFCCD4DF)),
+                            : Border.all(color: DcColors.line),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         _genTypeLabel(t),
                         style: _quickText(
                           10,
-                          active ? Colors.white : const Color(0xFF3A4A5C),
+                          active ? Colors.white : DcColors.text,
                           weight: FontWeight.w600,
                         ),
                       ),
@@ -1148,9 +1148,9 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
               height: 42,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFF7F9FB),
+                color: DcColors.panel,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFD0D8E2)),
+                border: Border.all(color: DcColors.line),
               ),
               child: Row(
                 children: <Widget>[
@@ -1160,7 +1160,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                             'Generating...',
                             style: _quickText(
                               11,
-                              const Color(0xFF8A9BB0),
+                              DcColors.muted,
                             ),
                           )
                         : SingleChildScrollView(
@@ -1169,12 +1169,12 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                               children: _generatedPassword.split('').map((c) {
                                 final Color col;
                                 if (RegExp(r'[0-9]').hasMatch(c)) {
-                                  col = const Color(0xFF0F67D6);
+                                  col = DcColors.selection;
                                 } else if (RegExp(r'[^A-Za-z0-9]')
                                     .hasMatch(c)) {
-                                  col = const Color(0xFFEA8C00);
+                                  col = DcColors.orange;
                                 } else {
-                                  col = const Color(0xFF252C35);
+                                  col = DcColors.text;
                                 }
                                 return Text(
                                   c,
@@ -1195,8 +1195,8 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                       _genCopied ? TablerIcons.check : TablerIcons.copy,
                       size: 15,
                       color: _genCopied
-                          ? const Color(0xFF16A34A)
-                          : const Color(0xFF8A9BB0),
+                          ? DcColors.green
+                          : DcColors.muted,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -1205,7 +1205,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                     child: const Icon(
                       TablerIcons.refresh,
                       size: 15,
-                      color: Color(0xFF8A9BB0),
+                      color: DcColors.muted,
                     ),
                   ),
                 ],
@@ -1218,7 +1218,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                   'Length',
                   style: _quickText(
                     10,
-                    const Color(0xFF5E6B7D),
+                    DcColors.muted,
                     weight: FontWeight.w600,
                   ),
                 ),
@@ -1227,7 +1227,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                   '$_genLength',
                   style: _quickText(
                     10,
-                    const Color(0xFF252C35),
+                    DcColors.text,
                     weight: FontWeight.w700,
                   ),
                 ),
@@ -1238,10 +1238,10 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                 trackHeight: 3,
                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
                 overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-                activeTrackColor: const Color(0xFF0F67D6),
-                inactiveTrackColor: const Color(0xFFCCD4DF),
-                thumbColor: const Color(0xFF0F67D6),
-                overlayColor: const Color(0x220F67D6),
+                activeTrackColor: DcColors.selection,
+                inactiveTrackColor: DcColors.well,
+                thumbColor: DcColors.selection,
+                overlayColor: const Color(0x223882C2),
               ),
               child: Slider(
                 value: _genLength.toDouble(),
@@ -1288,7 +1288,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
           ? null
           : const BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: Color(0xFFCCD4DF), width: 0.5),
+                bottom: BorderSide(color: DcColors.line, width: 0.5),
               ),
             ),
       child: Row(
@@ -1298,7 +1298,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
               label,
               style: _quickText(
                 11,
-                const Color(0xFF3A4A5C),
+                DcColors.text,
                 weight: FontWeight.w500,
               ),
             ),
@@ -1311,7 +1311,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
               height: 18,
               decoration: BoxDecoration(
                 color:
-                    value ? const Color(0xFF0F67D6) : const Color(0xFFCCD4DF),
+                    value ? DcColors.selection : DcColors.well,
                 borderRadius: BorderRadius.circular(9),
               ),
               child: AnimatedAlign(
@@ -1322,7 +1322,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                   height: 14,
                   margin: const EdgeInsets.symmetric(horizontal: 2),
                   decoration: const BoxDecoration(
-                    color: Colors.white,
+                    color: DcColors.panel,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1352,14 +1352,14 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
       alignment: standalone ? Alignment.topCenter : null,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: const Color(0xFFE7EBF0),
+        color: DcColors.well,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFC9D2DE)),
+        border: Border.all(color: DcColors.line),
         boxShadow: standalone
             ? null
             : const <BoxShadow>[
                 BoxShadow(
-                  color: Color(0x3D0F172A),
+                  color: DcColors.shadow,
                   blurRadius: 22,
                   offset: Offset(0, 12),
                 ),
@@ -1382,11 +1382,11 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
                   color: _isSearching
-                      ? const Color(0xFFEFF4FA)
-                      : const Color(0xFFF7F9FB),
-                  borderRadius: BorderRadius.circular(12),
+                      ? DcColors.rowAlternate
+                      : DcColors.panel,
+                  borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: const Color(0xFF8BA9D8),
+                    color: DcColors.selection,
                     width: 2,
                   ),
                 ),
@@ -1394,7 +1394,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                   children: <Widget>[
                     const Icon(
                       TablerIcons.search,
-                      color: Color(0xFF0F67D6),
+                      color: DcColors.selection,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -1406,7 +1406,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                         // always editable — blocking keystrokes mid-type is
                         // what made searching feel janky.
                         textAlignVertical: TextAlignVertical.center,
-                        cursorColor: const Color(0xFF0F67D6),
+                        cursorColor: DcColors.selection,
                         cursorHeight: 16,
                         cursorWidth: 1.5,
                         onSubmitted: (_) {
@@ -1417,14 +1417,14 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                         },
                         style: _quickText(
                           13,
-                          const Color(0xFF1F2937),
+                          DcColors.text,
                           weight: FontWeight.w500,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Search LumenPass',
                           hintStyle: _quickText(
                             13,
-                            const Color(0xFF6E7783),
+                            DcColors.muted,
                             weight: FontWeight.w500,
                           ),
                           border: InputBorder.none,
@@ -1449,7 +1449,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                         child: CircularProgressIndicator(
                           strokeWidth: 1.6,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF0F67D6),
+                            DcColors.selection,
                           ),
                         ),
                       ),
@@ -1463,14 +1463,14 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                 padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE2E7ED),
-                    borderRadius: BorderRadius.circular(10),
+                    color: DcColors.well,
+                    borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: const Color(0xFFD0D8E2),
+                      color: DcColors.line,
                     ),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(6),
                     child: SizedBox(
                       height: resultsHeight,
                       child: results.isEmpty
@@ -1479,7 +1479,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                                 'No matching items',
                                 style: _quickText(
                                   12,
-                                  const Color(0xFF5E6B7D),
+                                  DcColors.muted,
                                   weight: FontWeight.w600,
                                 ),
                               ),
@@ -1568,9 +1568,9 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
               vertical: 6,
             ),
             decoration: BoxDecoration(
-              color: const Color(0xFFDDE4EC),
+              color: DcColors.well,
               borderRadius: BorderRadius.circular(9),
-              border: Border.all(color: const Color(0xFFCCD4DF)),
+              border: Border.all(color: DcColors.line),
             ),
             child: Row(
               children: <Widget>[
@@ -1611,7 +1611,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                       widget.shortcutDisplay,
                       style: _quickText(
                         10,
-                        const Color(0xFF526178),
+                        DcColors.muted,
                         weight: FontWeight.w600,
                       ),
                     ),
@@ -1619,7 +1619,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                       'Lumenpass - Your Right Password Manager',
                       style: _quickText(
                         8,
-                        const Color(0xFF6E7B8D),
+                        DcColors.muted,
                         weight: FontWeight.w500,
                       ),
                     ),
@@ -1709,8 +1709,8 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
 
     return Material(
       color: widget.showBackdrop
-          ? const Color(0x260A152B)
-          : const Color(0xFFE7EBF0),
+          ? DcColors.scrimSoft
+          : DcColors.well,
       child: widget.showBackdrop ? SafeArea(child: content) : content,
     );
   }
@@ -1756,21 +1756,21 @@ class _QuickSearchShortcutHint extends StatelessWidget {
             margin: const EdgeInsets.only(right: 5),
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: const Color(0xFFEBEEF3),
+              color: DcColors.rowAlternate,
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: const Color(0xFFC0C9D4)),
+              border: Border.all(color: DcColors.line),
             ),
             child: key.icon != null
                 ? Icon(
                     key.icon,
                     size: 12,
-                    color: const Color(0xFF3E4B60),
+                    color: DcColors.text,
                   )
                 : Text(
                     key.text ?? '',
                     style: _hintText(
                       10,
-                      const Color(0xFF3E4B60),
+                      DcColors.text,
                       weight: FontWeight.w700,
                     ),
                   ),
@@ -1779,7 +1779,7 @@ class _QuickSearchShortcutHint extends StatelessWidget {
           label,
           style: _hintText(
             10,
-            const Color(0xFF3B4658),
+            DcColors.text,
             weight: FontWeight.w500,
           ),
         ),
@@ -1815,10 +1815,10 @@ class _QuickSearchGenerateButtonState
           height: 32,
           padding: const EdgeInsets.symmetric(horizontal: 11),
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFF116CD8) : const Color(0xFFEBEEF3),
+            color: _hovered ? DcColors.selection : DcColors.rowAlternate,
             borderRadius: BorderRadius.circular(8),
             border:
-                _hovered ? null : Border.all(color: const Color(0xFFC0C9D4)),
+                _hovered ? null : Border.all(color: DcColors.line),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1826,14 +1826,14 @@ class _QuickSearchGenerateButtonState
               Icon(
                 TablerIcons.lock_password,
                 size: 13,
-                color: _hovered ? Colors.white : const Color(0xFF3E4B60),
+                color: _hovered ? Colors.white : DcColors.text,
               ),
               const SizedBox(width: 6),
               Text(
                 'Generate',
                 style: TextStyle(
                   fontSize: 10,
-                  color: _hovered ? Colors.white : const Color(0xFF3E4B60),
+                  color: _hovered ? Colors.white : DcColors.text,
                   fontWeight: FontWeight.w700,
                   fontFamily: currentFontFamily,
                 ),
@@ -1876,9 +1876,9 @@ class _QuickSearchCloseButtonState extends State<_QuickSearchCloseButton> {
 
   @override
   Widget build(BuildContext context) {
-    const borderColor = Color(0xFFC0C9D4);
+    const borderColor = DcColors.line;
     final backgroundColor =
-        _hovered ? const Color(0xFFE7EDF5) : const Color(0xFFEBEEF3);
+        _hovered ? DcColors.rowAlternate : DcColors.rowAlternate;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -1901,7 +1901,7 @@ class _QuickSearchCloseButtonState extends State<_QuickSearchCloseButton> {
               'Close',
               style: _buttonText(
                 10,
-                const Color(0xFF3E4B60),
+                DcColors.text,
                 weight: FontWeight.w700,
               ),
             ),
@@ -1942,8 +1942,8 @@ class _QuickSearchCreateButtonState extends State<_QuickSearchCreateButton> {
 
   @override
   Widget build(BuildContext context) {
-    const baseColor = Color(0xFF0B4C5D);
-    const hoverColor = Color(0xFF0E5E74);
+    const baseColor = DcColors.cyan;
+    const hoverColor = DcColors.cyan;
     final backgroundColor = _hovered ? hoverColor : baseColor;
 
     return MouseRegion(
@@ -2016,8 +2016,8 @@ class _QuickSearchEditButtonState extends State<_QuickSearchEditButton> {
 
   @override
   Widget build(BuildContext context) {
-    const baseColor = Color(0xFF0B4C5D);
-    const hoverColor = Color(0xFF0E5E74);
+    const baseColor = DcColors.cyan;
+    const hoverColor = DcColors.cyan;
     final backgroundColor = _hovered ? hoverColor : baseColor;
 
     return MouseRegion(
@@ -2094,17 +2094,17 @@ class _QuickSearchResultRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final backgroundColor =
-        active ? const Color(0xFF116CD8) : const Color(0x00FFFFFF);
-    final titleColor = active ? Colors.white : const Color(0xFF252C35);
+        active ? DcColors.selection : const Color(0x00FFFFFF);
+    final titleColor = active ? Colors.white : DcColors.text;
     final subtitleColor =
-        active ? const Color(0xFFDCEAFF) : const Color(0xFF616A77);
+        active ? DcColors.selection : DcColors.muted;
 
     final hasTotpUrl = entry.totpAuthUrl.isNotEmpty;
     final totpCode = hasTotpUrl ? _formattedTotpCode(entry, currentTime) : null;
     final totpSecs =
         hasTotpUrl ? _totpSecondsRemaining(entry, currentTime) : null;
     final totpColor = totpSecs != null
-        ? (active ? const Color(0xFFDCEAFF) : _totpCountdownColor(totpSecs))
+        ? (active ? const Color(0x383882C2) : _totpCountdownColor(totpSecs))
         : null;
 
     return MouseRegion(
@@ -2113,7 +2113,7 @@ class _QuickSearchResultRow extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(6),
           child: Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -2219,7 +2219,7 @@ class _QuickSearchResultRow extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCEAFF).withValues(alpha: 0.2),
+                        color: const Color(0x33FFFFFF),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(

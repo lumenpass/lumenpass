@@ -174,15 +174,6 @@ class _AddLoginItemModalState extends ConsumerState<AddLoginItemModal> {
     showDiscardDialog(context, widget.onClose);
   }
 
-  void _addWebsiteField() {
-    final c = TextEditingController(text: 'https://');
-    c.addListener(_markDirty);
-    setState(() {
-      _isDirty = true;
-      _websiteControllers.add(c);
-    });
-  }
-
   void _removeWebsiteField(int index) {
     final controller = _websiteControllers[index];
     setState(() {
@@ -586,6 +577,7 @@ class _AddLoginItemModalState extends ConsumerState<AddLoginItemModal> {
                 child: TextField(
                   controller: _titleController,
                   maxLines: 1,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 18,
                     color: Color(0xFF2E3138),
@@ -710,29 +702,7 @@ class _AddLoginItemModalState extends ConsumerState<AddLoginItemModal> {
                   ),
                 ),
               ],
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: InkWell(
-                  onTap: _addWebsiteField,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    child: Text(
-                      '+ add another website / url',
-                      style: itemText(
-                        12,
-                        const Color(0xFF3B6FD3),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 12),
               LoginFormField(
                 label: 'notes',
                 controller: _notesController,

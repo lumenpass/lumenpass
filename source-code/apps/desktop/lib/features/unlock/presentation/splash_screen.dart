@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../presentation/theme/drive_clue_tokens.dart';
 import '../../../presentation/widgets/lumenpass_wordmark.dart';
 
-const Color _kPaper = Color(0xFFF7F4EC);
-const Color _kOrange = Color(0xFFFF5B22);
-const Color _kMuted = Color(0xFF626560);
+const Color _kPaper = DcColors.background;
+const Color _kOrange = DcColors.selection;
+const Color _kMuted = DcColors.muted;
 
 class DesktopSplashScreen extends StatefulWidget {
   const DesktopSplashScreen({super.key, required this.onFinished});
@@ -49,6 +50,8 @@ class _DesktopSplashScreenState extends State<DesktopSplashScreen>
             const LumenPassWordmark(
               key: ValueKey<String>('splash-wordmark'),
               fontSize: 38,
+              lumenColor: DcColors.text,
+              passColor: DcColors.cyan,
             ),
             const SizedBox(height: 9),
             const Text(

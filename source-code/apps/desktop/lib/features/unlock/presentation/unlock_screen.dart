@@ -16,6 +16,8 @@ import '../../../core/services/bookmark_service.dart';
 
 import '../../../core/services/vault_unlock_service.dart';
 import '../../../presentation/theme/app_theme.dart';
+import '../../../presentation/theme/drive_clue_tokens.dart';
+import '../../../presentation/widgets/drive_clue/drive_clue_widgets.dart';
 import '../../../presentation/widgets/lumenpass_wordmark.dart';
 
 import '../../cloud/application/cloud_service_provider.dart';
@@ -35,42 +37,54 @@ import 'splash_screen.dart';
 import 'unlocking_progress_screen.dart';
 import 'webdav_config_dialog.dart';
 
-// ── Shared palette ─────────────────────────────────────────────────────────
-const Color _kBorderSoft = Color(0xFFE1E7F0);
-const Color _kTitle = Color(0xFF22314A);
-const Color _kLabel = Color(0xFF73839D);
-const Color _kIcon = Color(0xFF8A97AC);
-const Color _kActionDark = Color(0xFF0A3B48);
+// ── Shared palette (DriveClue tokens) ──────────────────────────────────────
+const Color _kTitle = DcColors.text;
+const Color _kLabel = DcColors.muted;
+const Color _kActionDark = DcColors.selection;
 
-const Color _kPickerInk = Color(0xFF191A1B);
-const Color _kPickerPaper = Color(0xFFF7F4EC);
-const Color _kPickerPaperBright = Color(0xFFFFFCF5);
-const Color _kPickerLine = Color(0xFF252628);
-const Color _kPickerLineSoft = Color(0xFFC9CBC8);
-const Color _kPickerMuted = Color(0xFF626560);
-const Color _kPickerOrange = Color(0xFFFF5B22);
-const Color _kPickerOrangeDark = Color(0xFFE94A13);
-const Color _kPickerMint = Color(0xFF21A98F);
-const Color _kPickerMintSoft = Color(0xFFDFF2EC);
-const Color _kPickerPeach = Color(0xFFF4D7C8);
-const Color _kPickerYellow = Color(0xFFF4E2A4);
-const Color _kPickerBlue = Color(0xFF3858D8);
-const double _kVaultStatisticsFooterHeight = 62;
+// ── Vault list body palette (light, sidebar-toned) ────────────────────────
+const Color _kPickerInk = DcColors.sidebarText;
+const Color _kPickerPaper = DcColors.lightSurface;
+const Color _kPickerPaperBright = DcColors.lightSurface;
+const Color _kPickerInset = DcColors.lightInset;
+const Color _kPickerLine = DcColors.sidebarLine;
+const Color _kPickerLineStrong = DcColors.lightLineStrong;
+const Color _kPickerMuted = DcColors.sidebarMuted;
+const Color _kPickerFaint = DcColors.faint;
+const Color _kPickerHover = Color(0xFFE9F1F9);
+const Color _kPickerTableHeader = DcColors.sidebar;
+const Color _kPickerOrange = DcColors.selection;
+const Color _kPickerOrangeDark = DcColors.selectionHover;
 
-const Color _kUnlockDialogBackground = _kPickerPaper;
-const Color _kUnlockCardBackground = _kPickerPaperBright;
-const Color _kUnlockCardBorder = _kPickerLineSoft;
-const Color _kUnlockFieldText = _kPickerInk;
-const Color _kUnlockHintText = _kPickerMuted;
-const Color _kUnlockAccentSoft = _kPickerMintSoft;
-const Color _kUnlockAccentBorder = _kPickerMint;
-const Color _kUnlockFooterBackground = _kPickerPaperBright;
-const Color _kUnlockFooterBorder = _kPickerLineSoft;
-const Color _kUnlockGhostBg = _kPickerPaper;
-const Color _kUnlockGhostBorder = _kPickerLine;
-const Color _kUnlockGhostText = _kPickerInk;
+/// Distance of the floating database search field from the bottom edge.
+const double _kDatabaseSearchBottomOffset = 74;
+
+// ── Credentials dialog palette (light, sidebar-toned) ─────────────────────
+const Color _kCredInk = DcColors.sidebarText;
+const Color _kCredMuted = DcColors.sidebarMuted;
+const Color _kCredCanvas = DcColors.sidebar;
+const Color _kCredSurface = DcColors.lightSurface;
+const Color _kCredInset = DcColors.lightInset;
+const Color _kCredLine = DcColors.sidebarLine;
+const Color _kCredLineStrong = DcColors.lightLineStrong;
+const Color _kCredAccentTint = DcColors.lightSelectionFill;
+const Color _kCredMint = DcColors.tealOnLight;
+const Color _kCredMintSoft = Color(0x1F1F8A7D);
+const Color _kCredShadow = DcColors.lightCardShadow;
+
+const Color _kUnlockDialogBackground = _kCredCanvas;
+const Color _kUnlockCardBackground = _kCredSurface;
+const Color _kUnlockFieldText = _kCredInk;
+const Color _kUnlockHintText = _kCredMuted;
+const Color _kUnlockAccentSoft = _kCredMintSoft;
+const Color _kUnlockAccentBorder = _kCredMint;
+const Color _kUnlockFooterBackground = _kCredCanvas;
+const Color _kUnlockFooterBorder = _kCredLine;
+const Color _kUnlockGhostBg = _kCredSurface;
+const Color _kUnlockGhostBorder = _kCredLineStrong;
+const Color _kUnlockGhostText = _kCredInk;
 const Color _kUnlockPrimaryHover = _kPickerOrangeDark;
-const Color _kUnlockPrimaryDisabled = Color(0xFFB9B4A9);
+const Color _kUnlockPrimaryDisabled = Color(0x733882C2);
 
 TextStyle _uText(
   double size,
@@ -128,27 +142,27 @@ InputDecoration _unlockFieldDecoration({
 }) {
   return InputDecoration(
     hintText: hint,
-    hintStyle: _pickerText(13, _kPickerMuted),
+    hintStyle: _pickerText(13, _kCredMuted),
     filled: true,
-    fillColor: _kPickerPaper,
+    fillColor: _kCredSurface,
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: Color(0xFFCAC3B7)),
+      borderSide: const BorderSide(color: _kCredLineStrong),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: Color(0xFFCAC3B7)),
+      borderSide: const BorderSide(color: _kCredLineStrong),
     ),
     disabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: _kPickerLineSoft),
+      borderSide: const BorderSide(color: _kCredLine),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
       borderSide: const BorderSide(color: _kPickerOrange, width: 1.5),
     ),
-    prefixIcon: Icon(prefixIcon, size: 17, color: _kPickerMuted),
+    prefixIcon: Icon(prefixIcon, size: 17, color: _kCredMuted),
     prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
     suffixIcon: suffix,
   );
@@ -252,7 +266,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     final selectedRecord = _selectedRecordFrom(visibleDatabases);
 
     final unlockContent = Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClue(),
       child: Scaffold(
         backgroundColor: _kPickerPaper,
         body: Row(
@@ -261,36 +275,22 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             // Left: database list
             Expanded(
               flex: 3,
-              child: _VintageGridSurface(
+              child: ColoredBox(
+                color: _kPickerPaper,
                 child: Stack(
                   children: <Widget>[
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            20,
-                            Platform.isMacOS ? 26 : 16,
-                            20,
-                            0,
+                        _buildHeader(),
+                        if (databases.isNotEmpty)
+                          _DatabaseListHeader(
+                            sortField: _sortField,
+                            sortAscending: _sortAscending,
+                            onSort: _toggleSort,
+                            isRefreshing: _isRefreshingDatabaseHealth,
+                            onRefresh: _refreshAllDatabaseHealth,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              _buildHeader(),
-                              if (databases.isNotEmpty) ...<Widget>[
-                                const SizedBox(height: 12),
-                                _DatabaseListHeader(
-                                  sortField: _sortField,
-                                  sortAscending: _sortAscending,
-                                  onSort: _toggleSort,
-                                  isRefreshing: _isRefreshingDatabaseHealth,
-                                  onRefresh: _refreshAllDatabaseHealth,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
                         Expanded(
                           child: databases.isEmpty
                               ? Padding(
@@ -302,21 +302,17 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                                       padding: EdgeInsets.all(20),
                                       child: _EmptySearchState(),
                                     )
-                                  : ListView.separated(
-                                      padding: EdgeInsets.fromLTRB(
-                                        20,
-                                        10,
-                                        20,
-                                        _showDatabaseSearch ? 82 : 16,
+                                  : ListView.builder(
+                                      padding: EdgeInsets.only(
+                                        bottom: _showDatabaseSearch ? 82 : 16,
                                       ),
                                       itemCount: visibleDatabases.length,
-                                      separatorBuilder: (_, __) =>
-                                          const SizedBox(height: 6),
                                       itemBuilder: (_, index) {
                                         final db = visibleDatabases[index];
                                         final health = _databaseHealth[db.id];
 
                                         return _DatabaseRow(
+                                          index: index,
                                           record: db,
                                           selected: selectedRecord?.id == db.id,
                                           health: health,
@@ -364,7 +360,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                       Positioned(
                         left: 20,
                         right: 20,
-                        bottom: _kVaultStatisticsFooterHeight + 12,
+                        bottom: _kDatabaseSearchBottomOffset,
                         child: _SearchField(
                           controller: _searchController,
                           focusNode: _searchFocusNode,
@@ -377,12 +373,12 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
               ),
             ),
             // Vertical divider
-            Container(width: 2, color: _kPickerLine),
+            Container(width: 1, color: DcColors.shellDivider),
             // Right: greeting header (top) + guide panel (below)
             Expanded(
               flex: 2,
               child: Container(
-                color: _kPickerMintSoft,
+                color: DcColors.sidebar,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: const <Widget>[
@@ -414,55 +410,63 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      children: <Widget>[
-        Container(
-          height: 27,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: _kPickerInk,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            'YOUR VAULTS',
-            style: _pickerText(
-              9,
-              Colors.white,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.05,
+    return Container(
+      height: Platform.isMacOS ? 42 : DcMetrics.headerHeight,
+      padding: EdgeInsets.fromLTRB(
+        Platform.isMacOS ? 94 : 16,
+        0,
+        12,
+        0,
+      ),
+      decoration: const BoxDecoration(
+        color: DcColors.background,
+        border: Border(bottom: BorderSide(color: DcColors.line)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              'Your vaults',
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: _pickerText(
+                17,
+                DcColors.text,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-        ),
-        const Spacer(),
-        _HeaderIconButton(
-          icon: TablerIcons.search,
-          tooltip: 'Search databases',
-          onTap: _openDatabaseSearch,
-          primary: false,
-        ),
-        const SizedBox(width: 8),
-        _HeaderIconButton(
-          icon: TablerIcons.plus,
-          tooltip: 'Create database',
-          onTap: _openCreateDatabase,
-          primary: true,
-        ),
-        const SizedBox(width: 8),
-        _HeaderIconButton(
-          icon: TablerIcons.folder_open,
-          tooltip: 'Open existing database',
-          onTap: _openExistingDatabase,
-          primary: false,
-        ),
-        const SizedBox(width: 8),
-        _HeaderIconButton(
-          icon: TablerIcons.cloud,
-          tooltip: 'Cloud Services',
-          onTap: _openCloudServices,
-          primary: false,
-        ),
-      ],
+          const SizedBox(width: 8),
+          _HeaderIconButton(
+            icon: TablerIcons.search,
+            tooltip: 'Search databases',
+            onTap: _openDatabaseSearch,
+            primary: false,
+          ),
+          const SizedBox(width: 6),
+          _HeaderIconButton(
+            icon: TablerIcons.plus,
+            tooltip: 'Create database',
+            onTap: _openCreateDatabase,
+            primary: true,
+          ),
+          const SizedBox(width: 6),
+          _HeaderIconButton(
+            icon: TablerIcons.folder_open,
+            tooltip: 'Open existing database',
+            onTap: _openExistingDatabase,
+            primary: false,
+          ),
+          const SizedBox(width: 6),
+          _HeaderIconButton(
+            icon: TablerIcons.cloud,
+            tooltip: 'Cloud Services',
+            onTap: _openCloudServices,
+            primary: false,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1047,7 +1051,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, style: _uText(12, Colors.white)),
-        backgroundColor: const Color(0xFFEF4444),
+        backgroundColor: DcColors.red,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         margin: const EdgeInsets.all(16),
@@ -1091,8 +1095,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
               'Remove',
-              style: _uText(12, const Color(0xFFEF4444),
-                  fontWeight: FontWeight.w600),
+              style: _uText(12, DcColors.red, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -1315,6 +1318,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
 
 class _DatabaseRow extends StatefulWidget {
   const _DatabaseRow({
+    this.index = 0,
     required this.record,
     required this.selected,
     required this.onTap,
@@ -1328,6 +1332,8 @@ class _DatabaseRow extends StatefulWidget {
     this.onShowHealthDetails,
   });
 
+  /// Position in the list; drives the striped row color.
+  final int index;
   final DatabaseRecord record;
   final bool selected;
   final VoidCallback? onTap;
@@ -1349,7 +1355,7 @@ class _DatabaseRowState extends State<_DatabaseRow> {
 
   static const Color _menuSurface = _kPickerPaperBright;
   static const Color _menuText = _kPickerInk;
-  static const Color _menuBorder = _kPickerLine;
+  static const Color _menuBorder = _kPickerLineStrong;
 
   PopupMenuItem<String> _menuItem({
     required String value,
@@ -1369,7 +1375,7 @@ class _DatabaseRowState extends State<_DatabaseRow> {
         decoration: BoxDecoration(
           border: showBottomDivider
               ? const Border(
-                  bottom: BorderSide(color: Color(0xFFE6ECF4)),
+                  bottom: BorderSide(color: _kPickerLine),
                 )
               : null,
         ),
@@ -1381,7 +1387,7 @@ class _DatabaseRowState extends State<_DatabaseRow> {
               label,
               style: _uText(
                 11,
-                isDestructive ? const Color(0xFFB42318) : _menuText,
+                isDestructive ? DcColors.redOnLight : _menuText,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1404,21 +1410,21 @@ class _DatabaseRowState extends State<_DatabaseRow> {
           value: 'default',
           icon: TablerIcons.star,
           label: 'Set Default',
-          iconColor: const Color(0xFFD97706),
+          iconColor: DcColors.amberOnLight,
           isDestructive: false,
         ),
       (
         value: 'save_as',
         icon: TablerIcons.device_floppy,
         label: 'Save Database As',
-        iconColor: const Color(0xFF0F766E),
+        iconColor: DcColors.tealOnLight,
         isDestructive: false,
       ),
       (
         value: 'duplicate',
         icon: TablerIcons.copy,
         label: 'Duplicate',
-        iconColor: const Color(0xFF4F46E5),
+        iconColor: DcColors.indigo,
         isDestructive: false,
       ),
       if (kBackupRestoreFeatureEnabled)
@@ -1426,14 +1432,14 @@ class _DatabaseRowState extends State<_DatabaseRow> {
           value: 'restore',
           icon: TablerIcons.history,
           label: 'Restore',
-          iconColor: const Color(0xFF0F766E),
+          iconColor: DcColors.tealOnLight,
           isDestructive: false,
         ),
       (
         value: 'remove',
         icon: TablerIcons.trash,
         label: 'Remove',
-        iconColor: const Color(0xFFDC2626),
+        iconColor: DcColors.redOnLight,
         isDestructive: true,
       ),
     ];
@@ -1555,33 +1561,28 @@ class _DatabaseRowState extends State<_DatabaseRow> {
     final isChecking = (health?.isChecking ?? false) || isPendingCheck;
     final hasHealthError = health?.hasError ?? false;
     final disabled = isPendingCheck || isChecking || hasHealthError;
-    final highlighted = widget.selected || _hovered;
-    final titleColor = hasHealthError
-        ? const Color(0xFF9F1239)
-        : isChecking
-            ? _kLabel
-            : _kPickerInk;
-    final subtitleColor = hasHealthError
-        ? const Color(0xFFBE123C)
-        : isChecking
-            ? _kIcon
-            : _kPickerMuted;
-    final backgroundColor = hasHealthError
-        ? const Color(0xFFFFFBFB)
-        : widget.selected
-            ? _kPickerMintSoft
+    final selected = widget.selected;
+    final titleColor = selected
+        ? Colors.white
+        : hasHealthError
+            ? DcColors.redOnLight
             : isChecking
-                ? const Color(0xFFF0EEE7)
-                : _hovered
-                    ? _kPickerPaperBright
-                    : const Color(0xF7FFFCF5);
-    final borderColor = hasHealthError
-        ? const Color(0xFFF3C2C2)
-        : highlighted
-            ? _kPickerLine
+                ? _kPickerFaint
+                : _kPickerInk;
+    final subtitleColor = selected
+        ? const Color(0xD9FFFFFF)
+        : hasHealthError
+            ? DcColors.redOnLight
             : isChecking
-                ? _kPickerLineSoft
-                : const Color(0xFF9C9E99);
+                ? _kPickerFaint
+                : _kPickerMuted;
+    final backgroundColor = selected
+        ? DcColors.selection
+        : _hovered && !disabled
+            ? _kPickerHover
+            : widget.index.isEven
+                ? _kPickerPaper
+                : _kPickerInset;
     final locationText = hasHealthError
         ? health?.title ?? 'This vault needs attention.'
         : isChecking
@@ -1597,8 +1598,8 @@ class _DatabaseRowState extends State<_DatabaseRow> {
 
     return Theme(
       data: Theme.of(context).copyWith(
-        hoverColor: _kPickerMintSoft,
-        highlightColor: const Color(0x1421A98F),
+        hoverColor: DcColors.selectionSoft,
+        highlightColor: DcColors.selectionSoft,
         splashColor: Colors.transparent,
         splashFactory: NoSplash.splashFactory,
       ),
@@ -1620,24 +1621,14 @@ class _DatabaseRowState extends State<_DatabaseRow> {
                     },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 120),
-                height: 66,
+                height: 52,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: backgroundColor,
-                  borderRadius: BorderRadius.circular(13),
-                  border: Border.all(
-                    color: borderColor,
-                    width: widget.selected ? 1.8 : 1.1,
+                  border: const Border(
+                    bottom: BorderSide(color: _kPickerLine),
                   ),
-                  boxShadow: widget.selected
-                      ? const <BoxShadow>[
-                          BoxShadow(
-                            color: Color(0x33FF5B22),
-                            offset: Offset(4, 4),
-                          ),
-                        ]
-                      : null,
                 ),
                 child: Stack(
                   clipBehavior: Clip.none,
@@ -1676,9 +1667,11 @@ class _DatabaseRowState extends State<_DatabaseRow> {
                                         icon: TablerIcons.star_filled,
                                         label: 'Default',
                                         backgroundColor: widget.selected
-                                            ? _kPickerPeach
-                                            : _kPickerYellow,
-                                        foregroundColor: _kPickerInk,
+                                            ? const Color(0x33FFFFFF)
+                                            : DcColors.amber,
+                                        foregroundColor: widget.selected
+                                            ? Colors.white
+                                            : DcColors.sidebarText,
                                       ),
                                     ],
                                   ],
@@ -1704,11 +1697,7 @@ class _DatabaseRowState extends State<_DatabaseRow> {
                               textAlign: TextAlign.left,
                               style: _pickerText(
                                 11,
-                                hasHealthError
-                                    ? const Color(0xFF9F1239)
-                                    : isChecking
-                                        ? _kIcon
-                                        : _kPickerMuted,
+                                subtitleColor,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -1796,9 +1785,9 @@ class _DatabaseBadge extends StatelessWidget {
       height: 32,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
         border: Border.all(
-          color: selected ? _kPickerLine : const Color(0x33808080),
+          color: selected ? const Color(0x80FFFFFF) : _kPickerLine,
         ),
       ),
       alignment: Alignment.center,
@@ -1826,7 +1815,7 @@ class _DatabaseHealthIndicator extends StatelessWidget {
         height: compact ? 10 : 14,
         child: CircularProgressIndicator(
           strokeWidth: compact ? 1.5 : 2,
-          color: compact ? _kIcon : null,
+          color: compact ? _kPickerMuted : DcColors.selection,
         ),
       );
       if (compact) {
@@ -1841,9 +1830,9 @@ class _DatabaseHealthIndicator extends StatelessWidget {
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F7FB),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _kBorderSoft),
+            color: _kPickerInset,
+            borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
+            border: Border.all(color: _kPickerLine),
           ),
           alignment: Alignment.center,
           child: spinner,
@@ -1862,7 +1851,7 @@ class _DatabaseHealthIndicator extends StatelessWidget {
             child: Icon(
               TablerIcons.alert_circle_filled,
               size: 14,
-              color: const Color(0xFFDC2626),
+              color: DcColors.redOnLight,
             ),
           ),
         ),
@@ -1876,11 +1865,11 @@ class _DatabaseHealthIndicator extends StatelessWidget {
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints.tightFor(width: 28, height: 28),
         style: IconButton.styleFrom(
-          backgroundColor: const Color(0xFFFFF1F2),
-          foregroundColor: const Color(0xFFDC2626),
+          backgroundColor: const Color(0x1AD64541),
+          foregroundColor: DcColors.redOnLight,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: Color(0xFFF3C2C2)),
+            borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
+            side: const BorderSide(color: Color(0x66D64541)),
           ),
         ),
         icon: const Icon(TablerIcons.alert_circle_filled, size: 16),
@@ -1902,22 +1891,14 @@ class _UnlockVaultIcon extends StatelessWidget {
         width: 60,
         height: 60,
         decoration: BoxDecoration(
-          color: _kPickerPeach,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _kPickerLineSoft),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(
-              color: Color(0x18252628),
-              blurRadius: 8,
-              spreadRadius: -3,
-              offset: Offset(0, 3),
-            ),
-          ],
+          color: _kCredAccentTint,
+          borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+          border: Border.all(color: _kCredLine),
         ),
         child: const Icon(
           TablerIcons.lock,
           size: 27,
-          color: _kPickerOrangeDark,
+          color: DcColors.selection,
         ),
       );
     }
@@ -1958,15 +1939,10 @@ class _UnlockVaultIcon extends StatelessWidget {
       height: 60,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _kPickerLineSoft),
+        borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+        border: Border.all(color: _kCredLine),
         boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x18252628),
-            blurRadius: 8,
-            spreadRadius: -3,
-            offset: Offset(0, 3),
-          ),
+          BoxShadow(color: _kCredShadow, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       alignment: Alignment.center,
@@ -1994,7 +1970,7 @@ class _StatusChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(DcMetrics.badgeRadius),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2006,23 +1982,6 @@ class _StatusChip extends StatelessWidget {
             style: _uText(10, foregroundColor, fontWeight: FontWeight.w700),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _VintageGridSurface extends StatelessWidget {
-  const _VintageGridSurface({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: const _VintageGridPainter(),
-      child: ColoredBox(
-        color: _kPickerPaper.withValues(alpha: 0.88),
-        child: child,
       ),
     );
   }
@@ -2048,108 +2007,64 @@ class _VaultStatisticsFooter extends StatelessWidget {
       }
     }
 
-    return Container(
-      height: _kVaultStatisticsFooterHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
-      decoration: const BoxDecoration(
-        color: Color(0xF7FFFCF5),
-        border: Border(top: BorderSide(color: _kPickerLine, width: 1.2)),
+    final metrics = <Widget>[
+      _StorageCountMetric(
+        storageType: 'local',
+        label: 'Local',
+        assetPath: 'assets/images/dir.png',
+        count: counts['local']!,
       ),
-      child: Row(
-        children: <Widget>[
-          Semantics(
-            label: 'Total vaults: ${databases.length}',
-            excludeSemantics: true,
-            child: SizedBox(
-              width: 70,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    '${databases.length}',
-                    style: _pickerDisplayText(
-                      20,
-                      _kPickerOrangeDark,
-                      height: 0.9,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    databases.length == 1 ? 'TOTAL VAULT' : 'TOTAL VAULTS',
-                    style: _pickerText(
-                      7.5,
-                      _kPickerMuted,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.65,
-                    ),
-                  ),
-                ],
+      _StorageCountMetric(
+        storageType: CloudServiceProvider.googleDrive.storageType,
+        label: CloudServiceProvider.googleDrive.label,
+        assetPath: CloudServiceProvider.googleDrive.assetPath,
+        count: counts[CloudServiceProvider.googleDrive.storageType]!,
+      ),
+      _StorageCountMetric(
+        storageType: CloudServiceProvider.dropbox.storageType,
+        label: CloudServiceProvider.dropbox.label,
+        assetPath: CloudServiceProvider.dropbox.assetPath,
+        count: counts[CloudServiceProvider.dropbox.storageType]!,
+      ),
+      _StorageCountMetric(
+        storageType: CloudServiceProvider.s3.storageType,
+        label: CloudServiceProvider.s3.label,
+        assetPath: CloudServiceProvider.s3.assetPath,
+        count: counts[CloudServiceProvider.s3.storageType]!,
+      ),
+      _StorageCountMetric(
+        storageType: CloudServiceProvider.webdav.storageType,
+        label: CloudServiceProvider.webdav.label,
+        assetPath: CloudServiceProvider.webdav.assetPath,
+        count: counts[CloudServiceProvider.webdav.storageType]!,
+      ),
+    ];
+
+    return DcStatusBar(
+      leading: <Widget>[
+        Semantics(
+          label: 'Total vaults: ${databases.length}',
+          excludeSemantics: true,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Icon(TablerIcons.database, size: 13),
+              const SizedBox(width: 6),
+              Text(
+                databases.length == 1
+                    ? '1 vault'
+                    : '${databases.length} vaults',
+                style: _pickerText(
+                  11,
+                  DcColors.sidebarText,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
+            ],
           ),
-          Container(
-            width: 1,
-            height: 34,
-            margin: const EdgeInsets.only(left: 4, right: 16),
-            color: _kPickerLineSoft,
-          ),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'BY STORAGE',
-                  style: _pickerText(
-                    7.5,
-                    _kPickerMuted,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.65,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    _StorageCountMetric(
-                      storageType: 'local',
-                      label: 'Local',
-                      assetPath: 'assets/images/dir.png',
-                      count: counts['local']!,
-                    ),
-                    _StorageCountMetric(
-                      storageType: CloudServiceProvider.googleDrive.storageType,
-                      label: CloudServiceProvider.googleDrive.label,
-                      assetPath: CloudServiceProvider.googleDrive.assetPath,
-                      count:
-                          counts[CloudServiceProvider.googleDrive.storageType]!,
-                    ),
-                    _StorageCountMetric(
-                      storageType: CloudServiceProvider.dropbox.storageType,
-                      label: CloudServiceProvider.dropbox.label,
-                      assetPath: CloudServiceProvider.dropbox.assetPath,
-                      count: counts[CloudServiceProvider.dropbox.storageType]!,
-                    ),
-                    _StorageCountMetric(
-                      storageType: CloudServiceProvider.s3.storageType,
-                      label: CloudServiceProvider.s3.label,
-                      assetPath: CloudServiceProvider.s3.assetPath,
-                      count: counts[CloudServiceProvider.s3.storageType]!,
-                    ),
-                    _StorageCountMetric(
-                      storageType: CloudServiceProvider.webdav.storageType,
-                      label: CloudServiceProvider.webdav.label,
-                      assetPath: CloudServiceProvider.webdav.assetPath,
-                      count: counts[CloudServiceProvider.webdav.storageType]!,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
+      trailing: metrics,
     );
   }
 }
@@ -2183,23 +2098,23 @@ class _StorageCountMetric extends StatelessWidget {
             children: <Widget>[
               Image.asset(
                 assetPath,
-                width: 17,
-                height: 17,
+                width: 14,
+                height: 14,
                 errorBuilder: (_, __, ___) => Icon(
                   storageType == 'local'
                       ? TablerIcons.folder
                       : TablerIcons.cloud,
-                  size: 17,
-                  color: _kPickerMuted,
+                  size: 14,
+                  color: DcColors.sidebarMuted,
                 ),
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: 4),
               Text(
                 '$count',
                 style: _pickerText(
-                  10.5,
-                  _kPickerInk,
-                  fontWeight: FontWeight.w700,
+                  11,
+                  DcColors.sidebarText,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -2208,27 +2123,6 @@ class _StorageCountMetric extends StatelessWidget {
       ),
     );
   }
-}
-
-class _VintageGridPainter extends CustomPainter {
-  const _VintageGridPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0x12191A1B)
-      ..strokeWidth = 0.6;
-    const spacing = 24.0;
-    for (var x = 0.0; x <= size.width; x += spacing) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (var y = 0.0; y <= size.height; y += spacing) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ── Empty state ─────────────────────────────────────────────────────────────
@@ -2240,12 +2134,9 @@ class _EmptyDatabaseState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: _kPickerPaperBright,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _kPickerLine, width: 1.2),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(color: Color(0x2BFF5B22), offset: Offset(5, 5)),
-        ],
+        color: _kPickerInset,
+        borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+        border: Border.all(color: _kPickerLine),
       ),
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
@@ -2267,15 +2158,14 @@ class _EmptyDatabaseState extends StatelessWidget {
                 Container(
                   width: box,
                   height: box,
-                  decoration: BoxDecoration(
-                    color: _kPickerYellow,
+                  decoration: const BoxDecoration(
+                    color: DcColors.lightSelectionFill,
                     shape: BoxShape.circle,
-                    border: Border.all(color: _kPickerLine),
                   ),
                   child: Icon(
                     TablerIcons.database_off,
                     size: iconSz,
-                    color: _kPickerInk,
+                    color: DcColors.selection,
                   ),
                 ),
                 SizedBox(height: tight ? 6 : 10),
@@ -2309,9 +2199,9 @@ class _EmptySearchState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: _kPickerPaperBright,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _kPickerLine, width: 1.2),
+        color: _kPickerInset,
+        borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+        border: Border.all(color: _kPickerLine),
       ),
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
@@ -2385,10 +2275,10 @@ class _SearchField extends StatelessWidget {
         },
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: Color(0x26191A1B),
+                color: Color(0x29263340),
                 blurRadius: 14,
                 spreadRadius: -3,
                 offset: Offset(0, 6),
@@ -2415,17 +2305,18 @@ class _SearchField extends StatelessWidget {
                 ),
               ),
               filled: true,
-              fillColor: _kPickerPaperBright,
+              fillColor: _kPickerPaper,
               isDense: true,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(999),
-                borderSide: const BorderSide(color: _kPickerLine, width: 1.3),
+                borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+                borderSide: const BorderSide(color: _kPickerLineStrong),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(999),
-                borderSide: const BorderSide(color: _kPickerOrange, width: 1.8),
+                borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+                borderSide:
+                    const BorderSide(color: DcColors.selection, width: 1.5),
               ),
             ),
           ),
@@ -2453,12 +2344,13 @@ class _DatabaseListHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: _kPickerPeach,
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: _kPickerLine, width: 1.1),
+      height: 30,
+      padding: const EdgeInsets.only(left: 60, right: 14),
+      decoration: const BoxDecoration(
+        color: _kPickerTableHeader,
+        border: Border(bottom: BorderSide(color: _kPickerLine)),
       ),
+      alignment: Alignment.centerLeft,
       child: Row(
         children: <Widget>[
           Expanded(
@@ -2527,10 +2419,10 @@ class _DatabaseHealthRefreshButton extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: isRefreshing ? null : () => unawaited(onRefresh()),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
             child: SizedBox(
-              width: 30,
-              height: 30,
+              width: 24,
+              height: 24,
               child: Center(
                 child: AnimatedRotation(
                   turns: isRefreshing ? 1 : 0,
@@ -2538,8 +2430,8 @@ class _DatabaseHealthRefreshButton extends StatelessWidget {
                   curve: Curves.easeInOut,
                   child: Icon(
                     TablerIcons.refresh,
-                    size: 17,
-                    color: isRefreshing ? _kPickerOrange : _kPickerInk,
+                    size: 14,
+                    color: isRefreshing ? DcColors.selection : _kPickerMuted,
                   ),
                 ),
               ),
@@ -2573,14 +2465,14 @@ class _SortLabel extends StatelessWidget {
         children: <Widget>[
           Flexible(
             child: Text(
-              label,
+              label.toUpperCase(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: _pickerText(
-                11,
-                active ? _kPickerOrangeDark : _kPickerInk,
+                10,
+                active ? _kPickerInk : _kPickerMuted,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
+                letterSpacing: 0.5,
               ),
             ),
           ),
@@ -2591,8 +2483,8 @@ class _SortLabel extends StatelessWidget {
                     ? TablerIcons.chevron_up
                     : TablerIcons.chevron_down)
                 : TablerIcons.selector,
-            size: 13,
-            color: active ? _kPickerOrangeDark : _kPickerMuted,
+            size: 12,
+            color: active ? _kPickerInk : _kPickerFaint,
           ),
         ],
       ),
@@ -2626,13 +2518,13 @@ class _HeaderIconButtonState extends State<_HeaderIconButton> {
   Widget build(BuildContext context) {
     final disabled = widget.onTap == null;
     final backgroundColor = disabled
-        ? (widget.primary ? const Color(0xFFD0A996) : const Color(0xFFE2DFD5))
+        ? (widget.primary ? _kUnlockPrimaryDisabled : const Color(0x0DFFFFFF))
         : (widget.primary
-            ? (_hovered ? _kPickerOrangeDark : _kPickerOrange)
-            : (_hovered ? _kPickerMintSoft : _kPickerPaperBright));
+            ? (_hovered ? DcColors.selectionHover : DcColors.selection)
+            : (_hovered ? const Color(0x2EFFFFFF) : const Color(0x17FFFFFF)));
     final foregroundColor = disabled
-        ? const Color(0xFF8C8982)
-        : (widget.primary ? Colors.white : _kPickerInk);
+        ? DcColors.faint
+        : (widget.primary ? Colors.white : DcColors.text);
 
     return Tooltip(
       message: widget.tooltip,
@@ -2645,25 +2537,18 @@ class _HeaderIconButtonState extends State<_HeaderIconButton> {
           onTap: widget.onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            width: 38,
-            height: 38,
+            width: 30,
+            height: 26,
             decoration: BoxDecoration(
               color: backgroundColor,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: disabled ? _kPickerLineSoft : _kPickerLine,
-                width: widget.primary ? 1.3 : 1.1,
-              ),
-              boxShadow: widget.primary && !disabled
-                  ? const <BoxShadow>[
-                      BoxShadow(
-                        color: Color(0x40191A1B),
-                        offset: Offset(3, 3),
-                      ),
-                    ]
-                  : null,
+              borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
+              border: widget.primary
+                  ? null
+                  : Border.all(
+                      color: disabled ? DcColors.line : DcColors.lineStrong,
+                    ),
             ),
-            child: Icon(widget.icon, size: 17, color: foregroundColor),
+            child: Icon(widget.icon, size: 14, color: foregroundColor),
           ),
         ),
       ),
@@ -2679,36 +2564,33 @@ class _UnlockGreetingHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: Platform.isMacOS ? 42 : DcMetrics.headerHeight,
       decoration: const BoxDecoration(
-        color: _kPickerPaperBright,
-        border: Border(bottom: BorderSide(color: _kPickerLine, width: 2)),
+        color: DcColors.sidebar,
+        border: Border(bottom: BorderSide(color: DcColors.sidebarLine)),
       ),
-      padding: EdgeInsets.fromLTRB(
-        16,
-        9,
-        16,
-        9,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: <Widget>[
           Container(
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: _kPickerMintSoft,
-              shape: BoxShape.circle,
-              border: Border.all(color: _kPickerMint),
+              color: DcColors.selection,
+              borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
             ),
             child: const Icon(
               TablerIcons.lock,
               size: 14,
-              color: _kPickerInk,
+              color: Colors.white,
             ),
           ),
           const SizedBox(width: 9),
           const Expanded(
             child: LumenPassWordmark(
               fontSize: 18,
+              lumenColor: DcColors.sidebarText,
+              passColor: DcColors.selection,
               suffix: ' vaults',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -2732,12 +2614,12 @@ class _VaultGuidePanel extends StatelessWidget {
       children: <Widget>[
         Text(
           'Getting started',
-          style: _pickerDisplayText(25, _kPickerInk, height: 1),
+          style: _pickerDisplayText(22, DcColors.sidebarText, height: 1),
         ),
         const SizedBox(height: 5),
         Text(
           'Three ways to begin with a portable KeePass vault.',
-          style: _pickerText(10.5, _kPickerMuted, height: 1.25),
+          style: _pickerText(11, DcColors.sidebarMuted, height: 1.25),
         ),
         const SizedBox(height: 10),
         const _GuideItem(
@@ -2745,8 +2627,8 @@ class _VaultGuidePanel extends StatelessWidget {
           icon: TablerIcons.database_plus,
           title: 'Create a new database',
           subtitle: 'Click "Create" to start a fresh vault',
-          surface: _kPickerYellow,
-          accent: Color(0xFFB77900),
+          surface: Colors.white,
+          accent: Color(0xFFD9A400),
         ),
         const SizedBox(height: 7),
         const _GuideItem(
@@ -2754,8 +2636,8 @@ class _VaultGuidePanel extends StatelessWidget {
           icon: TablerIcons.folder_open,
           title: 'Open an existing database',
           subtitle: 'Click "Open" to browse local, Google Drive, or Dropbox',
-          surface: _kPickerPaperBright,
-          accent: _kPickerBlue,
+          surface: Colors.white,
+          accent: DcColors.selection,
         ),
         const SizedBox(height: 7),
         const _GuideItem(
@@ -2763,23 +2645,22 @@ class _VaultGuidePanel extends StatelessWidget {
           icon: TablerIcons.lock_open,
           title: 'Unlock a database',
           subtitle: 'Double-click a database in the list to unlock it',
-          surface: _kPickerPeach,
-          accent: _kPickerOrangeDark,
+          surface: Colors.white,
+          accent: Color(0xFF2E9E62),
         ),
         const SizedBox(height: 9),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: const Color(0x99FFFCF5),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _kPickerLine, width: 1.05),
+            color: const Color(0x14263340),
+            borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
           ),
           child: Text(
             'PRIVATE BY DEFAULT  ·  Your files stay under your control. The default vault remains pinned first.',
             style: _pickerText(
-              9.2,
-              _kPickerInk,
+              9.5,
+              DcColors.sidebarText,
               fontWeight: FontWeight.w600,
               height: 1.3,
               letterSpacing: 0.15,
@@ -2817,7 +2698,7 @@ class _GuidePanelFooter extends StatelessWidget {
                 '© $year LumenPass  ·  v$version ($buildNumber)  ·  LOCAL-FIRST',
                 style: _pickerText(
                   8.7,
-                  _kPickerMuted,
+                  DcColors.sidebarMuted,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.35,
                 ),
@@ -2837,7 +2718,7 @@ class _GuidePanelFooter extends StatelessWidget {
                           const Icon(
                             TablerIcons.brand_github,
                             size: 11,
-                            color: _kPickerMuted,
+                            color: DcColors.sidebarMuted,
                           ),
                           const SizedBox(width: 5),
                           Expanded(
@@ -2847,7 +2728,7 @@ class _GuidePanelFooter extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: _pickerText(
                                 8.7,
-                                _kPickerMuted,
+                                DcColors.sidebarMuted,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.1,
                               ),
@@ -2890,19 +2771,21 @@ class _DatabaseItemMenu extends StatelessWidget {
           child: Opacity(
             opacity: enabled ? 1 : 0.45,
             child: Container(
-              width: 30,
-              height: 30,
+              width: 26,
+              height: 26,
               decoration: BoxDecoration(
-                color: selected ? _kPickerPaperBright : _kPickerPaper,
-                borderRadius: BorderRadius.circular(999),
+                color: selected ? const Color(0x33FFFFFF) : _kPickerPaper,
+                borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
                 border: Border.all(
-                  color: selected ? _kPickerLine : _kPickerLineSoft,
+                  color: selected
+                      ? const Color(0x66FFFFFF)
+                      : _kPickerLineStrong,
                 ),
               ),
               child: Icon(
                 TablerIcons.dots_vertical,
-                size: 16,
-                color: selected ? _kPickerInk : _kPickerMuted,
+                size: 14,
+                color: selected ? Colors.white : _kPickerMuted,
               ),
             ),
           ),
@@ -2936,8 +2819,8 @@ class _GuideItem extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kPickerLine, width: 1.1),
+        borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+        border: Border.all(color: DcColors.sidebarLine),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -2946,9 +2829,8 @@ class _GuideItem extends StatelessWidget {
             width: 31,
             height: 31,
             decoration: BoxDecoration(
-              color: _kPickerPaperBright,
-              shape: BoxShape.circle,
-              border: Border.all(color: _kPickerLine),
+              color: accent.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
             ),
             child: Icon(icon, size: 15, color: accent),
           ),
@@ -2962,8 +2844,8 @@ class _GuideItem extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: _pickerText(
-                    10.8,
-                    _kPickerInk,
+                    11,
+                    DcColors.sidebarText,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -2972,7 +2854,7 @@ class _GuideItem extends StatelessWidget {
                   subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: _pickerText(9.4, _kPickerMuted, height: 1.18),
+                  style: _pickerText(9.5, DcColors.sidebarMuted, height: 1.18),
                 ),
               ],
             ),
@@ -2982,7 +2864,7 @@ class _GuideItem extends StatelessWidget {
             index,
             style: _pickerText(
               8.5,
-              _kPickerInk,
+              DcColors.sidebarMuted,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.8,
             ),
@@ -3302,7 +3184,7 @@ class _UnlockCredentialsDialogState
         state.keyFilePath != null && state.keyFilePath!.isNotEmpty;
 
     return Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClueLight(),
       child: Material(
         color: _kUnlockDialogBackground,
         child: Stack(
@@ -3332,8 +3214,8 @@ class _UnlockCredentialsDialogState
                                   Text(
                                     'UNLOCK YOUR VAULT',
                                     style: _pickerText(
-                                      9,
-                                      _kPickerOrangeDark,
+                                      DcMetrics.sectionLabelSize,
+                                      DcColors.selection,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: 1.2,
                                     ),
@@ -3343,7 +3225,7 @@ class _UnlockCredentialsDialogState
                                     vaultName,
                                     style: _pickerDisplayText(
                                       27,
-                                      _kPickerInk,
+                                      _kCredInk,
                                       height: 1.05,
                                     ),
                                     maxLines: 1,
@@ -3355,7 +3237,7 @@ class _UnlockCredentialsDialogState
                                       const Icon(
                                         TablerIcons.map_pin,
                                         size: 13,
-                                        color: _kPickerMuted,
+                                        color: _kCredMuted,
                                       ),
                                       const SizedBox(width: 5),
                                       Expanded(
@@ -3363,7 +3245,7 @@ class _UnlockCredentialsDialogState
                                           vaultSubtitle,
                                           style: _pickerText(
                                             11,
-                                            _kPickerMuted,
+                                            _kCredMuted,
                                             fontWeight: FontWeight.w500,
                                           ),
                                           maxLines: 1,
@@ -3381,10 +3263,9 @@ class _UnlockCredentialsDialogState
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: _kPickerMintSoft,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: _kPickerLineSoft,
+                                color: _kCredMintSoft,
+                                borderRadius: BorderRadius.circular(
+                                  DcMetrics.badgeRadius,
                                 ),
                               ),
                               child: Row(
@@ -3393,14 +3274,14 @@ class _UnlockCredentialsDialogState
                                   const Icon(
                                     TablerIcons.lock,
                                     size: 12,
-                                    color: _kPickerMint,
+                                    color: _kCredMint,
                                   ),
                                   const SizedBox(width: 5),
                                   Text(
                                     'ENCRYPTED',
                                     style: _pickerText(
                                       8.5,
-                                      _kPickerInk,
+                                      _kCredInk,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: 0.7,
                                     ),
@@ -3412,26 +3293,17 @@ class _UnlockCredentialsDialogState
                         ),
                         const SizedBox(height: 20),
                         Container(
-                          padding: const EdgeInsets.all(18),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: _kUnlockCardBackground,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _kUnlockCardBorder,
-                              width: 1.1,
-                            ),
+                            borderRadius:
+                                BorderRadius.circular(DcMetrics.panelRadius),
+                            border: Border.all(color: _kCredLine),
                             boxShadow: const <BoxShadow>[
                               BoxShadow(
-                                color: Color(0x1C191A1B),
-                                blurRadius: 12,
-                                spreadRadius: -4,
-                                offset: Offset(0, 5),
-                              ),
-                              BoxShadow(
-                                color: Color(0x16FFFFFF),
-                                blurRadius: 0,
-                                spreadRadius: -1,
-                                offset: Offset(0, -1),
+                                color: _kCredShadow,
+                                blurRadius: 10,
+                                offset: Offset(0, 3),
                               ),
                             ],
                           ),
@@ -3444,13 +3316,15 @@ class _UnlockCredentialsDialogState
                                     width: 34,
                                     height: 34,
                                     decoration: BoxDecoration(
-                                      color: _kPickerPeach,
-                                      borderRadius: BorderRadius.circular(9),
+                                      color: _kCredAccentTint,
+                                      borderRadius: BorderRadius.circular(
+                                        DcMetrics.controlRadius,
+                                      ),
                                     ),
                                     child: const Icon(
                                       TablerIcons.key,
                                       size: 17,
-                                      color: _kPickerOrangeDark,
+                                      color: DcColors.selection,
                                     ),
                                   ),
                                   const SizedBox(width: 10),
@@ -3463,7 +3337,7 @@ class _UnlockCredentialsDialogState
                                           'Enter your credentials',
                                           style: _pickerText(
                                             13,
-                                            _kPickerInk,
+                                            _kCredInk,
                                             fontWeight: FontWeight.w800,
                                           ),
                                         ),
@@ -3471,7 +3345,7 @@ class _UnlockCredentialsDialogState
                                           'Your master password stays on this device.',
                                           style: _pickerText(
                                             10.5,
-                                            _kPickerMuted,
+                                            _kCredMuted,
                                           ),
                                         ),
                                       ],
@@ -3484,7 +3358,7 @@ class _UnlockCredentialsDialogState
                                 'Master password',
                                 style: _pickerText(
                                   10.5,
-                                  _kPickerInk,
+                                  _kCredInk,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -3571,12 +3445,12 @@ class _UnlockCredentialsDialogState
                                 decoration: BoxDecoration(
                                   color: _acceptNoPassword
                                       ? _kUnlockAccentSoft
-                                      : _kPickerPaper,
+                                      : _kCredInset,
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
                                     color: _acceptNoPassword
                                         ? _kUnlockAccentBorder
-                                        : _kPickerLineSoft,
+                                        : _kCredLine,
                                   ),
                                 ),
                                 child: Row(
@@ -3585,8 +3459,8 @@ class _UnlockCredentialsDialogState
                                       TablerIcons.key_off,
                                       size: 16,
                                       color: _acceptNoPassword
-                                          ? _kPickerMint
-                                          : _kPickerMuted,
+                                          ? _kCredMint
+                                          : _kCredMuted,
                                     ),
                                     const SizedBox(width: 9),
                                     Expanded(
@@ -3598,7 +3472,7 @@ class _UnlockCredentialsDialogState
                                             'Use key file only',
                                             style: _pickerText(
                                               11,
-                                              _kPickerInk,
+                                              _kCredInk,
                                               fontWeight: FontWeight.w700,
                                             ),
                                           ),
@@ -3606,7 +3480,7 @@ class _UnlockCredentialsDialogState
                                             'Accept an empty master password',
                                             style: _pickerText(
                                               9.8,
-                                              _kPickerMuted,
+                                              _kCredMuted,
                                             ),
                                           ),
                                         ],
@@ -3617,10 +3491,10 @@ class _UnlockCredentialsDialogState
                                       alignment: Alignment.centerRight,
                                       child: Switch.adaptive(
                                         value: _acceptNoPassword,
-                                        activeTrackColor: _kPickerMint,
-                                        activeThumbColor: _kPickerPaperBright,
-                                        inactiveTrackColor: _kPickerLineSoft,
-                                        inactiveThumbColor: _kPickerPaperBright,
+                                        activeTrackColor: _kCredMint,
+                                        activeThumbColor: _kCredSurface,
+                                        inactiveTrackColor: _kCredLineStrong,
+                                        inactiveThumbColor: _kCredSurface,
                                         onChanged: (bool v) {
                                           setState(() {
                                             _acceptNoPassword = v;
@@ -3638,16 +3512,16 @@ class _UnlockCredentialsDialogState
                               Container(
                                 padding: const EdgeInsets.fromLTRB(11, 7, 5, 7),
                                 decoration: BoxDecoration(
-                                  color: _kPickerPaper,
+                                  color: _kCredInset,
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: _kPickerLineSoft),
+                                  border: Border.all(color: _kCredLine),
                                 ),
                                 child: Row(
                                   children: <Widget>[
                                     const Icon(
                                       TablerIcons.adjustments_horizontal,
                                       size: 16,
-                                      color: _kPickerMuted,
+                                      color: _kCredMuted,
                                     ),
                                     const SizedBox(width: 9),
                                     Expanded(
@@ -3659,7 +3533,7 @@ class _UnlockCredentialsDialogState
                                             'Advanced options',
                                             style: _pickerText(
                                               11,
-                                              _kPickerInk,
+                                              _kCredInk,
                                               fontWeight: FontWeight.w700,
                                             ),
                                           ),
@@ -3667,7 +3541,7 @@ class _UnlockCredentialsDialogState
                                             'Key files and hardware keys',
                                             style: _pickerText(
                                               9.8,
-                                              _kPickerMuted,
+                                              _kCredMuted,
                                             ),
                                           ),
                                         ],
@@ -3679,9 +3553,9 @@ class _UnlockCredentialsDialogState
                                       child: Switch.adaptive(
                                         value: _showAdvanced,
                                         activeTrackColor: _kPickerOrange,
-                                        activeThumbColor: _kPickerPaperBright,
-                                        inactiveTrackColor: _kPickerLineSoft,
-                                        inactiveThumbColor: _kPickerPaperBright,
+                                        activeThumbColor: _kCredSurface,
+                                        inactiveTrackColor: _kCredLineStrong,
+                                        inactiveThumbColor: _kCredSurface,
                                         onChanged: _toggleAdvanced,
                                       ),
                                     ),
@@ -3724,17 +3598,14 @@ class _UnlockCredentialsDialogState
                 ),
                 Container(
                   decoration: const BoxDecoration(
-                    color: _kUnlockFooterBackground,
+                    color: _kCredCanvas,
                     border: Border(
-                      top: BorderSide(
-                        color: _kUnlockFooterBorder,
-                        width: 1.2,
-                      ),
+                      top: BorderSide(color: _kCredLine),
                     ),
                   ),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 12,
+                    horizontal: 20,
+                    vertical: 10,
                   ),
                   child: Row(
                     children: <Widget>[
@@ -3746,21 +3617,20 @@ class _UnlockCredentialsDialogState
                         label: const Text('Back'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _kUnlockGhostText,
-                          backgroundColor: _kUnlockGhostBg,
+                          backgroundColor: _kCredSurface,
                           disabledForegroundColor: _kUnlockGhostText.withValues(
                             alpha: 0.5,
                           ),
                           disabledBackgroundColor: _kUnlockGhostBg,
-                          side: const BorderSide(
-                            color: _kUnlockGhostBorder,
-                            width: 1.2,
-                          ),
+                          side: const BorderSide(color: _kUnlockGhostBorder),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(22),
+                            borderRadius: BorderRadius.circular(
+                              DcMetrics.controlRadius,
+                            ),
                           ),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 10,
+                            horizontal: 14,
+                            vertical: 9,
                           ),
                           textStyle: _pickerText(
                             12,
@@ -3786,14 +3656,16 @@ class _UnlockCredentialsDialogState
                           backgroundColor: _kPickerOrange,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: _kUnlockPrimaryDisabled,
-                          shadowColor: _kPickerLine,
-                          elevation: 2,
+                          shadowColor: Colors.transparent,
+                          elevation: 0,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 22,
-                            vertical: 10,
+                            horizontal: 18,
+                            vertical: 9,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(22),
+                            borderRadius: BorderRadius.circular(
+                              DcMetrics.controlRadius,
+                            ),
                           ),
                           textStyle: _pickerText(
                             12,
@@ -3826,7 +3698,7 @@ class _UnlockCredentialsDialogState
               Positioned.fill(
                 child: IgnorePointer(
                   child: Container(
-                    color: const Color(0xCCFFFFFF),
+                    color: const Color(0x59263340),
                     child: Center(
                       child: Container(
                         width: 280,
@@ -3835,12 +3707,13 @@ class _UnlockCredentialsDialogState
                           vertical: 18,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: _kBorderSoft),
+                          color: _kCredSurface,
+                          borderRadius:
+                              BorderRadius.circular(DcMetrics.panelRadius),
+                          border: Border.all(color: _kCredLine),
                           boxShadow: const <BoxShadow>[
                             BoxShadow(
-                              color: Color(0x180F172A),
+                              color: Color(0x29263340),
                               blurRadius: 24,
                               offset: Offset(0, 10),
                             ),
@@ -3853,15 +3726,10 @@ class _UnlockCredentialsDialogState
                               width: 52,
                               height: 52,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: <Color>[
-                                    Color(0xFF4B6CFF),
-                                    Color(0xFF7B52FF),
-                                  ],
+                                borderRadius: BorderRadius.circular(
+                                  DcMetrics.panelRadius,
                                 ),
+                                color: DcColors.selection,
                               ),
                               child: const Padding(
                                 padding: EdgeInsets.all(14),
@@ -3876,7 +3744,7 @@ class _UnlockCredentialsDialogState
                               'Unlocking your vault…',
                               style: _uText(
                                 15,
-                                _kTitle,
+                                _kCredInk,
                                 fontWeight: FontWeight.w700,
                               ),
                               textAlign: TextAlign.center,
@@ -3884,7 +3752,7 @@ class _UnlockCredentialsDialogState
                             const SizedBox(height: 6),
                             Text(
                               'Decrypting the database and preparing your items.',
-                              style: _uText(12, _kLabel),
+                              style: _uText(12, _kCredMuted),
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -3907,11 +3775,12 @@ class _UnlockCredentialsDialogState
                       vertical: 11,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
-                      borderRadius: BorderRadius.circular(10),
+                      color: DcColors.redOnLight,
+                      borderRadius:
+                          BorderRadius.circular(DcMetrics.panelRadius),
                       boxShadow: const <BoxShadow>[
                         BoxShadow(
-                          color: Color(0x28EF4444),
+                          color: Color(0x40000000),
                           blurRadius: 16,
                           offset: Offset(0, 4),
                         ),
@@ -3971,7 +3840,7 @@ class _UnlockCredentialsDialogState
 
   Widget _buildPinPad(String vaultName) {
     return Material(
-      color: _kPickerPaper,
+      color: _kCredCanvas,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -3986,33 +3855,26 @@ class _UnlockCredentialsDialogState
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: _kPickerPeach,
-                      borderRadius: BorderRadius.circular(13),
-                      border: Border.all(color: _kPickerLineSoft),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(
-                          color: Color(0x26191A1B),
-                          blurRadius: 0,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
+                      color: _kCredAccentTint,
+                      borderRadius:
+                          BorderRadius.circular(DcMetrics.panelRadius),
                     ),
                     child: const Icon(
                       TablerIcons.lock,
                       size: 24,
-                      color: _kPickerOrangeDark,
+                      color: DcColors.selection,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     vaultName,
-                    style: _pickerDisplayText(25, _kPickerInk, height: 1.05),
+                    style: _pickerDisplayText(25, _kCredInk, height: 1.05),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Enter your 6-digit PIN',
-                    style: _pickerText(11, _kPickerMuted),
+                    style: _pickerText(11, _kCredMuted),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
@@ -4029,16 +3891,16 @@ class _UnlockCredentialsDialogState
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: _pinError
-                                ? const Color(0xFFCF3E32)
+                                ? DcColors.redOnLight
                                 : filled
                                     ? _kPickerOrange
                                     : Colors.transparent,
                             border: Border.all(
                               color: _pinError
-                                  ? const Color(0xFFCF3E32)
+                                  ? DcColors.redOnLight
                                   : filled
                                       ? _kPickerOrange
-                                      : _kPickerLineSoft,
+                                      : _kCredLine,
                               width: 1.5,
                             ),
                           ),
@@ -4050,7 +3912,7 @@ class _UnlockCredentialsDialogState
                     const SizedBox(height: 8),
                     Text(
                       'Incorrect PIN — try again',
-                      style: _pickerText(10.5, const Color(0xFFCF3E32)),
+                      style: _pickerText(10.5, DcColors.redOnLight),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -4168,19 +4030,7 @@ class _UnlockShadowedInput extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x1A252628),
-            blurRadius: 2,
-            offset: Offset(0, 1),
-          ),
-          BoxShadow(
-            color: Color(0x14252628),
-            blurRadius: 10,
-            spreadRadius: -2,
-            offset: Offset(0, 4),
-          ),
-        ],
+        boxShadow: const <BoxShadow>[],
       ),
       child: CustomPaint(
         foregroundPainter: const _UnlockInputInnerShadowPainter(),
@@ -4211,7 +4061,7 @@ class _UnlockInputInnerShadowPainter extends CustomPainter {
       ..drawPath(
         innerEdge,
         Paint()
-          ..color = const Color(0x18252628)
+          ..color = const Color(0x1A263340)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
       )
       ..restore();
@@ -4249,21 +4099,18 @@ class _PinKeyButtonState extends State<_PinKeyButton> {
         duration: const Duration(milliseconds: 80),
         height: 52,
         decoration: BoxDecoration(
-          color: _pressed ? _kPickerPeach : _kPickerPaperBright,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: _kPickerLineSoft,
-            width: _pressed ? 1.5 : 1.1,
-          ),
+          color: _pressed ? DcColors.selection : _kCredSurface,
+          borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+          border: Border.all(color: _kCredLine),
         ),
         alignment: Alignment.center,
         child: widget.icon != null
-            ? Icon(widget.icon, size: 16, color: _kPickerMuted)
+            ? Icon(widget.icon, size: 16, color: _kCredMuted)
             : Text(
                 widget.label!,
                 style: _pickerText(
                   17,
-                  _kPickerInk,
+                  _kCredInk,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -4291,16 +4138,18 @@ class _IconActionButton extends StatelessWidget {
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: _kPickerPaper,
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: _kPickerLineSoft),
+          color: _kCredSurface,
+          borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
+          border: Border.all(color: _kCredLineStrong),
         ),
         child: IconButton(
           onPressed: onPressed,
           icon: Icon(
             icon,
             size: 16,
-            color: onPressed == null ? _kPickerLineSoft : _kPickerInk,
+            color: onPressed == null
+                ? _kCredMuted.withValues(alpha: 0.5)
+                : _kCredInk,
           ),
           padding: EdgeInsets.zero,
           style: IconButton.styleFrom(
@@ -4336,9 +4185,9 @@ class _AdvancedFileRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _kPickerPaper,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _kPickerLineSoft),
+        color: _kCredInset,
+        borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
+        border: Border.all(color: _kCredLine),
       ),
       child: Row(
         children: <Widget>[
@@ -4346,10 +4195,10 @@ class _AdvancedFileRow extends StatelessWidget {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              color: _kPickerPeach,
-              borderRadius: BorderRadius.circular(7),
+              color: _kCredAccentTint,
+              borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
             ),
-            child: Icon(icon, size: 14, color: _kPickerOrangeDark),
+            child: Icon(icon, size: 14, color: DcColors.selection),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -4362,7 +4211,7 @@ class _AdvancedFileRow extends StatelessWidget {
                       label,
                       style: _pickerText(
                         11,
-                        _kPickerInk,
+                        _kCredInk,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -4374,15 +4223,15 @@ class _AdvancedFileRow extends StatelessWidget {
                           vertical: 1,
                         ),
                         decoration: BoxDecoration(
-                          color: _kPickerYellow,
-                          borderRadius: BorderRadius.circular(5),
-                          border: Border.all(color: _kPickerLineSoft),
+                          color: DcColors.amber,
+                          borderRadius:
+                              BorderRadius.circular(DcMetrics.badgeRadius),
                         ),
                         child: Text(
                           badge!,
                           style: _pickerText(
                             8.5,
-                            _kPickerInk,
+                            DcColors.sidebarText,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -4392,7 +4241,7 @@ class _AdvancedFileRow extends StatelessWidget {
                 ),
                 Text(
                   subtitle,
-                  style: _pickerText(10, _kPickerMuted),
+                  style: _pickerText(10, _kCredMuted),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -4405,7 +4254,7 @@ class _AdvancedFileRow extends StatelessWidget {
               icon: const Icon(
                 TablerIcons.x,
                 size: 14,
-                color: _kPickerMuted,
+                color: _kCredMuted,
               ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -4521,15 +4370,18 @@ class _DatabaseHealthIssueDialog extends StatelessWidget {
         health.providerLabel ?? providerLabelForStorageType(record.storageType);
 
     return Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClue(),
       child: AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: DcColors.panel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+          side: const BorderSide(color: DcColors.line),
+        ),
         title: Row(
           children: <Widget>[
             const Icon(
               TablerIcons.alert_triangle,
-              color: Color(0xFFDC2626),
+              color: DcColors.red,
               size: 20,
             ),
             const SizedBox(width: 8),
@@ -4610,7 +4462,7 @@ class _DatabaseHealthIssueDialog extends StatelessWidget {
                 'Unlink Databases',
                 style: _uText(
                   12,
-                  const Color(0xFFEF4444),
+                  DcColors.red,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -4631,7 +4483,7 @@ class _DatabaseHealthIssueDialog extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
                 ),
               ),
               onPressed: () => Navigator.of(context)

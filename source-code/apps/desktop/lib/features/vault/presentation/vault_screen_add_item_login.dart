@@ -27,6 +27,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
   final OverlayPortalController _passwordSuggestionOverlayController =
       OverlayPortalController();
   final FocusNode _passwordFocusNode = FocusNode();
+  final FocusNode _titleFocusNode = FocusNode();
   late final TextEditingController _titleController;
   late final TextEditingController _usernameController;
   late final TextEditingController _passwordController;
@@ -139,6 +140,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
     }
     _notesController.addListener(_markDirty);
     _passwordFocusNode.addListener(_handlePasswordFocusChanged);
+    _titleFocusNode.addListener(_handleTitleFocusChanged);
     _suggestedPassword = _buildSuggestedPassword();
   }
 
@@ -153,6 +155,9 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
     }
     _notesController.dispose();
     _tagController.dispose();
+    _titleFocusNode
+      ..removeListener(_handleTitleFocusChanged)
+      ..dispose();
     _passwordFocusNode
       ..removeListener(_handlePasswordFocusChanged)
       ..dispose();
@@ -187,6 +192,10 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
     } catch (_) {
       // Metadata remains visible if binary extraction fails.
     }
+  }
+
+  void _handleTitleFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   void _handlePasswordFocusChanged() {
@@ -277,7 +286,8 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
     final passwordPainter = TextPainter(
       text: TextSpan(
         text: preview,
-        style: _text(14, _VaultColors.headerLabel, fontWeight: FontWeight.w700),
+        style: _text(14, _ItemModalColors.headerLabel,
+            fontWeight: FontWeight.w700),
       ),
       maxLines: 1,
       textDirection: Directionality.of(context),
@@ -295,9 +305,9 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
     if (password.isEmpty) {
       return (
         label: 'N/A',
-        textColor: _VaultColors.headerLabel,
-        bgColor: const Color(0xFFF3F4F6),
-        borderColor: const Color(0xFFE5E7EB),
+        textColor: _ItemModalColors.headerLabel,
+        bgColor: _ItemModalColors.surfaceMuted,
+        borderColor: _ItemModalColors.borderSoft,
       );
     }
 
@@ -314,32 +324,32 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
     if (score <= 3) {
       return (
         label: 'Poor',
-        textColor: const Color(0xFFB42318),
-        bgColor: const Color(0xFFFEE4E2),
-        borderColor: const Color(0xFFFDA29B),
+        textColor: DcColors.redOnLight,
+        bgColor: _ItemModalColors.surfaceMuted,
+        borderColor: const Color(0x66F75C57),
       );
     }
     if (score <= 5) {
       return (
         label: 'Medium',
-        textColor: const Color(0xFFB54708),
-        bgColor: const Color(0xFFFEF0C7),
-        borderColor: const Color(0xFFFEC84B),
+        textColor: DcColors.deepOrange,
+        bgColor: const Color(0x38FAC733),
+        borderColor: DcColors.amber,
       );
     }
     if (score <= 7) {
       return (
         label: 'Strong',
-        textColor: const Color(0xFF067647),
-        bgColor: const Color(0xFFD1FADF),
-        borderColor: const Color(0xFFA6F4C5),
+        textColor: DcColors.tealOnLight,
+        bgColor: const Color(0x386ED433),
+        borderColor: const Color(0x666ED433),
       );
     }
     return (
       label: 'Very Strong',
-      textColor: const Color(0xFF067647),
-      bgColor: const Color(0xFFDFF2EC),
-      borderColor: const Color(0xFF9BD7BE),
+      textColor: DcColors.tealOnLight,
+      bgColor: _ItemModalColors.surfaceMuted,
+      borderColor: DcColors.tealOnLight,
     );
   }
 
@@ -348,7 +358,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
     if (text.isEmpty) {
       return Text(
         'Generating...',
-        style: _text(11, _VaultColors.icon, fontWeight: FontWeight.w500),
+        style: _text(11, _ItemModalColors.icon, fontWeight: FontWeight.w500),
       );
     }
 
@@ -359,11 +369,11 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
         children: text.split('').map((char) {
           final Color color;
           if (RegExp(r'[0-9]').hasMatch(char)) {
-            color = const Color(0xFF1D6570);
+            color = DcColors.tealOnLight;
           } else if (RegExp(r'[^A-Za-z0-9]').hasMatch(char)) {
-            color = const Color(0xFFE19017);
+            color = DcColors.orange;
           } else {
-            color = _VaultColors.headerLabel;
+            color = _ItemModalColors.headerLabel;
           }
           return TextSpan(
             text: char,
@@ -386,7 +396,8 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
           ? null
           : const BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: _VaultColors.borderSoft, width: 1),
+                bottom:
+                    BorderSide(color: _ItemModalColors.borderSoft, width: 1),
               ),
             ),
       child: Row(
@@ -396,7 +407,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
               label,
               style: _text(
                 12,
-                _VaultColors.headerLabel,
+                _ItemModalColors.headerLabel,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -408,8 +419,9 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
               width: 36,
               height: 20,
               decoration: BoxDecoration(
-                color: value ? _kPrimaryButtonColor : _VaultColors.borderSoft,
-                borderRadius: BorderRadius.circular(10),
+                color:
+                    value ? _kPrimaryButtonColor : _ItemModalColors.borderSoft,
+                borderRadius: BorderRadius.circular(6),
               ),
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 140),
@@ -419,7 +431,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
                   height: 16,
                   margin: const EdgeInsets.symmetric(horizontal: 2),
                   decoration: const BoxDecoration(
-                    color: Colors.white,
+                    color: _ItemModalColors.surface,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -440,12 +452,12 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
         decoration: BoxDecoration(
-          color: _VaultColors.surfaceMuted,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _VaultColors.borderSoft),
+          color: _ItemModalColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: _ItemModalColors.borderSoft),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x10172033),
+              color: DcColors.shadowSoft,
               blurRadius: 8,
               offset: Offset(0, 2),
             ),
@@ -488,7 +500,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
                                 'Use Suggested Password',
                                 style: _text(
                                   11,
-                                  _VaultColors.title,
+                                  _ItemModalColors.title,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -540,9 +552,9 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
               Container(
                 padding: const EdgeInsets.fromLTRB(8, 7, 8, 6),
                 decoration: BoxDecoration(
-                  color: _VaultColors.surfaceMuted,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _VaultColors.borderSoft),
+                  color: _ItemModalColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: _ItemModalColors.borderSoft),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -553,7 +565,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
                           'Length',
                           style: _text(
                             10,
-                            _VaultColors.icon,
+                            _ItemModalColors.icon,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -562,7 +574,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
                           '$_suggestionLength',
                           style: _text(
                             10,
-                            _VaultColors.title,
+                            _ItemModalColors.title,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -576,9 +588,9 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
                         overlayShape:
                             const RoundSliderOverlayShape(overlayRadius: 9),
                         activeTrackColor: _kPrimaryButtonColor,
-                        inactiveTrackColor: _VaultColors.borderSoft,
+                        inactiveTrackColor: _ItemModalColors.borderSoft,
                         thumbColor: _kPrimaryButtonColor,
-                        overlayColor: const Color(0x33FF5B22),
+                        overlayColor: DcColors.selectionSoft,
                       ),
                       child: Slider(
                         value: _suggestionLength.toDouble(),
@@ -622,15 +634,6 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
         ),
       ),
     );
-  }
-
-  void _addWebsiteField() {
-    final c = TextEditingController(text: 'https://');
-    c.addListener(_markDirty);
-    setState(() {
-      _isDirty = true;
-      _websiteControllers.add(c);
-    });
   }
 
   void _removeWebsiteField(int index) {
@@ -1083,7 +1086,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final modalWidth = math.min(680.0, constraints.maxWidth);
+        final modalWidth = math.min(600.0, constraints.maxWidth);
         final modalHeight = math.min(760.0, constraints.maxHeight);
         final modalTheme = Theme.of(context).copyWith(
           inputDecorationTheme: const InputDecorationTheme(
@@ -1100,7 +1103,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
           ),
           textSelectionTheme: const TextSelectionThemeData(
             cursorColor: _kPrimaryButtonColor,
-            selectionColor: Color(0x33FF5B22),
+            selectionColor: DcColors.selectionSoft,
             selectionHandleColor: _kPrimaryButtonColor,
           ),
         );
@@ -1113,14 +1116,13 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
               Container(
                 width: modalWidth,
                 constraints: BoxConstraints(maxHeight: modalHeight),
-                padding: const EdgeInsets.all(24),
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  color: _VaultColors.surface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _VaultColors.borderSoft),
+                  color: _ItemModalColors.surface,
+                  borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x1C172033),
+                      color: DcColors.shadow,
                       blurRadius: 44,
                       offset: Offset(0, 20),
                     ),
@@ -1129,308 +1131,311 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        if (_isEditing)
-                          const SizedBox(width: 24)
-                        else
-                          _ModalIconAction(
-                            icon: TablerIcons.arrow_left,
-                            onTap: widget.onReturnToPicker ?? () {},
-                          ),
-                        Expanded(
-                          child: Text(
-                            _isEditing ? 'Edit Item' : 'New Item',
-                            textAlign: TextAlign.center,
-                            style: _text(20, _VaultColors.title,
-                                fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        _ModalIconAction(
-                            icon: TablerIcons.x, onTap: _confirmClose),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: <Widget>[
-                        const _AddItemTypeIcon(
-                          icon: TablerIcons.lock,
-                          color: Color(0xFF2DA8B6),
-                        ),
-                        const SizedBox(width: 10),
-                        if (!_isEditing) ...<Widget>[
-                          InkWell(
-                            onTap: widget.onReturnToPicker,
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: _VaultColors.surfaceMuted,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              alignment: Alignment.center,
-                              child: const Icon(TablerIcons.chevron_down,
-                                  size: 14, color: _VaultColors.headerLabel),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                        ],
-                        Expanded(
-                          child: Container(
-                            height: 42,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            decoration: BoxDecoration(
-                              color: _VaultColors.surfaceMuted,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                  color: _kPrimaryButtonColor, width: 2),
-                            ),
-                            alignment: Alignment.centerLeft,
-                            child: TextField(
-                              controller: _titleController,
-                              maxLines: 1,
-                              textAlignVertical: TextAlignVertical.center,
-                              style: _displayText(
-                                22,
-                                _VaultColors.title,
-                                height: 1,
-                              ),
-                              decoration: const InputDecoration(
-                                filled: false,
-                                fillColor: Colors.transparent,
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                isCollapsed: true,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    DcDialogTitleBar(
+                      title: _isEditing ? 'Edit Login' : 'New Login',
+                      onBack: _isEditing ? null : widget.onReturnToPicker,
+                      onClose: _confirmClose,
                     ),
                     const SizedBox(height: 16),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: <Widget>[
-                            _LoginFormField(
-                              label: 'username',
-                              controller: _usernameController,
-                              icon: TablerIcons.user,
-                              iconColor: Color(0xFF2DA8B6),
-                              hintText: 'name@example.com',
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        children: <Widget>[
+                          const _AddItemTypeIcon(
+                            icon: TablerIcons.lock,
+                            color: DcColors.cyan,
+                            size: 40,
+                            iconSize: 19,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              height: 40,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              decoration: BoxDecoration(
+                                color: _ItemModalColors.surface,
+                                borderRadius: BorderRadius.circular(7),
+                                border: Border.all(
+                                  color: _titleFocusNode.hasFocus
+                                      ? _kPrimaryButtonColor
+                                      : _ItemModalColors.borderSoft,
+                                  width: _titleFocusNode.hasFocus ? 1.5 : 1,
+                                ),
+                              ),
+                              alignment: Alignment.centerLeft,
+                              child: TextField(
+                                focusNode: _titleFocusNode,
+                                controller: _titleController,
+                                maxLines: 1,
+                                textAlign: TextAlign.center,
+                                textAlignVertical: TextAlignVertical.center,
+                                style: _displayText(
+                                  18,
+                                  _ItemModalColors.title,
+                                  height: 1,
+                                ),
+                                decoration: const InputDecoration(
+                                  filled: false,
+                                  fillColor: Colors.transparent,
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  isCollapsed: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
                             ),
-                            const SizedBox(height: 12),
-                            TextFieldTapRegion(
-                              child: OverlayPortal(
-                                controller:
-                                    _passwordSuggestionOverlayController,
-                                overlayChildBuilder: (context) {
-                                  if (!_showGenerateSuggestion) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  return TextFieldTapRegion(
-                                    child: CompositedTransformFollower(
-                                      link: _passwordSuggestionLink,
-                                      showWhenUnlinked: false,
-                                      targetAnchor: Alignment.bottomLeft,
-                                      followerAnchor: Alignment.topLeft,
-                                      offset: const Offset(0, 6),
-                                      child: Align(
-                                        alignment: Alignment.topLeft,
-                                        child: SizedBox(
-                                          width: _suggestionPanelWidth(context),
-                                          child:
-                                              _buildPasswordSuggestionPanel(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Expanded(
+                      child: ColoredBox(
+                        color: _ItemModalColors.surfaceMuted,
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+                          child: Column(
+                            children: <Widget>[
+                              Container(
+                                key: const Key('login-details-card'),
+                                width: double.infinity,
+                                clipBehavior: Clip.antiAlias,
+                                decoration: BoxDecoration(
+                                  color: _ItemModalColors.surface,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                      color: _ItemModalColors.borderSoft),
+                                  boxShadow: const <BoxShadow>[
+                                    BoxShadow(
+                                      color: _DetailPalette.shadow,
+                                      blurRadius: 10,
+                                      offset: Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    _LoginFormField(
+                                      label: 'username',
+                                      detailRowKey: const Key(
+                                          'login-detail-row-username'),
+                                      controller: _usernameController,
+                                      icon: TablerIcons.user,
+                                      iconColor: DcColors.cyan,
+                                      hintText: 'name@example.com',
+                                    ),
+                                    TextFieldTapRegion(
+                                      child: OverlayPortal(
+                                        controller:
+                                            _passwordSuggestionOverlayController,
+                                        overlayChildBuilder: (context) {
+                                          if (!_showGenerateSuggestion) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return TextFieldTapRegion(
+                                            child: CompositedTransformFollower(
+                                              link: _passwordSuggestionLink,
+                                              showWhenUnlinked: false,
+                                              targetAnchor:
+                                                  Alignment.bottomLeft,
+                                              followerAnchor: Alignment.topLeft,
+                                              offset: const Offset(0, 6),
+                                              child: Align(
+                                                alignment: Alignment.topLeft,
+                                                child: SizedBox(
+                                                  width: _suggestionPanelWidth(
+                                                      context),
+                                                  child:
+                                                      _buildPasswordSuggestionPanel(),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: CompositedTransformTarget(
+                                          link: _passwordSuggestionLink,
+                                          child: _LoginFormField(
+                                            label: 'password',
+                                            detailRowKey: const Key(
+                                                'login-detail-row-password'),
+                                            controller: _passwordController,
+                                            obscureText: true,
+                                            icon: TablerIcons.key,
+                                            iconColor: DcColors.amberOnLight,
+                                            hintText: 'Enter password',
+                                            focusNode: _passwordFocusNode,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  );
-                                },
-                                child: CompositedTransformTarget(
-                                  link: _passwordSuggestionLink,
-                                  child: _LoginFormField(
-                                    label: 'password',
-                                    controller: _passwordController,
-                                    obscureText: true,
-                                    icon: TablerIcons.key,
-                                    iconColor: const Color(0xFFC08A1A),
-                                    hintText: 'Enter password',
-                                    focusNode: _passwordFocusNode,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            _LoginFormField(
-                              label: 'website',
-                              controller: _websiteControllers.first,
-                              icon: TablerIcons.world_www,
-                              iconColor: _kPrimaryButtonColor,
-                              hintText: 'https://example.com',
-                            ),
-                            for (var i = 1;
-                                i < _websiteControllers.length;
-                                i++) ...<Widget>[
-                              const SizedBox(height: 12),
-                              _LoginFormField(
-                                label: 'website',
-                                controller: _websiteControllers[i],
-                                icon: TablerIcons.world_www,
-                                iconColor: _kPrimaryButtonColor,
-                                hintText: 'https://example.com',
-                                trailing: _WebsiteRemoveButton(
-                                    onTap: () => _removeWebsiteField(i)),
-                              ),
-                            ],
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: InkWell(
-                                onTap: _addWebsiteField,
-                                borderRadius: BorderRadius.circular(8),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
-                                  child: Text(
-                                    '+ add another website / url',
-                                    style: _text(12, _kPrimaryButtonColor,
-                                        fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            _LoginFormField(
-                              label: 'notes',
-                              controller: _notesController,
-                              maxLines: 4,
-                              minLines: 4,
-                              icon: TablerIcons.notes,
-                              iconColor: const Color(0xFFB98A1B),
-                              hintText: 'Add any notes about this item here.',
-                            ),
-                            const SizedBox(height: 12),
-                            _TotpEditRow(
-                              totpAuthUrl: _totpAuthUrl,
-                              onChangeTap: () =>
-                                  setState(() => _isScanTotpOpen = true),
-                              onRemoveTap: () => setState(() {
-                                _totpAuthUrl = null;
-                                _isDirty = true;
-                              }),
-                            ),
-                            const SizedBox(height: 12),
-                            if (!_isEditing) ...<Widget>[
-                              _CategoryDropdownField(
-                                categories: categories,
-                                rootGroupUuid: rootGroupUuid,
-                                selectedCategoryUuid: effectiveCategoryUuid,
-                                onChanged: (value) => setState(
-                                    () => _selectedCategoryUuid = value),
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                            CompositedTransformTarget(
-                              link: _addMoreLink,
-                              child: InkWell(
-                                onTap: () => setState(() =>
-                                    _showAddMoreOptions = !_showAddMoreOptions),
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  height: 34,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12),
-                                  decoration: BoxDecoration(
-                                    color: _VaultColors.peachSoft,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    children: <Widget>[
-                                      Text('+ add more',
-                                          style: _text(12, _kPrimaryButtonColor,
-                                              fontWeight: FontWeight.w600)),
-                                      const Spacer(),
-                                      Icon(
-                                        _showAddMoreOptions
-                                            ? TablerIcons.chevron_up
-                                            : TablerIcons.chevron_down,
-                                        size: 14,
-                                        color: _VaultColors.icon,
+                                    _LoginFormField(
+                                      label: 'website',
+                                      detailRowKey:
+                                          const Key('login-detail-row-website'),
+                                      controller: _websiteControllers.first,
+                                      icon: TablerIcons.world_www,
+                                      iconColor: _kPrimaryButtonColor,
+                                      hintText: 'https://example.com',
+                                    ),
+                                    for (var i = 1;
+                                        i < _websiteControllers.length;
+                                        i++) ...<Widget>[
+                                      _LoginFormField(
+                                        label: 'website',
+                                        detailRowKey: Key(
+                                            'login-detail-row-website-${i + 1}'),
+                                        controller: _websiteControllers[i],
+                                        icon: TablerIcons.world_www,
+                                        iconColor: _kPrimaryButtonColor,
+                                        hintText: 'https://example.com',
+                                        trailing: _WebsiteRemoveButton(
+                                            onTap: () =>
+                                                _removeWebsiteField(i)),
                                       ),
                                     ],
+                                    if (!_isEditing)
+                                      _CategoryDropdownField(
+                                        detailRow: true,
+                                        categories: categories,
+                                        rootGroupUuid: rootGroupUuid,
+                                        selectedCategoryUuid:
+                                            effectiveCategoryUuid,
+                                        onChanged: (value) => setState(() =>
+                                            _selectedCategoryUuid = value),
+                                      ),
+                                    _LoginFormField(
+                                      label: 'notes',
+                                      detailRowKey:
+                                          const Key('login-detail-row-notes'),
+                                      controller: _notesController,
+                                      maxLines: 2,
+                                      minLines: 2,
+                                      icon: TablerIcons.notes,
+                                      iconColor: DcColors.amberOnLight,
+                                      hintText:
+                                          'Add any notes about this item here.',
+                                    ),
+                                    _TotpEditRow(
+                                      detailRow: true,
+                                      totpAuthUrl: _totpAuthUrl,
+                                      onChangeTap: () => setState(
+                                          () => _isScanTotpOpen = true),
+                                      onRemoveTap: () => setState(() {
+                                        _totpAuthUrl = null;
+                                        _isDirty = true;
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              CompositedTransformTarget(
+                                link: _addMoreLink,
+                                child: InkWell(
+                                  onTap: () => setState(() =>
+                                      _showAddMoreOptions =
+                                          !_showAddMoreOptions),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    height: 34,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      color: _ItemModalColors.peachSoft,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: <Widget>[
+                                        Text('+ add more',
+                                            style: _text(
+                                                12, _kPrimaryButtonColor,
+                                                fontWeight: FontWeight.w600)),
+                                        const Spacer(),
+                                        Icon(
+                                          _showAddMoreOptions
+                                              ? TablerIcons.chevron_up
+                                              : TablerIcons.chevron_down,
+                                          size: 14,
+                                          color: _ItemModalColors.icon,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            if (_customAttributes.isNotEmpty) ...<Widget>[
+                              if (_customAttributes.isNotEmpty) ...<Widget>[
+                                const SizedBox(height: 10),
+                                _CustomAttributeList(
+                                  attributes: _customAttributes,
+                                  onRemove: _removeCustomAttribute,
+                                  onReorder: _reorderCustomAttribute,
+                                ),
+                              ],
                               const SizedBox(height: 10),
-                              _CustomAttributeList(
-                                attributes: _customAttributes,
-                                onRemove: _removeCustomAttribute,
-                                onReorder: _reorderCustomAttribute,
+                              _AttachmentSection(
+                                attachments: _attachments,
+                                onAddPressed: _pickAttachments,
+                                onRemove: _removeAttachment,
+                                onReplace: _replaceAttachment,
+                                onDownload: _downloadAttachment,
+                              ),
+                              const SizedBox(height: 10),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text('tags',
+                                    style: _text(12, _kPrimaryButtonColor,
+                                        fontWeight: FontWeight.w600)),
+                              ),
+                              const SizedBox(height: 6),
+                              _TagEditor(
+                                tags: _tags,
+                                existingTags: existingTags
+                                    .map((e) => e.tag)
+                                    .toList(growable: false),
+                                controller: _tagController,
+                                onAddTag: _addTag,
+                                onRemoveTag: _removeTag,
                               ),
                             ],
-                            const SizedBox(height: 10),
-                            _AttachmentSection(
-                              attachments: _attachments,
-                              onAddPressed: _pickAttachments,
-                              onRemove: _removeAttachment,
-                              onReplace: _replaceAttachment,
-                              onDownload: _downloadAttachment,
-                            ),
-                            const SizedBox(height: 10),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text('tags',
-                                  style: _text(12, _kPrimaryButtonColor,
-                                      fontWeight: FontWeight.w600)),
-                            ),
-                            const SizedBox(height: 6),
-                            _TagEditor(
-                              tags: _tags,
-                              existingTags: existingTags
-                                  .map((e) => e.tag)
-                                  .toList(growable: false),
-                              controller: _tagController,
-                              onAddTag: _addTag,
-                              onRemoveTag: _removeTag,
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
+                    Container(height: 1, color: _ItemModalColors.borderSoft),
                     const SizedBox(height: 16),
-                    Container(height: 1, color: _VaultColors.borderSoft),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: <Widget>[
-                        _LoginFooterButton(
-                          label: 'Cancel',
-                          backgroundColor: _VaultColors.surfaceMuted,
-                          textColor: _VaultColors.headerLabel,
-                          borderColor: _VaultColors.borderPane,
-                          onTap: _isSaving ? null : _confirmClose,
-                        ),
-                        const SizedBox(width: 10),
-                        _LoginFooterButton(
-                          label: _isSaving
-                              ? 'Saving...'
-                              : (_isEditing ? 'Save changes' : 'Save'),
-                          backgroundColor: _kPrimaryButtonColor,
-                          textColor: Colors.white,
-                          onTap: _isSaving
-                              ? null
-                              : () => _save(
-                                    categories: categories,
-                                    rootGroupUuid: rootGroupUuid,
-                                    selectedGroupUuid: selectedGroupUuid,
-                                  ),
-                        ),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: <Widget>[
+                          _LoginFooterButton(
+                            label: 'Cancel',
+                            backgroundColor: _ItemModalColors.surfaceMuted,
+                            textColor: _ItemModalColors.headerLabel,
+                            borderColor: _ItemModalColors.borderPane,
+                            onTap: _isSaving ? null : _confirmClose,
+                          ),
+                          const SizedBox(width: 10),
+                          _LoginFooterButton(
+                            label: _isSaving
+                                ? 'Saving...'
+                                : (_isEditing ? 'Save changes' : 'Save'),
+                            backgroundColor: _kPrimaryButtonColor,
+                            textColor: Colors.white,
+                            onTap: _isSaving
+                                ? null
+                                : () => _save(
+                                      categories: categories,
+                                      rootGroupUuid: rootGroupUuid,
+                                      selectedGroupUuid: selectedGroupUuid,
+                                    ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1514,15 +1519,17 @@ class _InlineActionIconButtonState extends State<_InlineActionIconButton> {
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color: _hovered ? _VaultColors.peach : _VaultColors.surfaceMuted,
+            color: _hovered
+                ? _ItemModalColors.peach
+                : _ItemModalColors.surfaceMuted,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _VaultColors.borderSoft),
+            border: Border.all(color: _ItemModalColors.borderSoft),
           ),
           alignment: Alignment.center,
           child: Icon(
             widget.icon,
             size: 13,
-            color: _VaultColors.icon,
+            color: _ItemModalColors.icon,
           ),
         ),
       ),
@@ -1535,8 +1542,10 @@ class _TotpEditRow extends StatelessWidget {
     required this.totpAuthUrl,
     required this.onChangeTap,
     required this.onRemoveTap,
+    this.detailRow = false,
   });
 
+  final bool detailRow;
   final String? totpAuthUrl;
   final VoidCallback onChangeTap;
   final VoidCallback onRemoveTap;
@@ -1545,30 +1554,37 @@ class _TotpEditRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasTotp = totpAuthUrl != null && totpAuthUrl!.isNotEmpty;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: hasTotp ? _VaultColors.peachSoft : _VaultColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: hasTotp ? _VaultColors.peach : _VaultColors.borderSoft,
-        ),
-      ),
+      padding: detailRow
+          ? const EdgeInsets.fromLTRB(16, 6, 12, 6)
+          : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: detailRow
+          ? const BoxDecoration(color: _ItemModalColors.surface)
+          : BoxDecoration(
+              color: hasTotp
+                  ? _ItemModalColors.peachSoft
+                  : _ItemModalColors.surface,
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(
+                color: hasTotp
+                    ? _ItemModalColors.peach
+                    : _ItemModalColors.borderSoft,
+              ),
+            ),
       child: Row(
         children: <Widget>[
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: hasTotp ? _kPrimaryButtonColor : _VaultColors.borderSoft,
-              borderRadius: BorderRadius.circular(7),
-            ),
-            alignment: Alignment.center,
-            child: Icon(
+          if (detailRow)
+            _CircularDetailIcon(
+              icon: TablerIcons.clock,
+              color: hasTotp ? _kPrimaryButtonColor : _ItemModalColors.icon,
+              size: 32,
+              iconSize: 16,
+            )
+          else
+            Icon(
               TablerIcons.clock,
-              size: 13,
-              color: hasTotp ? Colors.white : _VaultColors.icon,
+              size: 16,
+              color: hasTotp ? _kPrimaryButtonColor : _ItemModalColors.icon,
             ),
-          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -1576,7 +1592,7 @@ class _TotpEditRow extends StatelessWidget {
               children: <Widget>[
                 Text(
                   '2FA / TOTP',
-                  style: _text(11, _VaultColors.headerLabel,
+                  style: _text(11, _ItemModalColors.headerLabel,
                       fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 2),
@@ -1584,7 +1600,7 @@ class _TotpEditRow extends StatelessWidget {
                   hasTotp ? 'Configured' : 'Not set',
                   style: _text(
                     12,
-                    hasTotp ? _kPrimaryButtonColor : _VaultColors.icon,
+                    hasTotp ? _kPrimaryButtonColor : _ItemModalColors.icon,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1599,7 +1615,7 @@ class _TotpEditRow extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Text(
                   'Remove',
-                  style: _text(11, const Color(0xFFE53E3E),
+                  style: _text(11, DcColors.redOnLight,
                       fontWeight: FontWeight.w600),
                 ),
               ),

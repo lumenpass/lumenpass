@@ -20,21 +20,32 @@ import '../../../presentation/theme/app_theme.dart';
 import 'sftp_config_dialog.dart';
 import 'webdav_config_dialog.dart';
 import 's3_config_dialog.dart';
+import 'storage_source_list.dart';
+import '../../../presentation/theme/drive_clue_tokens.dart';
 
-// ── Vintage palette (mirrors unlock_screen) ─────────────────────────────────
-const Color _kCanvas = Color(0xFFF7F4EC);
-const Color _kPaperBright = Color(0xFFFFFCF5);
-const Color _kBorderSoft = Color(0xFFB8B1A5);
-const Color _kBorderRow = Color(0xFFCAC3B7);
-const Color _kTitle = Color(0xFF191A1B);
-const Color _kLabel = Color(0xFF626560);
-const Color _kIcon = Color(0xFF777A75);
-const Color _kBlue = Color(0xFFFF5B22);
-const Color _kInkBorder = Color(0xFF252628);
-const Color _kMint = Color(0xFF21A98F);
-const Color _kMintSoft = Color(0xFFDFF2EC);
-const Color _kPeach = Color(0xFFF4D7C8);
-const Color _kYellow = Color(0xFFF4E2A4);
+// ── Light palette (matches the unlock screen sidebar) ─────────────────────────────────────────────────────────
+const Color _kCanvas = DcColors.sidebar;
+const Color _kPaperBright = DcColors.lightSurface;
+const Color _kBorderSoft = DcColors.sidebarLine;
+const Color _kBorderRow = DcColors.sidebarLine;
+const Color _kTitle = DcColors.sidebarText;
+const Color _kLabel = DcColors.sidebarMuted;
+const Color _kIcon = DcColors.sidebarMuted;
+const Color _kBlue = DcColors.selection;
+const Color _kInkBorder = DcColors.lightLineStrong;
+const Color _kMint = DcColors.selection;
+const Color _kMintSoft = DcColors.lightSelectionFill;
+const Color _kPeach = DcColors.sidebar;
+const Color _kYellow = DcColors.selectionSoft;
+
+// ── Dark header palette (matches the vault title bar) ─────────────────────────
+const Color _kHeaderBg = DcColors.background;
+const Color _kHeaderLine = DcColors.shellDivider;
+const Color _kHeaderTitle = DcColors.text;
+const Color _kHeaderLabel = DcColors.muted;
+const Color _kHeaderControl = DcColors.panel;
+const Color _kHeaderControlLine = DcColors.lineStrong;
+const Color _kHeaderAccent = DcColors.link;
 
 TextStyle _uText(
   double size,
@@ -75,7 +86,7 @@ InputDecoration _fieldDecoration({
     hintText: hint,
     hintStyle: _uText(13, _kIcon),
     filled: true,
-    fillColor: _kCanvas,
+    fillColor: _kPaperBright,
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
@@ -281,7 +292,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClueLight(),
       child: Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -289,13 +300,13 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
         child: Container(
           decoration: BoxDecoration(
             color: _kCanvas,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _kInkBorder, width: 1.5),
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: _kBorderSoft),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: Color(0x33252628),
-                blurRadius: 0,
-                offset: Offset(6, 6),
+                color: DcColors.shadow,
+                blurRadius: 28,
+                offset: Offset(0, 10),
               ),
             ],
           ),
@@ -478,7 +489,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: _kMintSoft,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: _kInkBorder),
       ),
       child: Row(
@@ -526,11 +537,11 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 17, 16, 14),
       decoration: const BoxDecoration(
-        color: _kPaperBright,
-        border: Border(bottom: BorderSide(color: _kBorderSoft)),
+        color: _kHeaderBg,
+        border: Border(bottom: BorderSide(color: _kHeaderLine)),
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(17),
-          topRight: Radius.circular(17),
+          topLeft: Radius.circular(7),
+          topRight: Radius.circular(7),
         ),
       ),
       child: Row(
@@ -539,15 +550,14 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: _kPeach,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _kInkBorder),
-              boxShadow: const <BoxShadow>[
-                BoxShadow(color: _kInkBorder, offset: Offset(2, 2)),
-              ],
+              color: _kBlue,
+              borderRadius: BorderRadius.circular(6),
             ),
-            child:
-                const Icon(TablerIcons.database_plus, size: 16, color: _kTitle),
+            child: const Icon(
+              TablerIcons.database_plus,
+              size: 16,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -558,13 +568,13 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
                   _step == _WizardStep.provider
                       ? 'Choose a Storage Destination'
                       : 'Create New Database',
-                  style: _serifText(17, _kTitle),
+                  style: _serifText(17, _kHeaderTitle),
                 ),
                 Text(
                   _step == _WizardStep.provider
                       ? 'Step 1 of 2 · Pick where your vault will live.'
                       : 'Step 2 of 2 · Enter a nickname and configure security options.',
-                  style: _uText(11, _kLabel),
+                  style: _uText(11, _kHeaderLabel),
                 ),
               ],
             ),
@@ -582,11 +592,12 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: _kPaperBright,
+                  color: _kHeaderControl,
                   shape: BoxShape.circle,
-                  border: Border.all(color: _kInkBorder),
+                  border: Border.all(color: _kHeaderControlLine),
                 ),
-                child: const Icon(TablerIcons.x, size: 14, color: _kTitle),
+                child:
+                    const Icon(TablerIcons.x, size: 14, color: _kHeaderTitle),
               ),
             ),
           ),
@@ -611,127 +622,137 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
 
   Widget _buildStorageSection() {
     final bool dropboxConfigured = BackupService.isDropboxConfigured;
+
+    StorageSourceEntry cloud({
+      required _StorageType type,
+      required String asset,
+      required Color brand,
+      required String title,
+      required String? account,
+      required String? folderName,
+      required bool connecting,
+      required VoidCallback? onConnect,
+      required VoidCallback onDisconnect,
+      required VoidCallback onPickFolder,
+      String? disabledReason,
+    }) {
+      final bool connected = account != null;
+      return StorageSourceEntry(
+        id: type.name,
+        icon: Image.asset(asset, width: 18, height: 18),
+        brandColor: brand,
+        title: title,
+        account: account,
+        detail: connected ? (folderName ?? '/ (root)') : 'Not connected',
+        ready: connected,
+        selected: connected && _storage == type,
+        busy: connecting,
+        actionLabel: connected
+            ? (folderName != null ? 'Change folder' : 'Select folder')
+            : 'Connect',
+        onAction: connected ? onPickFolder : onConnect,
+        onSelect: () => setState(() => _storage = type),
+        onDisconnect: connected ? onDisconnect : null,
+        disabledReason: disabledReason,
+      );
+    }
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text(
-          'Storage Destination',
-          style: _serifText(14, _kTitle),
-        ),
-        const SizedBox(height: 8),
-        _DestinationGrid(
-          children: <Widget>[
-            _StorageRow(
-              iconChild:
-                  Image.asset('assets/images/dir.png', width: 18, height: 18),
-              label: 'Local Directory',
+        const SizedBox(height: 18),
+        StorageSourceList(
+          entries: <StorageSourceEntry>[
+            StorageSourceEntry(
+              id: _StorageType.local.name,
+              icon: Image.asset('assets/images/dir.png', width: 18, height: 18),
+              brandColor: StorageBrandColors.local,
+              title: 'This Mac',
               detail: _localDirectory != null
                   ? _shortenPath(_localDirectory!)
                   : 'Choose a folder on this Mac',
+              ready: true,
               selected: _storage == _StorageType.local,
-              actionLabel: 'Browse',
+              actionLabel: _localDirectory != null ? 'Change' : 'Browse',
               onAction: _pickLocalDirectory,
+              onSelect: () => setState(() => _storage = _StorageType.local),
             ),
-            _CloudStorageRow(
-              iconChild: Image.asset('assets/images/google-drive.png',
-                  width: 18, height: 18),
-              provider: 'Google Drive',
-              selected: _storage == _StorageType.googleDrive,
+            cloud(
+              type: _StorageType.googleDrive,
+              asset: 'assets/images/google-drive.png',
+              brand: StorageBrandColors.googleDrive,
+              title: 'Google Drive',
               account: _googleAccount,
               folderName: _googleFolderName,
-              isConnecting: _isConnectingGoogle,
+              connecting: _isConnectingGoogle,
               onConnect: _connectGoogle,
               onDisconnect: _disconnectGoogle,
-              onPickFolder: _googleAccount != null ? _pickGoogleFolder : null,
-              onSelect: _googleAccount != null
-                  ? () => setState(() => _storage = _StorageType.googleDrive)
-                  : null,
+              onPickFolder: _pickGoogleFolder,
             ),
-            _CloudStorageRow(
-              iconChild: Image.asset('assets/images/dropbox.png',
-                  width: 18, height: 18),
-              provider: 'Dropbox',
-              selected: _storage == _StorageType.dropbox,
+            cloud(
+              type: _StorageType.dropbox,
+              asset: 'assets/images/dropbox.png',
+              brand: StorageBrandColors.dropbox,
+              title: 'Dropbox',
               account: _dropboxAccount,
               folderName: _dropboxFolderName,
-              isConnecting: _isConnectingDropbox,
+              connecting: _isConnectingDropbox,
               onConnect: dropboxConfigured ? _connectDropbox : null,
               onDisconnect: _disconnectDropbox,
-              onPickFolder: _dropboxAccount != null ? _pickDropboxFolder : null,
-              onSelect: _dropboxAccount != null
-                  ? () => setState(() => _storage = _StorageType.dropbox)
-                  : null,
+              onPickFolder: _pickDropboxFolder,
+              disabledReason:
+                  dropboxConfigured ? null : 'Not available in this build',
             ),
-            _CloudStorageRow(
-              iconChild: Image.asset('assets/images/onedrive.png',
-                  width: 18, height: 18),
-              provider: 'OneDrive',
-              selected: _storage == _StorageType.oneDrive,
+            cloud(
+              type: _StorageType.oneDrive,
+              asset: 'assets/images/onedrive.png',
+              brand: StorageBrandColors.oneDrive,
+              title: 'OneDrive',
               account: _oneDriveAccount,
               folderName: _oneDriveFolderName,
-              isConnecting: _isConnectingOneDrive,
+              connecting: _isConnectingOneDrive,
               onConnect: _connectOneDrive,
               onDisconnect: _disconnectOneDrive,
-              onPickFolder:
-                  _oneDriveAccount != null ? _pickOneDriveFolder : null,
-              onSelect: _oneDriveAccount != null
-                  ? () => setState(() => _storage = _StorageType.oneDrive)
-                  : null,
+              onPickFolder: _pickOneDriveFolder,
             ),
-            _CloudStorageRow(
-              iconChild: Image.asset('assets/images/webdav.png',
-                  width: 18, height: 18),
-              provider: 'WebDAV',
-              selected: _storage == _StorageType.webDav,
+            cloud(
+              type: _StorageType.webDav,
+              asset: 'assets/images/webdav.png',
+              brand: StorageBrandColors.webDav,
+              title: 'WebDAV',
               account: _webDavAccount,
               folderName: _webDavFolderName,
-              isConnecting: _isConnectingWebDav,
+              connecting: _isConnectingWebDav,
               onConnect: _connectWebDav,
               onDisconnect: _disconnectWebDav,
-              onPickFolder: _webDavAccount != null ? _pickWebDavFolder : null,
-              onSelect: _webDavAccount != null
-                  ? () => setState(() => _storage = _StorageType.webDav)
-                  : null,
+              onPickFolder: _pickWebDavFolder,
             ),
-            _CloudStorageRow(
-              iconChild:
-                  Image.asset('assets/images/sftp.png', width: 18, height: 18),
-              provider: 'SFTP',
-              selected: _storage == _StorageType.sftp,
+            cloud(
+              type: _StorageType.sftp,
+              asset: 'assets/images/sftp.png',
+              brand: StorageBrandColors.sftp,
+              title: 'SFTP',
               account: _sftpAccount,
               folderName: _sftpFolderName,
-              isConnecting: _isConnectingSftp,
+              connecting: _isConnectingSftp,
               onConnect: _connectSftp,
               onDisconnect: _disconnectSftp,
-              onPickFolder: _sftpAccount != null ? _pickSftpFolder : null,
-              onSelect: _sftpAccount != null
-                  ? () => setState(() => _storage = _StorageType.sftp)
-                  : null,
+              onPickFolder: _pickSftpFolder,
             ),
-            _CloudStorageRow(
-              iconChild: Image.asset('assets/images/aws-s3-icon.png',
-                  width: 18, height: 18),
-              provider: 'Amazon S3',
-              selected: _storage == _StorageType.s3,
+            cloud(
+              type: _StorageType.s3,
+              asset: 'assets/images/aws-s3-icon.png',
+              brand: StorageBrandColors.s3,
+              title: 'Amazon S3',
               account: _s3Account,
               folderName: _s3FolderName,
-              isConnecting: _isConnectingS3,
+              connecting: _isConnectingS3,
               onConnect: _connectS3,
               onDisconnect: _disconnectS3,
-              onPickFolder: _s3Account != null ? _pickS3Folder : null,
-              onSelect: _s3Account != null
-                  ? () => setState(() => _storage = _StorageType.s3)
-                  : null,
+              onPickFolder: _pickS3Folder,
             ),
           ],
         ),
-        if (!dropboxConfigured) ...<Widget>[
-          const SizedBox(height: 8),
-          Text(
-            'Dropbox is disabled in this build. Configure DROPBOX_APP_KEY via --dart-define to enable it.',
-            style: _uText(11, _kLabel),
-          ),
-        ],
       ],
     );
   }
@@ -1201,8 +1222,8 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFFF6F8FF),
-                borderRadius: BorderRadius.circular(10),
+                color: DcColors.lightSurface,
+                borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: _kBorderRow),
               ),
               child: Row(
@@ -1255,7 +1276,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
                       width: 26,
                       height: 26,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: DcColors.lightSurface,
                         borderRadius: BorderRadius.circular(7),
                         border: Border.all(color: _kBorderRow),
                       ),
@@ -1300,23 +1321,22 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
+        color: DcColors.redSoft,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFFECACA)),
+        border: Border.all(color: DcColors.redOnLight),
       ),
       child: Row(
         children: <Widget>[
           const Icon(TablerIcons.alert_circle,
-              size: 14, color: Color(0xFFEF4444)),
+              size: 14, color: DcColors.redOnLight),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(_errorMessage!,
-                style: _uText(11, const Color(0xFFEF4444))),
+            child: Text(_errorMessage!, style: _uText(11, DcColors.redOnLight)),
           ),
           GestureDetector(
             onTap: () => setState(() => _errorMessage = null),
             child:
-                const Icon(TablerIcons.x, size: 13, color: Color(0xFFEF4444)),
+                const Icon(TablerIcons.x, size: 13, color: DcColors.redOnLight),
           ),
         ],
       ),
@@ -1329,11 +1349,11 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: const BoxDecoration(
-        color: _kPaperBright,
+        color: _kCanvas,
         border: Border(top: BorderSide(color: _kBorderSoft)),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(17),
-          bottomRight: Radius.circular(17),
+          bottomLeft: Radius.circular(7),
+          bottomRight: Radius.circular(7),
         ),
       ),
       child: _step == _WizardStep.provider
@@ -1353,7 +1373,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
             side: const BorderSide(color: _kInkBorder),
             backgroundColor: _kPaperBright,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(7),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
@@ -1371,7 +1391,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
             elevation: 2,
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(7),
             ),
             textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
           ),
@@ -1392,7 +1412,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
             side: const BorderSide(color: _kInkBorder),
             backgroundColor: _kPaperBright,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(7),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
@@ -1411,7 +1431,7 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
             elevation: 2,
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(7),
             ),
             textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
           ),
@@ -1744,12 +1764,12 @@ class _ShadowedInput extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x1A252628),
+            color: DcColors.shadow,
             blurRadius: 2,
             offset: Offset(0, 1),
           ),
           BoxShadow(
-            color: Color(0x14252628),
+            color: DcColors.shadowSoft,
             blurRadius: 10,
             spreadRadius: -2,
             offset: Offset(0, 4),
@@ -1787,7 +1807,7 @@ class _InputInnerShadowPainter extends CustomPainter {
       ..drawPath(
         innerEdge,
         Paint()
-          ..color = const Color(0x18252628)
+          ..color = DcColors.shadowSoft
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
       )
       ..restore();
@@ -1795,290 +1815,6 @@ class _InputInnerShadowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _InputInnerShadowPainter oldDelegate) => false;
-}
-
-class _DestinationGrid extends StatelessWidget {
-  const _DestinationGrid({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const gap = 10.0;
-        final width = (constraints.maxWidth - gap) / 2;
-        final height = (width * 0.50).clamp(148.0, 164.0).toDouble();
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: <Widget>[
-            for (final child in children)
-              SizedBox(width: width, height: height, child: child),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _StorageRow extends StatelessWidget {
-  const _StorageRow({
-    required this.iconChild,
-    required this.label,
-    required this.detail,
-    required this.selected,
-    required this.actionLabel,
-    required this.onAction,
-  });
-
-  final Widget iconChild;
-  final String label;
-  final String detail;
-  final bool selected;
-  final String actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: selected ? _kMintSoft : _kPaperBright,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: selected ? _kInkBorder : _kBorderRow,
-          width: selected ? 1.5 : 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected ? _kYellow : _kPeach,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: iconChild,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _uText(13, _kTitle, fontWeight: FontWeight.w700),
-                ),
-              ),
-              if (selected)
-                const Icon(TablerIcons.circle_check_filled,
-                    size: 18, color: _kMint),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            detail,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: _uText(10.5, _kLabel),
-          ),
-          const Spacer(),
-          Align(
-            alignment: Alignment.bottomRight,
-            child: OutlinedButton(
-              onPressed: onAction,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _kTitle,
-                side: const BorderSide(color: _kInkBorder),
-                backgroundColor: _kPaperBright,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                minimumSize: const Size(88, 34),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                textStyle: _uText(11, _kTitle, fontWeight: FontWeight.w700),
-              ),
-              child: Text(actionLabel),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CloudStorageRow extends StatelessWidget {
-  const _CloudStorageRow({
-    required this.iconChild,
-    required this.provider,
-    required this.selected,
-    required this.account,
-    required this.folderName,
-    required this.isConnecting,
-    required this.onConnect,
-    required this.onDisconnect,
-    required this.onPickFolder,
-    required this.onSelect,
-  });
-
-  final Widget iconChild;
-  final String provider;
-  final bool selected;
-  final String? account;
-  final String? folderName;
-  final bool isConnecting;
-  final VoidCallback? onConnect;
-  final VoidCallback onDisconnect;
-  final VoidCallback? onPickFolder;
-  final VoidCallback? onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool connected = account != null;
-    return MouseRegion(
-      cursor: onSelect == null
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onSelect,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: selected ? _kMintSoft : _kPaperBright,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected ? _kInkBorder : _kBorderRow,
-              width: selected ? 1.5 : 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: selected ? _kYellow : _kPeach,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: iconChild,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          provider,
-                          style: _uText(
-                            13,
-                            _kTitle,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (connected)
-                          Text(
-                            account!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: _uText(10, _kLabel),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (isConnecting)
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 1.5),
-                    )
-                  else if (selected)
-                    const Icon(TablerIcons.circle_check_filled,
-                        size: 18, color: _kMint),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: <Widget>[
-                  Icon(connected ? TablerIcons.folder : TablerIcons.cloud,
-                      size: 12, color: _kIcon),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      connected ? (folderName ?? '/ (root)') : 'Not connected',
-                      style: _uText(10.5, _kLabel),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              if (!isConnecting)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: <Widget>[
-                    if (connected) ...<Widget>[
-                      _TextDestructiveButton(
-                        label: 'Disconnect',
-                        onPressed: onDisconnect,
-                      ),
-                      const SizedBox(width: 8),
-                      _TilePrimaryButton(
-                        label: folderName != null ? 'Change' : 'Select folder',
-                        onPressed: onPickFolder,
-                      ),
-                    ] else
-                      _TilePrimaryButton(
-                        label: 'Connect',
-                        onPressed: onConnect,
-                      ),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TilePrimaryButton extends StatelessWidget {
-  const _TilePrimaryButton({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _kBlue,
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: _kBorderSoft,
-        elevation: 0,
-        side: const BorderSide(color: _kInkBorder),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        minimumSize: const Size(104, 34),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        textStyle: _uText(10.5, Colors.white, fontWeight: FontWeight.w700),
-      ),
-      child: Text(label),
-    );
-  }
 }
 
 // ── Cloud folder picker ───────────────────────────────────────────────────────
@@ -2270,10 +2006,11 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClueLight(),
       child: Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: DcColors.sidebar,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+        clipBehavior: Clip.antiAlias,
         child: SizedBox(
           width: 400,
           child: Column(
@@ -2291,7 +2028,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
                               padding: const EdgeInsets.all(16),
                               child: Text(
                                 _error!,
-                                style: _uText(12, const Color(0xFFEF4444)),
+                                style: _uText(12, DcColors.redOnLight),
                                 textAlign: TextAlign.center,
                               ),
                             ),
@@ -2322,7 +2059,12 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _kBorderSoft)),
+        color: _kHeaderBg,
+        border: Border(bottom: BorderSide(color: _kHeaderLine)),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(7),
+          topRight: Radius.circular(7),
+        ),
       ),
       child: Row(
         children: <Widget>[
@@ -2337,10 +2079,12 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    const Icon(TablerIcons.arrow_left, size: 14, color: _kBlue),
+                    const Icon(TablerIcons.arrow_left,
+                        size: 14, color: _kHeaderAccent),
                     const SizedBox(width: 4),
                     Text('Back',
-                        style: _uText(11, _kBlue, fontWeight: FontWeight.w500)),
+                        style: _uText(11, _kHeaderAccent,
+                            fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
@@ -2361,20 +2105,20 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
                                     ? TablerIcons.brand_onedrive
                                     : TablerIcons.cloud,
                             size: 16,
-                            color: _kBlue,
+                            color: _kHeaderAccent,
                           ),
             const SizedBox(width: 8),
           ],
           Expanded(
             child: Text(
               _breadcrumb.isEmpty ? title : _breadcrumb.last.name,
-              style: _uText(13, _kTitle, fontWeight: FontWeight.w700),
+              style: _uText(13, _kHeaderTitle, fontWeight: FontWeight.w700),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
-            child: const Icon(TablerIcons.x, size: 16, color: _kIcon),
+            child: const Icon(TablerIcons.x, size: 16, color: _kHeaderLabel),
           ),
         ],
       ),
@@ -2491,18 +2235,18 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
                     hintText: 'New folder name',
                     hintStyle: _uText(12, _kIcon),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: DcColors.lightSurface,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 0,
                       vertical: 10,
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(6),
                       borderSide: const BorderSide(color: _kBorderRow),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(6),
                       borderSide: const BorderSide(color: _kBlue, width: 1.4),
                     ),
                     prefixIcon: const Icon(
@@ -2539,7 +2283,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
                     disabledForegroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     textStyle:
@@ -2584,9 +2328,9 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
           OutlinedButton(
             onPressed: () => Navigator.of(context).pop(),
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF374151),
-              side: const BorderSide(color: Color(0xFFD1D5DB)),
-              backgroundColor: Colors.white,
+              foregroundColor: DcColors.sidebarText,
+              side: const BorderSide(color: DcColors.lightLineStrong),
+              backgroundColor: DcColors.sidebar,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
@@ -2654,7 +2398,8 @@ class _FolderListTileState extends State<_FolderListTile> {
           duration: const Duration(milliseconds: 80),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFF5F7FF) : Colors.white,
+            color:
+                _hovered ? DcColors.lightSelectionFill : DcColors.lightSurface,
             border: const Border(bottom: BorderSide(color: _kBorderSoft)),
           ),
           child: Row(
@@ -2698,8 +2443,8 @@ class _StepDot extends StatelessWidget {
       width: active ? 18 : 7,
       height: 7,
       decoration: BoxDecoration(
-        color: active ? _kBlue : _kYellow,
-        border: Border.all(color: _kInkBorder),
+        color: active ? _kBlue : _kHeaderControl,
+        border: Border.all(color: _kHeaderControlLine),
         borderRadius: BorderRadius.circular(4),
       ),
     );
@@ -2774,7 +2519,7 @@ class _OutlineButton extends StatelessWidget {
         foregroundColor: _kTitle,
         side: const BorderSide(color: _kInkBorder),
         backgroundColor: _kPaperBright,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
         minimumSize: const Size(0, 36),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -2783,32 +2528,6 @@ class _OutlineButton extends StatelessWidget {
           fontWeight: FontWeight.w500,
           letterSpacing: 0,
         ),
-      ),
-      child: Text(label),
-    );
-  }
-}
-
-class _TextDestructiveButton extends StatelessWidget {
-  const _TextDestructiveButton({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: const Color(0xFFB93827),
-        backgroundColor: const Color(0xFFFFE8DF),
-        side: const BorderSide(color: Color(0xFFE36A54)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        minimumSize: const Size(104, 34),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        textStyle:
-            _uText(10.5, const Color(0xFFB93827), fontWeight: FontWeight.w700),
       ),
       child: Text(label),
     );
@@ -2830,8 +2549,8 @@ class _FormatDropdown extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 56),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        color: DcColors.lightSurface,
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: _kBorderRow),
       ),
       child: DropdownButtonHideUnderline(
@@ -2840,8 +2559,8 @@ class _FormatDropdown extends StatelessWidget {
           isExpanded: true,
           itemHeight: null,
           menuMaxHeight: 280,
-          borderRadius: BorderRadius.circular(12),
-          dropdownColor: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          dropdownColor: DcColors.lightSurface,
           icon: const Icon(
             TablerIcons.chevron_down,
             size: 16,
@@ -2966,12 +2685,12 @@ class _FormatBadge extends StatelessWidget {
 
     if (subdued) {
       backgroundColor = _kCanvas;
-      foregroundColor = const Color(0xFF8A97AC);
+      foregroundColor = DcColors.sidebarMuted;
     } else if (emphasized) {
       backgroundColor = _kYellow;
       foregroundColor = _kBlue;
     } else {
-      backgroundColor = const Color(0xFFF4F6FA);
+      backgroundColor = DcColors.sidebar;
       foregroundColor = _kLabel;
     }
 

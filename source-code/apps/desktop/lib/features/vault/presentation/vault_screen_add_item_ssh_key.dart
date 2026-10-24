@@ -525,285 +525,302 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                   colorScheme: const ColorScheme.light(
                     primary: _kPrimaryButtonColor,
                     onPrimary: Colors.white,
-                    surface: _VaultColors.surface,
-                    onSurface: _VaultColors.title,
+                    surface: _ItemModalColors.surface,
+                    onSurface: _ItemModalColors.title,
                   ),
-                  canvasColor: _VaultColors.surface,
-                  splashColor: Color(0x2BFF5B22),
-                  highlightColor: Color(0x2BFF5B22),
-                  hoverColor: const Color(0x1FFF5B22),
+                  canvasColor: _ItemModalColors.surface,
+                  splashColor: DcColors.selectionSoft,
+                  highlightColor: DcColors.selectionSoft,
+                  hoverColor: DcColors.sidebarHover,
                 ),
                 child: Dialog(
-                  backgroundColor: _VaultColors.surface,
+                  backgroundColor: _ItemModalColors.surface,
                   insetPadding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 28,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    side: const BorderSide(color: _VaultColors.borderPane),
+                    borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
                   ),
+                  clipBehavior: Clip.antiAlias,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 620),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            'Generate SSH key',
-                            style: _displayText(18, _VaultColors.title),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        DcDialogTitleBar(
+                          title: 'Generate SSH key',
+                          onClose: () => Navigator.of(dialogContext).pop(),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Expanded(
-                                child: Text(
-                                  'Key Type',
-                                  style: _text(
-                                    13,
-                                    _VaultColors.headerLabel,
-                                    fontWeight: FontWeight.w500,
+                              Row(
+                                children: <Widget>[
+                                  Expanded(
+                                    child: Text(
+                                      'Key Type',
+                                      style: _text(
+                                        13,
+                                        _ItemModalColors.headerLabel,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
                                   ),
+                                  Container(
+                                    height: 40,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                          color: _ItemModalColors.borderSoft),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child:
+                                          DropdownButton<_SshKeyGenerationType>(
+                                        value: selectedType,
+                                        dropdownColor: _ItemModalColors.surface,
+                                        menuMaxHeight: 220,
+                                        borderRadius: BorderRadius.circular(6),
+                                        style: _text(
+                                          13,
+                                          _ItemModalColors.title,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        icon: const Icon(
+                                          TablerIcons.chevron_down,
+                                          size: 16,
+                                          color: _ItemModalColors.headerLabel,
+                                        ),
+                                        items: <DropdownMenuItem<
+                                            _SshKeyGenerationType>>[
+                                          DropdownMenuItem<
+                                              _SshKeyGenerationType>(
+                                            value:
+                                                _SshKeyGenerationType.ed25519,
+                                            child: Text(
+                                              'Ed25519',
+                                              style: _text(
+                                                13,
+                                                _ItemModalColors.title,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                          DropdownMenuItem<
+                                              _SshKeyGenerationType>(
+                                            value: _SshKeyGenerationType.rsa,
+                                            child: Text(
+                                              'RSA',
+                                              style: _text(
+                                                13,
+                                                _ItemModalColors.title,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                        onChanged: (value) {
+                                          if (value == null) {
+                                            return;
+                                          }
+                                          setDialogState(() {
+                                            selectedType = value;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (isRsa) ...<Widget>[
+                                const SizedBox(height: 14),
+                                Row(
+                                  children: <Widget>[
+                                    Text(
+                                      'Bit Length',
+                                      style: _text(
+                                        13,
+                                        _ItemModalColors.headerLabel,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: SliderTheme(
+                                        data: SliderTheme.of(context).copyWith(
+                                          activeTrackColor:
+                                              _kPrimaryButtonColor,
+                                          inactiveTrackColor:
+                                              _ItemModalColors.borderSoft,
+                                          thumbColor: DcColors.lightSurface,
+                                          overlayColor: DcColors.selectionSoft,
+                                          thumbShape:
+                                              const RoundSliderThumbShape(
+                                            enabledThumbRadius: 13,
+                                          ),
+                                        ),
+                                        child: Slider(
+                                          value: rsaBits,
+                                          min: 2048,
+                                          max: 8192,
+                                          divisions: 6,
+                                          label: rsaBits.round().toString(),
+                                          onChanged: (value) {
+                                            setDialogState(() {
+                                              rsaBits = value;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      width: 78,
+                                      height: 40,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                            color: _ItemModalColors.borderSoft),
+                                      ),
+                                      child: Text(
+                                        rsaBits.round().toString(),
+                                        style: _text(
+                                          13,
+                                          _ItemModalColors.title,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              const SizedBox(height: 14),
+                              Text(
+                                'Passphrase',
+                                style: _text(
+                                  13,
+                                  _ItemModalColors.headerLabel,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
+                              const SizedBox(height: 8),
                               Container(
-                                height: 40,
+                                height: 44,
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 12),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
-                                      color: _VaultColors.borderSoft),
+                                      color: _ItemModalColors.borderSoft),
                                 ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<_SshKeyGenerationType>(
-                                    value: selectedType,
-                                    dropdownColor: _VaultColors.surface,
-                                    menuMaxHeight: 220,
-                                    borderRadius: BorderRadius.circular(6),
-                                    style: _text(
-                                      13,
-                                      _VaultColors.title,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    icon: const Icon(
-                                      TablerIcons.chevron_down,
-                                      size: 16,
-                                      color: _VaultColors.headerLabel,
-                                    ),
-                                    items: <DropdownMenuItem<
-                                        _SshKeyGenerationType>>[
-                                      DropdownMenuItem<_SshKeyGenerationType>(
-                                        value: _SshKeyGenerationType.ed25519,
-                                        child: Text(
-                                          'Ed25519',
-                                          style: _text(
+                                child: Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: TextField(
+                                        controller: passphraseController,
+                                        obscureText: !isPassphraseVisible,
+                                        autocorrect: false,
+                                        enableSuggestions: false,
+                                        textAlignVertical:
+                                            TextAlignVertical.center,
+                                        style: _text(
+                                          13,
+                                          _ItemModalColors.title,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        decoration: InputDecoration(
+                                          filled: false,
+                                          hintText:
+                                              'Leave blank for no passphrase',
+                                          hintStyle: _text(
                                             13,
-                                            _VaultColors.title,
-                                            fontWeight: FontWeight.w500,
+                                            _ItemModalColors.icon,
+                                            fontWeight: FontWeight.w400,
                                           ),
+                                          border: InputBorder.none,
+                                          enabledBorder: InputBorder.none,
+                                          focusedBorder: InputBorder.none,
+                                          isCollapsed: true,
+                                          contentPadding: EdgeInsets.zero,
                                         ),
                                       ),
-                                      DropdownMenuItem<_SshKeyGenerationType>(
-                                        value: _SshKeyGenerationType.rsa,
-                                        child: Text(
-                                          'RSA',
-                                          style: _text(
-                                            13,
-                                            _VaultColors.title,
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                    ),
+                                    InkWell(
+                                      onTap: () => setDialogState(() {
+                                        isPassphraseVisible =
+                                            !isPassphraseVisible;
+                                      }),
+                                      borderRadius: BorderRadius.circular(999),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(4),
+                                        child: Icon(
+                                          isPassphraseVisible
+                                              ? TablerIcons.eye_off
+                                              : TablerIcons.eye,
+                                          size: 16,
+                                          color: _ItemModalColors.headerLabel,
                                         ),
                                       ),
-                                    ],
-                                    onChanged: (value) {
-                                      if (value == null) {
-                                        return;
-                                      }
-                                      setDialogState(() {
-                                        selectedType = value;
-                                      });
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                helperText,
+                                style: _text(
+                                  13,
+                                  _ItemModalColors.headerLabel,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              const Divider(
+                                height: 1,
+                                color: _ItemModalColors.borderSoft,
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: <Widget>[
+                                  _LoginFooterButton(
+                                    label: 'Cancel',
+                                    backgroundColor:
+                                        _ItemModalColors.surfaceMuted,
+                                    textColor: _ItemModalColors.headerLabel,
+                                    borderColor: _ItemModalColors.borderPane,
+                                    onTap: () =>
+                                        Navigator.of(dialogContext).pop(),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  _LoginFooterButton(
+                                    label: 'Generate',
+                                    backgroundColor: _kPrimaryButtonColor,
+                                    textColor: Colors.white,
+                                    onTap: () {
+                                      Navigator.of(dialogContext).pop(
+                                        _SshKeyGenerationConfig(
+                                          type: selectedType,
+                                          rsaBits: rsaBits.round(),
+                                          passphrase: passphraseController.text,
+                                        ),
+                                      );
                                     },
                                   ),
-                                ),
+                                ],
                               ),
                             ],
                           ),
-                          if (isRsa) ...<Widget>[
-                            const SizedBox(height: 14),
-                            Row(
-                              children: <Widget>[
-                                Text(
-                                  'Bit Length',
-                                  style: _text(
-                                    13,
-                                    _VaultColors.headerLabel,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: SliderTheme(
-                                    data: SliderTheme.of(context).copyWith(
-                                      activeTrackColor: _kPrimaryButtonColor,
-                                      inactiveTrackColor:
-                                          _VaultColors.borderSoft,
-                                      thumbColor: Colors.white,
-                                      overlayColor: Color(0x33FF5B22),
-                                      thumbShape: const RoundSliderThumbShape(
-                                        enabledThumbRadius: 13,
-                                      ),
-                                    ),
-                                    child: Slider(
-                                      value: rsaBits,
-                                      min: 2048,
-                                      max: 8192,
-                                      divisions: 6,
-                                      label: rsaBits.round().toString(),
-                                      onChanged: (value) {
-                                        setDialogState(() {
-                                          rsaBits = value;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  width: 78,
-                                  height: 40,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                        color: _VaultColors.borderSoft),
-                                  ),
-                                  child: Text(
-                                    rsaBits.round().toString(),
-                                    style: _text(
-                                      13,
-                                      _VaultColors.title,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          const SizedBox(height: 14),
-                          Text(
-                            'Passphrase',
-                            style: _text(
-                              13,
-                              _VaultColors.headerLabel,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            height: 44,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(6),
-                              border:
-                                  Border.all(color: _VaultColors.borderSoft),
-                            ),
-                            child: Row(
-                              children: <Widget>[
-                                Expanded(
-                                  child: TextField(
-                                    controller: passphraseController,
-                                    obscureText: !isPassphraseVisible,
-                                    autocorrect: false,
-                                    enableSuggestions: false,
-                                    textAlignVertical: TextAlignVertical.center,
-                                    style: _text(
-                                      13,
-                                      _VaultColors.title,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    decoration: InputDecoration(
-                                      filled: false,
-                                      hintText: 'Leave blank for no passphrase',
-                                      hintStyle: _text(
-                                        13,
-                                        _VaultColors.icon,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                      border: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
-                                      focusedBorder: InputBorder.none,
-                                      isCollapsed: true,
-                                      contentPadding: EdgeInsets.zero,
-                                    ),
-                                  ),
-                                ),
-                                InkWell(
-                                  onTap: () => setDialogState(() {
-                                    isPassphraseVisible = !isPassphraseVisible;
-                                  }),
-                                  borderRadius: BorderRadius.circular(999),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(4),
-                                    child: Icon(
-                                      isPassphraseVisible
-                                          ? TablerIcons.eye_off
-                                          : TablerIcons.eye,
-                                      size: 16,
-                                      color: _VaultColors.headerLabel,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            helperText,
-                            style: _text(
-                              13,
-                              _VaultColors.headerLabel,
-                              fontWeight: FontWeight.w500,
-                              height: 1.35,
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          const Divider(
-                            height: 1,
-                            color: _VaultColors.borderSoft,
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: <Widget>[
-                              _LoginFooterButton(
-                                label: 'Cancel',
-                                backgroundColor: _VaultColors.surfaceMuted,
-                                textColor: _VaultColors.headerLabel,
-                                borderColor: _VaultColors.borderPane,
-                                onTap: () => Navigator.of(dialogContext).pop(),
-                              ),
-                              const SizedBox(width: 10),
-                              _LoginFooterButton(
-                                label: 'Generate',
-                                backgroundColor: _kPrimaryButtonColor,
-                                textColor: Colors.white,
-                                onTap: () {
-                                  Navigator.of(dialogContext).pop(
-                                    _SshKeyGenerationConfig(
-                                      type: selectedType,
-                                      rsaBits: rsaBits.round(),
-                                      passphrase: passphraseController.text,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -1138,7 +1155,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                   ),
                   textSelectionTheme: const TextSelectionThemeData(
                     cursorColor: _kPrimaryButtonColor,
-                    selectionColor: Color(0x33FF5B22),
+                    selectionColor: DcColors.selectionSoft,
                     selectionHandleColor: _kPrimaryButtonColor,
                   ),
                 ),
@@ -1151,14 +1168,14 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                   ),
                   child: Container(
                     constraints: const BoxConstraints(maxWidth: 520),
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
+                    clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
-                      color: _VaultColors.surface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _VaultColors.borderPane),
+                      color: _ItemModalColors.surface,
+                      borderRadius:
+                          BorderRadius.circular(DcMetrics.panelRadius),
                       boxShadow: const <BoxShadow>[
                         BoxShadow(
-                          color: Color(0x140F172A),
+                          color: DcColors.shadow,
                           blurRadius: 30,
                           offset: Offset(0, 14),
                         ),
@@ -1168,113 +1185,118 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(
-                          'Enter SSH Key Passphrase',
-                          style: _text(
-                            18,
-                            _VaultColors.title,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        DcDialogTitleBar(
+                          title: 'Enter SSH Key Passphrase',
+                          onClose: () => Navigator.of(dialogContext).pop(),
                         ),
-                        const SizedBox(height: 14),
-                        Text(
-                          '$fileName is encrypted. Enter a valid passphrase to add this key.',
-                          style: _text(
-                            14,
-                            _VaultColors.headerLabel,
-                            fontWeight: FontWeight.w500,
-                            height: 1.45,
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+                          child: Text(
+                            '$fileName is encrypted. Enter a valid passphrase to add this key.',
+                            style: _text(
+                              14,
+                              _ItemModalColors.headerLabel,
+                              fontWeight: FontWeight.w500,
+                              height: 1.45,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 18),
-                        Container(
-                          height: 56,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          decoration: BoxDecoration(
-                            color: _VaultColors.surfaceMuted,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: _VaultColors.borderSoft),
-                          ),
-                          child: Row(
-                            children: <Widget>[
-                              Expanded(
-                                child: TextField(
-                                  controller: controller,
-                                  autofocus: true,
-                                  obscureText: !isVisible,
-                                  autocorrect: false,
-                                  enableSuggestions: false,
-                                  textAlignVertical: TextAlignVertical.center,
-                                  onSubmitted: (_) {
-                                    Navigator.of(dialogContext)
-                                        .pop(controller.text);
-                                  },
-                                  style: _text(
-                                    14,
-                                    _VaultColors.title,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  decoration: InputDecoration(
-                                    filled: false,
-                                    fillColor: Colors.transparent,
-                                    hintText: 'Passphrase',
-                                    hintStyle: _text(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Container(
+                            height: 56,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: _ItemModalColors.surfaceMuted,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                  color: _ItemModalColors.borderSoft),
+                            ),
+                            child: Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: TextField(
+                                    controller: controller,
+                                    autofocus: true,
+                                    obscureText: !isVisible,
+                                    autocorrect: false,
+                                    enableSuggestions: false,
+                                    textAlignVertical: TextAlignVertical.center,
+                                    onSubmitted: (_) {
+                                      Navigator.of(dialogContext)
+                                          .pop(controller.text);
+                                    },
+                                    style: _text(
                                       14,
-                                      _VaultColors.icon,
+                                      _ItemModalColors.title,
                                       fontWeight: FontWeight.w500,
                                     ),
-                                    border: InputBorder.none,
-                                    enabledBorder: InputBorder.none,
-                                    focusedBorder: InputBorder.none,
-                                    disabledBorder: InputBorder.none,
-                                    errorBorder: InputBorder.none,
-                                    focusedErrorBorder: InputBorder.none,
-                                    isCollapsed: true,
-                                    contentPadding: EdgeInsets.zero,
+                                    decoration: InputDecoration(
+                                      filled: false,
+                                      fillColor: Colors.transparent,
+                                      hintText: 'Passphrase',
+                                      hintStyle: _text(
+                                        14,
+                                        _ItemModalColors.icon,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      border: InputBorder.none,
+                                      enabledBorder: InputBorder.none,
+                                      focusedBorder: InputBorder.none,
+                                      disabledBorder: InputBorder.none,
+                                      errorBorder: InputBorder.none,
+                                      focusedErrorBorder: InputBorder.none,
+                                      isCollapsed: true,
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
                                   ),
                                 ),
+                                const SizedBox(width: 10),
+                                InkWell(
+                                  onTap: () => setDialogState(() {
+                                    isVisible = !isVisible;
+                                  }),
+                                  borderRadius: BorderRadius.circular(999),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4),
+                                    child: Icon(
+                                      isVisible
+                                          ? TablerIcons.eye_off
+                                          : TablerIcons.eye,
+                                      size: 18,
+                                      color: _kPrimaryButtonColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 18),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: <Widget>[
+                              _LoginFooterButton(
+                                label: 'Cancel Add',
+                                backgroundColor: _ItemModalColors.surfaceMuted,
+                                textColor: _ItemModalColors.headerLabel,
+                                onTap: () => Navigator.of(dialogContext).pop(),
                               ),
                               const SizedBox(width: 10),
-                              InkWell(
-                                onTap: () => setDialogState(() {
-                                  isVisible = !isVisible;
-                                }),
-                                borderRadius: BorderRadius.circular(999),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4),
-                                  child: Icon(
-                                    isVisible
-                                        ? TablerIcons.eye_off
-                                        : TablerIcons.eye,
-                                    size: 18,
-                                    color: _kPrimaryButtonColor,
-                                  ),
-                                ),
+                              _LoginFooterButton(
+                                label: 'Save Passphrase',
+                                backgroundColor: _kPrimaryButtonColor,
+                                textColor: Colors.white,
+                                onTap: () {
+                                  Navigator.of(dialogContext)
+                                      .pop(controller.text);
+                                },
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 18),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: <Widget>[
-                            _LoginFooterButton(
-                              label: 'Cancel Add',
-                              backgroundColor: _VaultColors.surfaceMuted,
-                              textColor: _VaultColors.headerLabel,
-                              onTap: () => Navigator.of(dialogContext).pop(),
-                            ),
-                            const SizedBox(width: 10),
-                            _LoginFooterButton(
-                              label: 'Save Passphrase',
-                              backgroundColor: _kPrimaryButtonColor,
-                              textColor: Colors.white,
-                              onTap: () {
-                                Navigator.of(dialogContext)
-                                    .pop(controller.text);
-                              },
-                            ),
-                          ],
                         ),
                       ],
                     ),
@@ -1770,7 +1792,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
           ),
           textSelectionTheme: const TextSelectionThemeData(
             cursorColor: _kPrimaryButtonColor,
-            selectionColor: Color(0x33FF5B22),
+            selectionColor: DcColors.selectionSoft,
             selectionHandleColor: _kPrimaryButtonColor,
           ),
         );
@@ -1783,14 +1805,13 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
               Container(
                 width: modalWidth,
                 constraints: BoxConstraints(maxHeight: modalHeight),
-                padding: const EdgeInsets.all(24),
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  color: _VaultColors.surface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _VaultColors.borderSoft),
+                  color: _ItemModalColors.surface,
+                  borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x1C172033),
+                      color: DcColors.shadow,
                       blurRadius: 44,
                       offset: Offset(0, 20),
                     ),
@@ -1799,88 +1820,70 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        if (_isEditing)
-                          const SizedBox(width: 24)
-                        else
-                          _ModalIconAction(
-                            icon: TablerIcons.arrow_left,
-                            onTap: widget.onReturnToPicker ?? () {},
-                          ),
-                        Expanded(
-                          child: Text(
-                            _isEditing ? 'Edit Item' : 'New Item',
-                            textAlign: TextAlign.center,
-                            style: _text(
-                              20,
-                              _VaultColors.title,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        _ModalIconAction(
-                          icon: TablerIcons.x,
-                          onTap: _confirmClose,
-                        ),
-                      ],
+                    DcDialogTitleBar(
+                      title: _isEditing ? 'Edit SSH Key' : 'New SSH Key',
+                      onBack: _isEditing ? null : widget.onReturnToPicker,
+                      onClose: _confirmClose,
                     ),
                     const SizedBox(height: 14),
-                    Row(
-                      children: <Widget>[
-                        if (_isEditing)
-                          const _AddItemTypeIcon(
-                            icon: TablerIcons.prompt,
-                            color: Color(0xFF1D6570),
-                          )
-                        else
-                          _SshKeyHeroIcon(
-                            onTap: widget.onReturnToPicker ?? () {},
-                          ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Container(
-                            height: 42,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            decoration: BoxDecoration(
-                              color: _isEditing
-                                  ? _VaultColors.surfaceMuted
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: _isEditing
-                                    ? _VaultColors.borderSoft
-                                    : _VaultColors.peach,
-                                width: _isEditing ? 1 : 3,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        children: <Widget>[
+                          if (_isEditing)
+                            const _AddItemTypeIcon(
+                              icon: TablerIcons.prompt,
+                              color: DcColors.tealOnLight,
+                            )
+                          else
+                            _SshKeyHeroIcon(
+                              onTap: widget.onReturnToPicker ?? () {},
+                            ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Container(
+                              height: 42,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 14),
+                              decoration: BoxDecoration(
+                                color: _ItemModalColors.surfaceMuted,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: _isEditing
+                                      ? _ItemModalColors.borderSoft
+                                      : _ItemModalColors.peach,
+                                  width: _isEditing ? 1 : 3,
+                                ),
+                              ),
+                              alignment: Alignment.centerLeft,
+                              child: TextField(
+                                controller: _titleController,
+                                maxLines: 1,
+                                textAlignVertical: TextAlignVertical.center,
+                                style: _displayText(
+                                  22,
+                                  _ItemModalColors.title,
+                                  height: 1,
+                                ),
+                                decoration: const InputDecoration(
+                                  filled: false,
+                                  fillColor: Colors.transparent,
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  isCollapsed: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
                               ),
                             ),
-                            alignment: Alignment.centerLeft,
-                            child: TextField(
-                              controller: _titleController,
-                              maxLines: 1,
-                              textAlignVertical: TextAlignVertical.center,
-                              style: _displayText(
-                                22,
-                                _VaultColors.title,
-                                height: 1,
-                              ),
-                              decoration: const InputDecoration(
-                                filled: false,
-                                fillColor: Colors.transparent,
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                isCollapsed: true,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Expanded(
                       child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Column(
                           children: <Widget>[
                             _SshKeyImportSection(
@@ -1924,7 +1927,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                     horizontal: 12,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: _VaultColors.surfaceMuted,
+                                    color: _ItemModalColors.surfaceMuted,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
@@ -1943,7 +1946,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                             ? TablerIcons.chevron_up
                                             : TablerIcons.chevron_down,
                                         size: 14,
-                                        color: _VaultColors.icon,
+                                        color: _ItemModalColors.icon,
                                       ),
                                     ],
                                   ),
@@ -2013,35 +2016,38 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                     const SizedBox(height: 16),
                     Container(
                       height: 1,
-                      color: _VaultColors.borderSoft,
+                      color: _ItemModalColors.borderSoft,
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: <Widget>[
-                        _LoginFooterButton(
-                          label: 'Cancel',
-                          backgroundColor: _VaultColors.surfaceMuted,
-                          textColor: _VaultColors.headerLabel,
-                          borderColor: _VaultColors.borderPane,
-                          onTap: _isSaving ? null : _confirmClose,
-                        ),
-                        const SizedBox(width: 10),
-                        _LoginFooterButton(
-                          label: _isSaving
-                              ? 'Saving...'
-                              : (_isEditing ? 'Save changes' : 'Save'),
-                          backgroundColor: _kPrimaryButtonColor,
-                          textColor: Colors.white,
-                          onTap: _isSaving
-                              ? null
-                              : () => _save(
-                                    categories: categories,
-                                    rootGroupUuid: rootGroupUuid,
-                                    selectedGroupUuid: selectedGroupUuid,
-                                  ),
-                        ),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: <Widget>[
+                          _LoginFooterButton(
+                            label: 'Cancel',
+                            backgroundColor: _ItemModalColors.surfaceMuted,
+                            textColor: _ItemModalColors.headerLabel,
+                            borderColor: _ItemModalColors.borderPane,
+                            onTap: _isSaving ? null : _confirmClose,
+                          ),
+                          const SizedBox(width: 10),
+                          _LoginFooterButton(
+                            label: _isSaving
+                                ? 'Saving...'
+                                : (_isEditing ? 'Save changes' : 'Save'),
+                            backgroundColor: _kPrimaryButtonColor,
+                            textColor: Colors.white,
+                            onTap: _isSaving
+                                ? null
+                                : () => _save(
+                                      categories: categories,
+                                      rootGroupUuid: rootGroupUuid,
+                                      selectedGroupUuid: selectedGroupUuid,
+                                    ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -2181,7 +2187,7 @@ class _SshKeyHeroIcon extends StatelessWidget {
         children: <Widget>[
           const _AddItemTypeIcon(
             icon: TablerIcons.prompt,
-            color: Color(0xFF1D6570),
+            color: DcColors.tealOnLight,
           ),
           Positioned(
             right: 0,
@@ -2193,14 +2199,14 @@ class _SshKeyHeroIcon extends StatelessWidget {
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: _VaultColors.surfaceMuted,
+                  color: _ItemModalColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,
                 child: const Icon(
                   TablerIcons.chevron_down,
                   size: 14,
-                  color: _VaultColors.headerLabel,
+                  color: _ItemModalColors.headerLabel,
                 ),
               ),
             ),
@@ -2356,7 +2362,7 @@ class _SshKeyLoadedPreviewShort extends StatelessWidget {
           errorBuilder: (_, __, ___) => const Icon(
             TablerIcons.key,
             size: 36,
-            color: Color(0xFF8A5600),
+            color: DcColors.orange,
           ),
         ),
         const SizedBox(height: 14),
@@ -2369,7 +2375,7 @@ class _SshKeyLoadedPreviewShort extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: _text(
               16,
-              _VaultColors.title,
+              _ItemModalColors.title,
               fontWeight: FontWeight.w700,
               height: 1.2,
             ),
@@ -2386,7 +2392,9 @@ class _SshKeyLoadedPreviewShort extends StatelessWidget {
             style: TextStyle(
               fontSize: (9 + 2 + currentTextSizeDelta).toDouble(),
               height: 1.35,
-              color: hasSubtitle ? _VaultColors.headerLabel : _VaultColors.icon,
+              color: hasSubtitle
+                  ? _ItemModalColors.headerLabel
+                  : _ItemModalColors.icon,
               fontWeight: FontWeight.w500,
               fontFamily: 'Menlo',
               letterSpacing: hasSubtitle ? 0.08 : 0.0,
@@ -2440,9 +2448,9 @@ class _SshKeyImportSection extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: _VaultColors.surfaceMuted,
+        color: _ItemModalColors.surfaceMuted,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _VaultColors.borderSoft),
+        border: Border.all(color: _ItemModalColors.borderSoft),
       ),
       child: Column(
         children: <Widget>[
@@ -2473,7 +2481,9 @@ class _SshKeyImportSection extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 width: double.infinity,
-                color: isDragOver ? _VaultColors.peachSoft : Colors.transparent,
+                color: isDragOver
+                    ? _ItemModalColors.peachSoft
+                    : Colors.transparent,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
                   vertical: 28,
@@ -2503,13 +2513,13 @@ class _SshKeyImportSection extends StatelessWidget {
                   height: 140,
                   decoration: BoxDecoration(
                     color: isDragOver
-                        ? _VaultColors.peachSoft
-                        : _VaultColors.surface,
+                        ? _ItemModalColors.peachSoft
+                        : _ItemModalColors.surface,
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: isDragOver
-                          ? _VaultColors.peach
-                          : _VaultColors.borderSoft,
+                          ? _ItemModalColors.peach
+                          : _ItemModalColors.borderSoft,
                       style: BorderStyle.solid,
                       width: isDragOver ? 1.6 : 1.2,
                     ),
@@ -2526,7 +2536,7 @@ class _SshKeyImportSection extends StatelessWidget {
                         errorBuilder: (_, __, ___) => const Icon(
                           TablerIcons.key,
                           size: 34,
-                          color: _VaultColors.icon,
+                          color: _ItemModalColors.icon,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -2535,7 +2545,7 @@ class _SshKeyImportSection extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: _text(
                           14,
-                          _VaultColors.icon,
+                          _ItemModalColors.icon,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -2545,7 +2555,7 @@ class _SshKeyImportSection extends StatelessWidget {
               ),
             ),
           const Divider(
-              height: 1, thickness: 1, color: _VaultColors.borderSoft),
+              height: 1, thickness: 1, color: _ItemModalColors.borderSoft),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             child: Row(
@@ -2557,9 +2567,9 @@ class _SshKeyImportSection extends StatelessWidget {
                     position: PopupMenuPosition.under,
                     offset: const Offset(0, 6),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    color: _VaultColors.surface,
+                    color: _ItemModalColors.surface,
                     onSelected: (action) async {
                       switch (action) {
                         case _SshPrivateKeyAction.generateNewKey:
@@ -2631,7 +2641,7 @@ class _SshKeyImportSection extends StatelessWidget {
                           style: _text(
                             12,
                             isImporting
-                                ? _VaultColors.peach
+                                ? _ItemModalColors.peach
                                 : _kPrimaryButtonColor,
                             fontWeight: FontWeight.w600,
                           ),
@@ -2641,8 +2651,8 @@ class _SshKeyImportSection extends StatelessWidget {
                           TablerIcons.chevron_down,
                           size: 14,
                           color: isImporting
-                              ? _VaultColors.icon
-                              : _VaultColors.headerLabel,
+                              ? _ItemModalColors.icon
+                              : _ItemModalColors.headerLabel,
                         ),
                       ],
                     ),
@@ -2661,8 +2671,8 @@ class _SshKeyImportSection extends StatelessWidget {
                           TablerIcons.copy,
                           size: 16,
                           color: isImporting
-                              ? _VaultColors.borderSoft
-                              : _VaultColors.headerLabel,
+                              ? _ItemModalColors.borderSoft
+                              : _ItemModalColors.headerLabel,
                         ),
                       ),
                     ),
@@ -2678,8 +2688,8 @@ class _SshKeyImportSection extends StatelessWidget {
                           TablerIcons.download,
                           size: 16,
                           color: isImporting
-                              ? _VaultColors.borderSoft
-                              : _VaultColors.headerLabel,
+                              ? _ItemModalColors.borderSoft
+                              : _ItemModalColors.headerLabel,
                         ),
                       ),
                     ),
@@ -2698,8 +2708,8 @@ class _SshKeyImportSection extends StatelessWidget {
                           TablerIcons.trash,
                           size: 16,
                           color: isImporting
-                              ? _VaultColors.borderSoft
-                              : _VaultColors.icon,
+                              ? _ItemModalColors.borderSoft
+                              : _ItemModalColors.icon,
                         ),
                       ),
                     ),
@@ -2727,14 +2737,18 @@ class _SshKeyActionMenuItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        Icon(icon, size: 18, color: _VaultColors.headerLabel),
+        Icon(icon, size: 18, color: _ItemModalColors.headerLabel),
         const SizedBox(width: 10),
-        Text(
-          label,
-          style: _text(
-            13,
-            _VaultColors.title,
-            fontWeight: FontWeight.w500,
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: _text(
+              13,
+              _ItemModalColors.title,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],

@@ -133,8 +133,9 @@ class _LumenPassAppState extends ConsumerState<LumenPassApp>
       navigatorKey: navigatorKey,
       title: 'LumenPass - Password Manager',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(fontFamily: fontFamily, sizeDelta: sizeDelta),
-      darkTheme: AppTheme.dark(fontFamily: fontFamily, sizeDelta: sizeDelta),
+      theme: AppTheme.driveClue(fontFamily: fontFamily, sizeDelta: sizeDelta),
+      darkTheme:
+          AppTheme.driveClue(fontFamily: fontFamily, sizeDelta: sizeDelta),
       themeMode: ThemeMode.dark,
       initialRoute: UnlockScreen.routeName,
       routes: <String, WidgetBuilder>{

@@ -159,32 +159,32 @@ const List<_CategoryIconPreset> _categoryIconPresets = <_CategoryIconPreset>[
 const List<_CategoryColorPreset> _categoryColorPresets = <_CategoryColorPreset>[
   _CategoryColorPreset(
     id: 'blue',
-    fillColor: Color(0xFFE1EDFF),
-    iconColor: Color(0xFF2B7FFF),
+    fillColor: DcColors.rowAlternate,
+    iconColor: DcColors.selection,
   ),
   _CategoryColorPreset(
     id: 'purple',
-    fillColor: Color(0xFFEEDDFB),
-    iconColor: Color(0xFF8D57B0),
+    fillColor: DcColors.well,
+    iconColor: DcColors.purple,
   ),
   _CategoryColorPreset(
     id: 'teal',
-    fillColor: Color(0xFFD8F3F4),
-    iconColor: Color(0xFF1D9AAF),
+    fillColor: DcColors.well,
+    iconColor: DcColors.cyan,
   ),
   _CategoryColorPreset(
     id: 'gold',
-    fillColor: Color(0xFFFFE7B8),
-    iconColor: Color(0xFFDB8A11),
+    fillColor: Color(0x38FC9942),
+    iconColor: DcColors.orange,
   ),
   _CategoryColorPreset(
     id: 'pink',
-    fillColor: Color(0xFFF9D6E8),
-    iconColor: Color(0xFFE0539A),
+    fillColor: Color(0x38F57094),
+    iconColor: DcColors.rose,
   ),
 ];
 
-const Color _createCategoryButtonColor = Color(0xFF1D9AAF);
+const Color _createCategoryButtonColor = DcColors.cyan;
 
 _CategoryIconPreset _categoryPresetById(String id) {
   return _categoryIconPresets.firstWhere(
@@ -229,16 +229,16 @@ String _encodeCategoryVisual({
   if (decoded == null) {
     return (
       icon: TablerIcons.folder,
-      iconColor: const Color(0xFF5A78C5),
-      badgeColor: const Color(0xFFE8EEF9),
+      iconColor: DcColors.selection,
+      badgeColor: DcColors.rowAlternate,
     );
   }
 
   if (_isCategoryImagePreset(decoded.presetId)) {
     return (
       icon: TablerIcons.folder,
-      iconColor: const Color(0xFF5A78C5),
-      badgeColor: const Color(0xFFE8EEF9),
+      iconColor: DcColors.selection,
+      badgeColor: DcColors.rowAlternate,
     );
   }
 
@@ -302,7 +302,7 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
-            color: const Color(0x52000000),
+            color: DcColors.scrim,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -321,12 +321,12 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                           ),
                           padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFDFDFE),
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(color: const Color(0xFFD9E1EB)),
+                            color: DcColors.panel,
+                            borderRadius: BorderRadius.circular(7),
+                            border: Border.all(color: DcColors.line),
                             boxShadow: const <BoxShadow>[
                               BoxShadow(
-                                color: Color(0x1C172033),
+                                color: DcColors.shadow,
                                 blurRadius: 44,
                                 offset: Offset(0, 20),
                               ),
@@ -344,7 +344,7 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                                       textAlign: TextAlign.center,
                                       style: _text(
                                         22,
-                                        const Color(0xFF243247),
+                                        DcColors.text,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -441,7 +441,7 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                                                   width: 40,
                                                   height: 40,
                                                   decoration: BoxDecoration(
-                                                    color: Colors.white,
+                                                    color: DcColors.panel,
                                                     shape: BoxShape.circle,
                                                     border: Border.all(
                                                       color: const Color(
@@ -451,7 +451,7 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                                                     boxShadow: const <BoxShadow>[
                                                       BoxShadow(
                                                         color:
-                                                            Color(0x18172033),
+                                                            DcColors.shadowSoft,
                                                         blurRadius: 18,
                                                         offset: Offset(
                                                           0,
@@ -487,11 +487,11 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                                           16,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: Colors.white,
+                                          color: DcColors.panel,
                                           borderRadius:
-                                              BorderRadius.circular(18),
+                                              BorderRadius.circular(7),
                                           border: Border.all(
-                                            color: const Color(0xFFE0E7F1),
+                                            color: DcColors.line,
                                           ),
                                         ),
                                         child: Column(
@@ -517,8 +517,8 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                                 children: <Widget>[
                                   _LoginFooterButton(
                                     label: 'Cancel',
-                                    backgroundColor: const Color(0xFFF4F6FA),
-                                    textColor: const Color(0xFF374151),
+                                    backgroundColor: DcColors.rowAlternate,
+                                    textColor: DcColors.text,
                                     onTap: _isSaving ? null : widget.onClose,
                                   ),
                                   const SizedBox(width: 10),
@@ -540,7 +540,7 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                             child: GestureDetector(
                               onTap: _closeIconPicker,
                               child: Container(
-                                color: const Color(0x260F172A),
+                                color: DcColors.scrimSoft,
                                 alignment: Alignment.center,
                                 padding: const EdgeInsets.all(20),
                                 child: GestureDetector(
@@ -709,7 +709,7 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
-            color: const Color(0x52000000),
+            color: DcColors.scrim,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -728,12 +728,12 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                           ),
                           padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFDFDFE),
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(color: const Color(0xFFD9E1EB)),
+                            color: DcColors.panel,
+                            borderRadius: BorderRadius.circular(7),
+                            border: Border.all(color: DcColors.line),
                             boxShadow: const <BoxShadow>[
                               BoxShadow(
-                                color: Color(0x1C172033),
+                                color: DcColors.shadow,
                                 blurRadius: 44,
                                 offset: Offset(0, 20),
                               ),
@@ -751,7 +751,7 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                                       textAlign: TextAlign.center,
                                       style: _text(
                                         22,
-                                        const Color(0xFF243247),
+                                        DcColors.text,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -848,7 +848,7 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                                                   width: 40,
                                                   height: 40,
                                                   decoration: BoxDecoration(
-                                                    color: Colors.white,
+                                                    color: DcColors.panel,
                                                     shape: BoxShape.circle,
                                                     border: Border.all(
                                                       color: const Color(
@@ -858,7 +858,7 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                                                     boxShadow: const <BoxShadow>[
                                                       BoxShadow(
                                                         color:
-                                                            Color(0x18172033),
+                                                            DcColors.shadowSoft,
                                                         blurRadius: 18,
                                                         offset: Offset(0, 8),
                                                       ),
@@ -872,7 +872,7 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                                                             .chevron_down,
                                                     size: 18,
                                                     color:
-                                                        const Color(0xFF5F6F84),
+                                                        DcColors.muted,
                                                   ),
                                                 ),
                                               ),
@@ -886,11 +886,11 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                                         padding: const EdgeInsets.fromLTRB(
                                             16, 14, 16, 16),
                                         decoration: BoxDecoration(
-                                          color: Colors.white,
+                                          color: DcColors.panel,
                                           borderRadius:
-                                              BorderRadius.circular(18),
+                                              BorderRadius.circular(7),
                                           border: Border.all(
-                                            color: const Color(0xFFE0E7F1),
+                                            color: DcColors.line,
                                           ),
                                         ),
                                         child: _CategoryNameField(
@@ -911,8 +911,8 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                                 children: <Widget>[
                                   _LoginFooterButton(
                                     label: 'Cancel',
-                                    backgroundColor: const Color(0xFFF4F6FA),
-                                    textColor: const Color(0xFF374151),
+                                    backgroundColor: DcColors.rowAlternate,
+                                    textColor: DcColors.text,
                                     onTap: _isSaving ? null : widget.onClose,
                                   ),
                                   const SizedBox(width: 10),
@@ -934,7 +934,7 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                             child: GestureDetector(
                               onTap: _closeIconPicker,
                               child: Container(
-                                color: const Color(0x260F172A),
+                                color: DcColors.scrimSoft,
                                 alignment: Alignment.center,
                                 padding: const EdgeInsets.all(20),
                                 child: GestureDetector(
@@ -1056,12 +1056,12 @@ class _CategoryIconPickerMenu extends StatelessWidget {
       constraints: const BoxConstraints(maxHeight: 520),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFDCE5F0)),
+        color: DcColors.panel,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: DcColors.line),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x24172033),
+            color: DcColors.shadow,
             blurRadius: 32,
             offset: Offset(0, 16),
           ),
@@ -1077,7 +1077,7 @@ class _CategoryIconPickerMenu extends StatelessWidget {
                   'Choose icon',
                   style: _text(
                     14,
-                    const Color(0xFF243247),
+                    DcColors.text,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1153,11 +1153,11 @@ class _CategoryImageTileState extends State<_CategoryImageTile> {
           duration: const Duration(milliseconds: 130),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(6),
             boxShadow: isSelected
                 ? const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x402B7FFF),
+                      color: DcColors.selectionTint,
                       blurRadius: 10,
                       offset: Offset(0, 4),
                     ),
@@ -1165,7 +1165,7 @@ class _CategoryImageTileState extends State<_CategoryImageTile> {
                 : isHovered
                     ? const <BoxShadow>[
                         BoxShadow(
-                          color: Color(0x1A000000),
+                          color: DcColors.shadowSoft,
                           blurRadius: 6,
                           offset: Offset(0, 2),
                         ),
@@ -1175,7 +1175,7 @@ class _CategoryImageTileState extends State<_CategoryImageTile> {
           child: Stack(
             children: <Widget>[
               ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(6),
                 child: Image.asset(
                   widget.imagePath,
                   fit: BoxFit.cover,
@@ -1186,7 +1186,7 @@ class _CategoryImageTileState extends State<_CategoryImageTile> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: const Color(0xFF2B7FFF),
+                      color: DcColors.selection,
                       width: 2.5,
                     ),
                   ),
@@ -1223,7 +1223,7 @@ class _CategoryNameField extends StatelessWidget {
           'Category name',
           style: _text(
             12,
-            const Color(0xFF475467),
+            DcColors.text,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -1232,11 +1232,11 @@ class _CategoryNameField extends StatelessWidget {
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            color: DcColors.panel,
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
               color: errorText != null
-                  ? const Color(0xFFE5484D)
+                  ? DcColors.red
                   : accentColor.withValues(alpha: 0.45),
               width: errorText != null ? 1.4 : 2.4,
             ),
@@ -1248,14 +1248,14 @@ class _CategoryNameField extends StatelessWidget {
             onSubmitted: onSubmitted,
             style: _text(
               16,
-              const Color(0xFF101828),
+              DcColors.text,
               fontWeight: FontWeight.w600,
             ),
             decoration: InputDecoration(
               hintText: 'Personal, Work, Travel...',
               hintStyle: _text(
                 15,
-                const Color(0xFF98A2B3),
+                DcColors.faint,
                 fontWeight: FontWeight.w500,
               ),
               filled: false,
@@ -1277,7 +1277,7 @@ class _CategoryNameField extends StatelessWidget {
             errorText!,
             style: _text(
               12,
-              const Color(0xFFE5484D),
+              DcColors.red,
               fontWeight: FontWeight.w600,
             ),
           ),

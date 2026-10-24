@@ -7,6 +7,8 @@ import '../../../core/repository/kdbx_repository_provider.dart';
 import '../../unlock/application/database_registry.dart';
 import '../application/import_state.dart';
 import '../application/import_executor.dart';
+import 'import_light_colors.dart';
+import '../../../presentation/widgets/drive_clue/dc_dialog_title_bar.dart';
 
 class ImportConfirmationModal extends ConsumerWidget {
   const ImportConfirmationModal({
@@ -55,14 +57,13 @@ class ImportConfirmationModal extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       child: Container(
         width: 440,
-        padding: const EdgeInsets.all(24),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFCF6),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFCEC7BB)),
+          color: ImportColors.panel,
+          borderRadius: BorderRadius.circular(7),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x295B4638),
+              color: ImportColors.shadow,
               blurRadius: 32,
               offset: Offset(0, 14),
             ),
@@ -72,159 +73,107 @@ class ImportConfirmationModal extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF22C55E).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+            const DcDialogTitleBar(title: 'Confirm Import'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('$readyCount items ready for import',
+                      style: const TextStyle(
+                          fontSize: 12, color: ImportColors.muted)),
+                  const SizedBox(height: 8),
+                  Text('Target Vault: $vaultName',
+                      style: const TextStyle(
+                          fontSize: 12, color: ImportColors.text)),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Import Mode',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: ImportColors.muted,
+                    ),
                   ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    TablerIcons.file_import,
-                    size: 22,
-                    color: Color(0xFF22C55E),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      const Text(
-                        'Confirm Import',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1E2021),
+                  const SizedBox(height: 10),
+                  if (mode == ImportMode.append)
+                    const _ModeOption(
+                      icon: TablerIcons.plus,
+                      title: 'Append',
+                      description:
+                          'Add imported items to your existing vault. No existing data will be modified.',
+                    )
+                  else
+                    const _ModeOption(
+                      icon: TablerIcons.replace,
+                      title: 'Replace',
+                      description:
+                          'Replace all existing vault data with the imported items.',
+                      isWarning: true,
+                    ),
+                  if (mode == ImportMode.replace) ...<Widget>[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: ImportColors.red.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: ImportColors.red.withValues(alpha: 0.25),
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$readyCount items ready for import',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: const Color(0xFF74766F),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3EDE4),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFD8D2C7)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(TablerIcons.database,
-                                size: 12, color: Color(0xFF74766F)),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Target Vault: $vaultName',
-                              style: const TextStyle(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const Icon(
+                            TablerIcons.alert_triangle,
+                            size: 18,
+                            color: ImportColors.red,
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Warning: This will permanently delete ALL existing '
+                              'credentials in your vault and replace them with the '
+                              'imported items. This action cannot be undone.',
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: Color(0xFF4F524E),
+                                color: ImportColors.red,
+                                height: 1.5,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Import Mode',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF686B67),
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (mode == ImportMode.append)
-              const _ModeOption(
-                icon: TablerIcons.plus,
-                title: 'Append',
-                description:
-                    'Add imported items to your existing vault. No existing data will be modified.',
-              )
-            else
-              const _ModeOption(
-                icon: TablerIcons.replace,
-                title: 'Replace',
-                description:
-                    'Replace all existing vault data with the imported items.',
-                isWarning: true,
-              ),
-            if (mode == ImportMode.replace) ...<Widget>[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: const Color(0xFFEF4444).withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const Icon(
-                      TablerIcons.alert_triangle,
-                      size: 18,
-                      color: Color(0xFFEF4444),
-                    ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text(
-                        'Warning: This will permanently delete ALL existing '
-                        'credentials in your vault and replace them with the '
-                        'imported items. This action cannot be undone.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFFDC2626),
-                          height: 1.5,
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
+                  const SizedBox(height: 20),
+                  Container(height: 1, color: ImportColors.line),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: <Widget>[
+                      _FooterButton(
+                        label: 'Back',
+                        backgroundColor: ImportColors.rowAlternate,
+                        textColor: ImportColors.muted,
+                        borderColor: ImportColors.lineStrong,
+                        onTap: onCancel,
+                      ),
+                      const SizedBox(width: 10),
+                      _FooterButton(
+                        label: 'Start Import',
+                        backgroundColor: mode == ImportMode.replace
+                            ? ImportColors.red
+                            : ImportColors.selection,
+                        textColor: Colors.white,
+                        onTap: onConfirm,
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-            const SizedBox(height: 20),
-            Container(height: 1, color: const Color(0xFFD8D2C7)),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: <Widget>[
-                _FooterButton(
-                  label: 'Back',
-                  backgroundColor: const Color(0xFFFFFCF6),
-                  textColor: const Color(0xFF4F524E),
-                  borderColor: const Color(0xFFCEC7BB),
-                  onTap: onCancel,
-                ),
-                const SizedBox(width: 10),
-                _FooterButton(
-                  label: 'Start Import',
-                  backgroundColor: mode == ImportMode.replace
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFFFF5B22),
-                  textColor: Colors.white,
-                  onTap: onConfirm,
-                ),
-              ],
             ),
           ],
         ),
@@ -248,8 +197,7 @@ class _ModeOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor =
-        isWarning ? const Color(0xFFEF4444) : const Color(0xFF22C55E);
+    final accentColor = isWarning ? ImportColors.red : ImportColors.green;
     final bgColor = accentColor.withValues(alpha: 0.08);
     final borderColor = accentColor.withValues(alpha: 0.4);
 
@@ -257,7 +205,7 @@ class _ModeOption extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: borderColor),
       ),
       child: Row(
@@ -267,7 +215,7 @@ class _ModeOption extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: accentColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(6),
             ),
             alignment: Alignment.center,
             child: Icon(
@@ -286,7 +234,7 @@ class _ModeOption extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1E2021),
+                    color: ImportColors.text,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -294,7 +242,7 @@ class _ModeOption extends StatelessWidget {
                   description,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF74766F),
+                    color: ImportColors.muted,
                     height: 1.4,
                   ),
                 ),
@@ -339,7 +287,7 @@ class _FooterButtonState extends State<_FooterButton> {
         color: Colors.transparent,
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
@@ -347,7 +295,7 @@ class _FooterButtonState extends State<_FooterButton> {
               color: _hovered && isEnabled
                   ? widget.backgroundColor.withValues(alpha: 0.8)
                   : widget.backgroundColor,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(6),
               border: widget.borderColor != null
                   ? Border.all(color: widget.borderColor!)
                   : null,

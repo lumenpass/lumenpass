@@ -17,14 +17,15 @@ import '../../../presentation/theme/app_theme.dart';
 import '../application/database_registry.dart';
 import 'sftp_config_dialog.dart';
 import 'webdav_config_dialog.dart';
+import '../../../presentation/theme/drive_clue_tokens.dart';
 
-const Color _kCanvas = Color(0xFFF6F8FB);
-const Color _kBorderSoft = Color(0xFFE1E7F0);
-const Color _kBorderRow = Color(0xFFE6EAF0);
-const Color _kTitle = Color(0xFF22314A);
-const Color _kLabel = Color(0xFF73839D);
-const Color _kIcon = Color(0xFF8A97AC);
-const Color _kBlue = Color(0xFF4B6CFF);
+const Color _kCanvas = DcColors.panel;
+const Color _kBorderSoft = DcColors.line;
+const Color _kBorderRow = DcColors.line;
+const Color _kTitle = DcColors.text;
+const Color _kLabel = DcColors.muted;
+const Color _kIcon = DcColors.faint;
+const Color _kBlue = DcColors.selection;
 
 TextStyle _uText(
   double size,
@@ -150,18 +151,18 @@ class _DuplicateDatabaseModalState
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClue(),
       child: Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
         insetPadding: const EdgeInsets.symmetric(horizontal: 80, vertical: 40),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            color: DcColors.panel,
+            borderRadius: BorderRadius.circular(7),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: Color(0x22000000),
+                color: DcColors.shadowSoft,
                 blurRadius: 40,
                 offset: Offset(0, 16),
               ),
@@ -214,7 +215,7 @@ class _DuplicateDatabaseModalState
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: <Color>[Color(0xFF4B6CFF), Color(0xFF7B52FF)],
+                colors: <Color>[DcColors.selection, DcColors.purple],
               ),
               borderRadius: BorderRadius.circular(9),
             ),
@@ -422,28 +423,28 @@ class _DuplicateDatabaseModalState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
+        color: DcColors.redSoft,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFFECACA)),
+        border: Border.all(color: DcColors.redLine),
       ),
       child: Row(
         children: <Widget>[
           const Icon(
             TablerIcons.alert_circle,
             size: 14,
-            color: Color(0xFFEF4444),
+            color: DcColors.red,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              style: _uText(11, const Color(0xFFEF4444)),
+              style: _uText(11, DcColors.red),
             ),
           ),
           GestureDetector(
             onTap: () => setState(() => _errorMessage = null),
             child:
-                const Icon(TablerIcons.x, size: 13, color: Color(0xFFEF4444)),
+                const Icon(TablerIcons.x, size: 13, color: DcColors.red),
           ),
         ],
       ),
@@ -456,8 +457,8 @@ class _DuplicateDatabaseModalState
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: _kBorderSoft)),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(14),
-          bottomRight: Radius.circular(14),
+          bottomLeft: Radius.circular(7),
+          bottomRight: Radius.circular(7),
         ),
       ),
       child: Row(
@@ -479,9 +480,9 @@ class _DuplicateDatabaseModalState
           ElevatedButton(
             onPressed: _isSubmitting ? null : _submit,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A3B48),
+              backgroundColor: DcColors.selection,
               foregroundColor: Colors.white,
-              disabledBackgroundColor: const Color(0xFF6F8991),
+              disabledBackgroundColor: DcColors.muted,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
               shape: RoundedRectangleBorder(
@@ -1149,10 +1150,10 @@ class _StorageRow extends StatelessWidget {
         height: 50,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFEEF3FF) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          color: selected ? DcColors.selectionSoft : DcColors.rowAlternate,
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: selected ? const Color(0xFFB5C3F8) : _kBorderRow,
+            color: selected ? DcColors.selectionLine : _kBorderRow,
             width: selected ? 1.5 : 1.0,
           ),
         ),
@@ -1164,8 +1165,8 @@ class _StorageRow extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: selected
-                    ? const Color(0xFFE8F0FE)
-                    : const Color(0xFFF3F4F6),
+                    ? DcColors.selectionSoft
+                    : DcColors.row,
                 borderRadius: BorderRadius.circular(7),
               ),
               child: iconChild,
@@ -1186,9 +1187,9 @@ class _StorageRow extends StatelessWidget {
             OutlinedButton(
               onPressed: onAction,
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF374151),
-                side: const BorderSide(color: Color(0xFFD1D5DB)),
-                backgroundColor: Colors.white,
+                foregroundColor: DcColors.text,
+                side: const BorderSide(color: DcColors.lineStrong),
+                backgroundColor: DcColors.panel,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -1242,10 +1243,10 @@ class _CloudStorageRow extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFEEF3FF) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          color: selected ? DcColors.selectionSoft : DcColors.rowAlternate,
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: selected ? const Color(0xFFB5C3F8) : _kBorderRow,
+            color: selected ? DcColors.selectionLine : _kBorderRow,
             width: selected ? 1.5 : 1.0,
           ),
         ),
@@ -1261,8 +1262,8 @@ class _CloudStorageRow extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: selected
-                        ? const Color(0xFFE8F0FE)
-                        : const Color(0xFFF3F4F6),
+                        ? DcColors.selectionSoft
+                        : DcColors.row,
                     borderRadius: BorderRadius.circular(7),
                   ),
                   child: iconChild,
@@ -1304,7 +1305,7 @@ class _CloudStorageRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
+                  color: DcColors.row,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(
@@ -1351,10 +1352,10 @@ class _FilledButton extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         backgroundColor: _kBlue,
         foregroundColor: Colors.white,
-        disabledBackgroundColor: const Color(0xFFB9C6FF),
+        disabledBackgroundColor: DcColors.selectionLine,
         disabledForegroundColor: Colors.white,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1376,13 +1377,13 @@ class _TextDestructiveButton extends StatelessWidget {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        foregroundColor: const Color(0xFFEF4444),
+        foregroundColor: DcColors.red,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         textStyle: _uText(
           11,
-          const Color(0xFFEF4444),
+          DcColors.red,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -1544,10 +1545,10 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClue(),
       child: Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: DcColors.panel,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         child: SizedBox(
           width: 400,
           child: Column(
@@ -1565,7 +1566,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
                               padding: const EdgeInsets.all(16),
                               child: Text(
                                 _error!,
-                                style: _uText(12, const Color(0xFFEF4444)),
+                                style: _uText(12, DcColors.red),
                                 textAlign: TextAlign.center,
                               ),
                             ),
@@ -1730,7 +1731,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: const BoxDecoration(
-        color: Color(0xFFF8FAFF),
+        color: DcColors.rowAlternate,
         border: Border(top: BorderSide(color: _kBorderSoft)),
       ),
       child: Column(
@@ -1759,18 +1760,18 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
                     hintText: 'New folder name',
                     hintStyle: _uText(12, _kIcon),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: DcColors.well,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 0,
                       vertical: 10,
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(6),
                       borderSide: const BorderSide(color: _kBorderRow),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(6),
                       borderSide: const BorderSide(color: _kBlue, width: 1.4),
                     ),
                     prefixIcon: const Icon(
@@ -1803,11 +1804,11 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _kBlue,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: const Color(0xFFB9C6FF),
+                    disabledBackgroundColor: DcColors.selectionLine,
                     disabledForegroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     textStyle:
@@ -1852,9 +1853,9 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
           OutlinedButton(
             onPressed: () => Navigator.of(context).pop(),
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF374151),
-              side: const BorderSide(color: Color(0xFFD1D5DB)),
-              backgroundColor: Colors.white,
+              foregroundColor: DcColors.text,
+              side: const BorderSide(color: DcColors.lineStrong),
+              backgroundColor: DcColors.panel,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1922,7 +1923,7 @@ class _FolderListTileState extends State<_FolderListTile> {
           duration: const Duration(milliseconds: 80),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFF5F7FF) : Colors.white,
+            color: _hovered ? DcColors.selectionSoft : DcColors.rowAlternate,
             border: const Border(bottom: BorderSide(color: _kBorderSoft)),
           ),
           child: Row(

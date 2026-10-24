@@ -10,16 +10,17 @@ import 'package:path/path.dart' as p;
 
 import '../../../core/models/database_record.dart';
 import '../../../core/services/backup_service.dart';
+import '../../../presentation/theme/drive_clue_tokens.dart';
 
 // ── Palette (mirrors unlock_screen) ─────────────────────────────────────────
-const Color _kCanvas = Color(0xFFF6F8FB);
-const Color _kBorderSoft = Color(0xFFE1E7F0);
-const Color _kBorderRow = Color(0xFFE6EAF0);
-const Color _kTitle = Color(0xFF22314A);
-const Color _kLabel = Color(0xFF73839D);
-const Color _kIcon = Color(0xFF8A97AC);
-const Color _kActionDark = Color(0xFF0A3B48);
-const Color _kDanger = Color(0xFFDC2626);
+const Color _kCanvas = DcColors.panel;
+const Color _kBorderSoft = DcColors.line;
+const Color _kBorderRow = DcColors.line;
+const Color _kTitle = DcColors.text;
+const Color _kLabel = DcColors.muted;
+const Color _kIcon = DcColors.faint;
+const Color _kActionDark = DcColors.selection;
+const Color _kDanger = DcColors.red;
 
 TextStyle _uText(
   double size,
@@ -371,11 +372,11 @@ class _RestoreBackupsModalState extends ConsumerState<RestoreBackupsModal> {
           minHeight: 360,
         ),
         child: Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: DcColors.panel,
+          borderRadius: BorderRadius.circular(7),
           clipBehavior: Clip.antiAlias,
           elevation: 18,
-          shadowColor: const Color(0x33000000),
+          shadowColor: DcColors.shadow,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
@@ -400,8 +401,8 @@ class _RestoreBackupsModalState extends ConsumerState<RestoreBackupsModal> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFFECFDF5),
-              borderRadius: BorderRadius.circular(12),
+              color: DcColors.greenSoft,
+              borderRadius: BorderRadius.circular(6),
             ),
             alignment: Alignment.center,
             child: const Icon(
@@ -501,7 +502,7 @@ class _RestoreBackupsModalState extends ConsumerState<RestoreBackupsModal> {
                     height: 56,
                     decoration: BoxDecoration(
                       color: _kCanvas,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(7),
                     ),
                     alignment: Alignment.center,
                     child: const Icon(
@@ -748,7 +749,7 @@ class _PagerButton extends StatelessWidget {
       message: tooltip,
       waitDuration: const Duration(milliseconds: 350),
       child: Material(
-        color: active ? _kCanvas : const Color(0xFFF1F5F9),
+        color: active ? _kCanvas : DcColors.row,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
@@ -841,7 +842,7 @@ class _TableHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: _kCanvas,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: _kBorderSoft),
       ),
       child: Row(
@@ -926,10 +927,10 @@ class _BackupRowState extends State<_BackupRow> {
         margin: const EdgeInsets.only(top: 6),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: _hovered ? const Color(0xFFF8FAFC) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: _hovered ? DcColors.rowAlternate : DcColors.rowAlternate,
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: _hovered ? const Color(0xFFD4DDEA) : _kBorderRow,
+            color: _hovered ? DcColors.line : _kBorderRow,
           ),
         ),
         child: Row(
@@ -949,14 +950,14 @@ class _BackupRowState extends State<_BackupRow> {
                     width: 30,
                     height: 30,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFECFDF5),
+                      color: DcColors.greenSoft,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     alignment: Alignment.center,
                     child: const Icon(
                       TablerIcons.database,
                       size: 15,
-                      color: Color(0xFF0F766E),
+                      color: DcColors.teal,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1007,7 +1008,7 @@ class _BackupRowState extends State<_BackupRow> {
                   _ActionChip(
                     tooltip: 'Download',
                     icon: TablerIcons.download,
-                    color: const Color(0xFF4F46E5),
+                    color: DcColors.indigo,
                     onTap: widget.enabled ? widget.onDownload : null,
                   ),
                   const SizedBox(width: 6),
@@ -1047,7 +1048,7 @@ class _ActionChip extends StatelessWidget {
       message: tooltip,
       child: Material(
         color:
-            enabled ? color.withValues(alpha: 0.08) : const Color(0xFFF1F5F9),
+            enabled ? color.withValues(alpha: 0.08) : DcColors.row,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
@@ -1085,9 +1086,9 @@ class _ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: Colors.white,
+      backgroundColor: DcColors.panel,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
       title: Text(
         title,
         style: _uText(15, _kTitle, fontWeight: FontWeight.w700),
@@ -1107,7 +1108,7 @@ class _ConfirmDialog extends StatelessWidget {
             foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(6),
             ),
           ),
           onPressed: () => Navigator.of(context).pop(true),
@@ -1143,9 +1144,9 @@ class _RestoreConfirmDialogState extends State<_RestoreConfirmDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: Colors.white,
+      backgroundColor: DcColors.panel,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
       title: Text(
         'Restore from backup',
         style: _uText(15, _kTitle, fontWeight: FontWeight.w700),
@@ -1166,7 +1167,7 @@ class _RestoreConfirmDialogState extends State<_RestoreConfirmDialog> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: _kCanvas,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: _kBorderSoft),
               ),
               child: Text(
@@ -1179,14 +1180,14 @@ class _RestoreConfirmDialogState extends State<_RestoreConfirmDialog> {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFFDE68A)),
+                color: DcColors.amberSoft,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: DcColors.amberLine),
               ),
               child: Text(
                 'After restore you must unlock again using the credentials '
                 'that were configured for this backup.',
-                style: _uText(11, const Color(0xFF92400E), height: 1.4),
+                style: _uText(11, DcColors.amber, height: 1.4),
               ),
             ),
             const SizedBox(height: 10),
@@ -1229,7 +1230,7 @@ class _RestoreConfirmDialogState extends State<_RestoreConfirmDialog> {
             disabledBackgroundColor: _kActionDark.withValues(alpha: 0.4),
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(6),
             ),
           ),
           onPressed: _canSubmit ? () => Navigator.of(context).pop(true) : null,
@@ -1321,11 +1322,11 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
           width: 420,
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            color: DcColors.panel,
+            borderRadius: BorderRadius.circular(7),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: Color(0x22172033),
+                color: DcColors.shadow,
                 blurRadius: 40,
                 offset: Offset(0, 16),
               ),
@@ -1341,21 +1342,21 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF22C55E).withValues(alpha: 0.12),
+                      color: DcColors.green.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
                     child: const Icon(
                       TablerIcons.circle_check,
                       size: 36,
-                      color: Color(0xFF22C55E),
+                      color: DcColors.green,
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'Restore Complete',
-                  style: _uText(20, const Color(0xFF1A1D23),
+                  style: _uText(20, DcColors.text,
                       fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
@@ -1367,7 +1368,7 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
               ] else ...<Widget>[
                 Text(
                   'Restoring Database',
-                  style: _uText(18, const Color(0xFF1A1D23),
+                  style: _uText(18, DcColors.text,
                       fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
@@ -1382,7 +1383,7 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
                   child: LinearProgressIndicator(
                     value: value <= 0 ? null : value,
                     minHeight: 8,
-                    backgroundColor: const Color(0xFFF3F4F6),
+                    backgroundColor: DcColors.row,
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       _kActionDark,
                     ),
@@ -1395,7 +1396,7 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
                     '$percent%',
                     style: _uText(
                       24,
-                      const Color(0xFF1F2937),
+                      DcColors.text,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1418,9 +1419,9 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF9FAFB),
+                      color: DcColors.rowAlternate,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                      border: Border.all(color: DcColors.line),
                     ),
                     child: ListView.builder(
                       controller: _logScrollController,

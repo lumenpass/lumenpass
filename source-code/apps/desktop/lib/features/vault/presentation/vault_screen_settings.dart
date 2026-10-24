@@ -1,16 +1,17 @@
 part of 'vault_screen.dart';
 
-const Color _settingsOverlayTint = Color(0xB3E8DED0);
-const Color _settingsPanelBackground = Color(0xFFFFFCF6);
-const Color _settingsSidebarBackground = Color(0xFFE8DED0);
-const Color _settingsDividerColor = Color(0xFFCEC7BB);
-const Color _settingsSelectedBlue = Color(0xFFFF5B22);
-const Color _settingsTextPrimary = Color(0xFF1E2021);
-const Color _settingsTextSecondary = Color(0xFF686B67);
-const Color _settingsFieldBorder = Color(0xFFD8D2C7);
-const Color _settingsActiveItemBackground = Color(0xFFFF5B22);
-const Color _settingsMutedSurface = Color(0xFFF8F3EA);
-const Color _settingsSelectedSurface = Color(0xFFFFF0E7);
+const Color _settingsOverlayTint = DcColors.scrim;
+const Color _settingsPanelBackground = DcColors.background;
+const Color _settingsSidebarBackground = DcColors.sidebar;
+const Color _settingsWellBackground = DcColors.well;
+const Color _settingsDividerColor = DcColors.line;
+const Color _settingsSelectedBlue = DcColors.selection;
+const Color _settingsTextPrimary = DcColors.text;
+const Color _settingsTextSecondary = DcColors.muted;
+const Color _settingsFieldBorder = DcColors.line;
+const Color _settingsActiveItemBackground = DcColors.selection;
+const Color _settingsMutedSurface = DcColors.panel;
+const Color _settingsSelectedSurface = DcColors.rowAlternate;
 
 enum _SettingsSectionId {
   general,
@@ -99,49 +100,49 @@ final List<_SettingsSectionItem> _primarySettingsSections =
     label: 'General',
     subtitle: 'The common application settings',
     icon: TablerIcons.settings,
-    iconColor: Color(0xFFFF5B22),
+    iconColor: DcColors.selection,
   ),
   _SettingsSectionItem(
     id: _SettingsSectionId.appearance,
     label: 'Appearance',
     subtitle: 'Visual preferences and interface behavior',
     icon: TablerIcons.palette,
-    iconColor: Color(0xFF7B61D1),
+    iconColor: DcColors.indigo,
   ),
   _SettingsSectionItem(
     id: _SettingsSectionId.security,
     label: 'Vault',
     subtitle: 'Unlock, autofill, clipboard, and vault behavior',
     icon: TablerIcons.lock,
-    iconColor: Color(0xFFCF8120),
+    iconColor: DcColors.orange,
   ),
   _SettingsSectionItem(
     id: _SettingsSectionId.cardSecurity,
     label: 'Security',
     subtitle: 'Protect sensitive data shown in item views',
     icon: TablerIcons.shield_lock,
-    iconColor: Color(0xFF5F7395),
+    iconColor: DcColors.selection,
   ),
   _SettingsSectionItem(
     id: _SettingsSectionId.backup,
     label: 'Backup',
     subtitle: 'Automatic backups and restore controls',
     icon: TablerIcons.database,
-    iconColor: Color(0xFF168B76),
+    iconColor: DcColors.teal,
   ),
   _SettingsSectionItem(
     id: _SettingsSectionId.developer,
     label: 'SSH Agent',
     subtitle: 'Manage SSH key access for terminals and apps',
     icon: TablerIcons.terminal_2,
-    iconColor: Color(0xFF3D78C5),
+    iconColor: DcColors.selection,
   ),
   _SettingsSectionItem(
     id: _SettingsSectionId.experiment,
     label: 'Experiment',
     subtitle: 'Safe tools for vault data maintenance',
     icon: TablerIcons.sparkles,
-    iconColor: Color(0xFFB86A46),
+    iconColor: DcColors.deepOrange,
   ),
 ];
 
@@ -152,14 +153,14 @@ final List<_SettingsSectionItem> _secondarySettingsSections =
     label: 'Help',
     subtitle: 'Quick contact form and support options',
     icon: TablerIcons.message_circle,
-    iconColor: Color(0xFF168B76),
+    iconColor: DcColors.teal,
   ),
   _SettingsSectionItem(
     id: _SettingsSectionId.about,
     label: 'About',
     subtitle: 'App version, credits, and release information',
     icon: TablerIcons.info_circle,
-    iconColor: Color(0xFF5F7395),
+    iconColor: DcColors.selection,
   ),
 ];
 
@@ -279,13 +280,14 @@ class _SettingsOverlayState extends State<_SettingsOverlay> {
                     height: modalHeight,
                     decoration: BoxDecoration(
                       color: _settingsPanelBackground,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: _settingsDividerColor),
+                      borderRadius:
+                          BorderRadius.circular(DcMetrics.panelRadius),
+                      border: Border.all(color: DcColors.shellDivider),
                       boxShadow: const <BoxShadow>[
                         BoxShadow(
-                          color: Color(0x295B4638),
-                          blurRadius: 34,
-                          offset: Offset(0, 16),
+                          color: DcColors.shadow,
+                          blurRadius: 30,
+                          offset: Offset(0, 14),
                         ),
                       ],
                     ),
@@ -300,7 +302,7 @@ class _SettingsOverlayState extends State<_SettingsOverlay> {
                           child: Row(
                             children: <Widget>[
                               SizedBox(
-                                width: 274,
+                                width: 220,
                                 child: _SettingsSidebar(
                                   selectedSection: _selectedSection,
                                   onSectionSelected:
@@ -313,7 +315,7 @@ class _SettingsOverlayState extends State<_SettingsOverlay> {
                               const VerticalDivider(
                                 width: 1,
                                 thickness: 1,
-                                color: _settingsDividerColor,
+                                color: DcColors.shellDivider,
                               ),
                               Expanded(
                                 child: _SettingsContentPane(
@@ -349,50 +351,36 @@ class _SettingsSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: _settingsSidebarBackground,
-        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(22)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 14, 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    for (final section in _primarySettingsSections) ...<Widget>[
-                      _SettingsSidebarItem(
-                        section: section,
-                        selected: selectedSection == section.id,
-                        onTap: () => onSectionSelected(section.id),
-                      ),
-                      const SizedBox(height: 4),
-                    ],
-                    const SizedBox(height: 12),
-                    const Divider(
-                      thickness: 1,
-                      color: _settingsDividerColor,
-                      height: 1,
+      color: _settingsSidebarBackground,
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  const DcSidebarSectionLabel(label: 'Preferences'),
+                  for (final section in _primarySettingsSections)
+                    _SettingsSidebarItem(
+                      section: section,
+                      selected: selectedSection == section.id,
+                      onTap: () => onSectionSelected(section.id),
                     ),
-                    const SizedBox(height: 12),
-                    for (final section
-                        in _secondarySettingsSections) ...<Widget>[
-                      _SettingsSidebarItem(
-                        section: section,
-                        selected: selectedSection == section.id,
-                        onTap: () => onSectionSelected(section.id),
-                      ),
-                      const SizedBox(height: 4),
-                    ],
-                  ],
-                ),
+                  const SizedBox(height: 6),
+                  const DcSidebarSectionLabel(label: 'Support'),
+                  for (final section in _secondarySettingsSections)
+                    _SettingsSidebarItem(
+                      section: section,
+                      selected: selectedSection == section.id,
+                      onTap: () => onSectionSelected(section.id),
+                    ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -411,68 +399,50 @@ class _SettingsSidebarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fg = selected ? Colors.white : DcColors.sidebarText;
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
         onTap: onTap,
+        hoverColor: DcColors.sidebarHover,
+        splashColor: DcColors.sidebarHover,
+        highlightColor: DcColors.sidebarHover,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: const Duration(milliseconds: 120),
           curve: Curves.easeOutCubic,
-          height: 50,
-          padding: const EdgeInsets.fromLTRB(8, 6, 10, 6),
-          decoration: BoxDecoration(
-            color: selected ? _settingsSelectedSurface : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? const Color(0xFFF2C8B3) : Colors.transparent,
-            ),
-          ),
+          height: 32,
+          padding: const EdgeInsets.fromLTRB(15, 0, 12, 0),
+          color: selected ? _settingsSelectedBlue : Colors.transparent,
           child: Row(
             children: <Widget>[
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 3,
-                height: selected ? 26 : 0,
-                decoration: BoxDecoration(
-                  color: _settingsSelectedBlue,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: section.iconColor.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: section.iconColor.withValues(alpha: 0.22),
-                  ),
-                ),
-                alignment: Alignment.center,
+              SizedBox(
+                width: 18,
                 child: Icon(
                   section.icon,
-                  size: 17,
-                  color: section.iconColor,
+                  size: 15,
+                  color: selected
+                      ? Colors.white
+                      : Color.lerp(section.iconColor, DcColors.sidebarText, 0.3),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 9),
               Expanded(
                 child: Text(
                   section.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: _text(
-                    14.5,
-                    _settingsTextPrimary,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    12.5,
+                    fg,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                   ),
                 ),
               ),
               if (selected)
                 const Icon(
                   TablerIcons.chevron_right,
-                  size: 15,
-                  color: _settingsSelectedBlue,
+                  size: 13,
+                  color: Colors.white,
                 ),
             ],
           ),
@@ -602,57 +572,52 @@ class _SettingsContentHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 76,
-      padding: const EdgeInsets.fromLTRB(22, 12, 18, 12),
+      height: 54,
+      padding: const EdgeInsets.fromLTRB(16, 0, 12, 0),
       decoration: const BoxDecoration(
-        color: _settingsMutedSurface,
+        color: _settingsPanelBackground,
         border: Border(
-          bottom: BorderSide(color: _settingsDividerColor),
-        ),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(22),
-          topRight: Radius.circular(22),
+          bottom: BorderSide(color: DcColors.shellDivider),
         ),
       ),
       child: Row(
         children: <Widget>[
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: section.iconColor.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: section.iconColor.withValues(alpha: 0.24),
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Icon(section.icon, size: 20, color: section.iconColor),
-          ),
-          const SizedBox(width: 12),
+          Icon(section.icon, size: 21, color: section.iconColor),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  section.label,
+                Text.rich(
+                  TextSpan(
+                    children: <InlineSpan>[
+                      TextSpan(
+                        text: 'Settings / ',
+                        style: _text(
+                          14,
+                          _settingsTextSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      TextSpan(text: section.label),
+                    ],
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: _text(
-                    18,
+                    14,
                     _settingsTextPrimary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.25,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   section.subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: _text(
-                    11.5,
+                    11,
                     _settingsTextSecondary,
                     fontWeight: FontWeight.w400,
                   ),
@@ -661,34 +626,10 @@ class _SettingsContentHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onClose,
-              borderRadius: BorderRadius.circular(999),
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: _settingsPanelBackground,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _settingsDividerColor),
-                  boxShadow: const <BoxShadow>[
-                    BoxShadow(
-                      color: Color(0x145B4638),
-                      blurRadius: 8,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  TablerIcons.x,
-                  size: 17,
-                  color: _settingsTextPrimary,
-                ),
-              ),
-            ),
+          DcBorderedButton(
+            onPressed: onClose,
+            icon: TablerIcons.x,
+            label: 'Close',
           ),
         ],
       ),
@@ -953,8 +894,8 @@ class _AppearanceSettingsContentState
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8F3EA),
-            borderRadius: BorderRadius.circular(10),
+            color: DcColors.rowAlternate,
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(color: _settingsDividerColor),
           ),
           child: Column(
@@ -1448,8 +1389,8 @@ class _VaultSettingsContentState extends ConsumerState<_VaultSettingsContent> {
                           vertical: 14,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8F3EA),
-                          borderRadius: BorderRadius.circular(12),
+                          color: DcColors.rowAlternate,
+                          borderRadius: BorderRadius.circular(6),
                           border: Border.all(color: _settingsDividerColor),
                         ),
                         child: Text(
@@ -1474,8 +1415,8 @@ class _VaultSettingsContentState extends ConsumerState<_VaultSettingsContent> {
                                     vertical: 10,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF8F3EA),
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: DcColors.rowAlternate,
+                                    borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
                                       color: _settingsDividerColor,
                                     ),
@@ -1516,10 +1457,10 @@ class _VaultSettingsContentState extends ConsumerState<_VaultSettingsContent> {
                                         ),
                                         style: TextButton.styleFrom(
                                           foregroundColor:
-                                              const Color(0xFFB42318),
+                                              DcColors.red,
                                           textStyle: _text(
                                             11,
-                                            const Color(0xFFB42318),
+                                            DcColors.red,
                                             fontWeight: FontWeight.w700,
                                           ),
                                         ),
@@ -1722,9 +1663,9 @@ class _SettingsSecurityGuidancePanel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF6F2),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFB9DED5)),
+        color: DcColors.rowAlternate,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: const Color(0x6647C7B8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1733,17 +1674,17 @@ class _SettingsSecurityGuidancePanel extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFF168B76).withValues(alpha: 0.10),
+              color: DcColors.teal.withValues(alpha: 0.10),
               shape: BoxShape.circle,
               border: Border.all(
-                color: const Color(0xFF168B76).withValues(alpha: 0.20),
+                color: DcColors.teal.withValues(alpha: 0.20),
               ),
             ),
             alignment: Alignment.center,
             child: const Icon(
               TablerIcons.eye_off,
               size: 18,
-              color: Color(0xFF168B76),
+              color: DcColors.teal,
             ),
           ),
           const SizedBox(height: 12),
@@ -2017,7 +1958,7 @@ class _BackupSettingsContentState
                               vertical: 12,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(7),
                             ),
                           ),
                         ),
@@ -2102,7 +2043,7 @@ class RestoreProgressDialog extends ConsumerWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: _settingsSidebarBackground,
+                    color: _settingsWellBackground,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: _settingsDividerColor),
                   ),
@@ -2168,16 +2109,16 @@ class _BackupStatusRow extends StatelessWidget {
         leading = const Icon(
           TablerIcons.alert_circle,
           size: 15,
-          color: Color(0xFFE53E3E),
+          color: DcColors.red,
         );
         text = 'Backup failed';
-        textColor = const Color(0xFFE53E3E);
+        textColor = DcColors.red;
       case BackupStatus.done:
       case BackupStatus.idle:
         leading = const Icon(
           TablerIcons.circle_check,
           size: 15,
-          color: Color(0xFF159A0B),
+          color: DcColors.green,
         );
         text = lastTimestamp != null
             ? 'Last backup: ${_formatTs(lastTimestamp!)}'
@@ -2190,7 +2131,7 @@ class _BackupStatusRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: _settingsPanelBackground,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(7),
         border: Border.all(color: _settingsDividerColor),
       ),
       child: Row(
@@ -2548,14 +2489,14 @@ class _ExperimentSettingsContentState
       label: Text(label),
       style: ElevatedButton.styleFrom(
         backgroundColor:
-            selected ? _settingsActiveItemBackground : Colors.white,
+            selected ? _settingsActiveItemBackground : DcColors.panel,
         foregroundColor: foregroundColor,
         elevation: selected ? 2 : 0,
         shadowColor: _settingsActiveItemBackground.withValues(alpha: 0.18),
         side: BorderSide(
           color: selected
               ? _settingsActiveItemBackground
-              : const Color(0xFF4F524E),
+              : DcColors.lineStrong,
           width: selected ? 2 : 1.4,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -2728,8 +2669,8 @@ class _SshAgentSettingsContent extends ConsumerWidget {
                     ),
                     decoration: BoxDecoration(
                       color: enabled
-                          ? const Color(0xFF159A0B)
-                          : const Color(0xFFD8D2C7),
+                          ? DcColors.green
+                          : DcColors.well,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -2802,12 +2743,12 @@ class _SshAgentConfigStatusRow extends StatelessWidget {
       SshAgentConfigStatus.configured => (
           TablerIcons.circle_check,
           'SSH config: configured',
-          const Color(0xFF159A0B)
+          DcColors.green
         ),
       SshAgentConfigStatus.needsAttention => (
           TablerIcons.alert_circle,
           'SSH config: needs attention',
-          const Color(0xFFE53E3E)
+          DcColors.red
         ),
       SshAgentConfigStatus.unknown => (
           TablerIcons.info_circle,
@@ -2821,7 +2762,7 @@ class _SshAgentConfigStatusRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: _settingsPanelBackground,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: _settingsDividerColor),
       ),
       child: Row(
@@ -2878,9 +2819,9 @@ class _SshAgentSocketHintState extends State<_SshAgentSocketHint> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF6F2),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFB9DED5)),
+        color: DcColors.rowAlternate,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0x6647C7B8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2890,12 +2831,12 @@ class _SshAgentSocketHintState extends State<_SshAgentSocketHint> {
               const Icon(
                 TablerIcons.terminal_2,
                 size: 13,
-                color: Color(0xFF168B76),
+                color: DcColors.teal,
               ),
               const SizedBox(width: 6),
               Text(
                 'SSH config is set up automatically',
-                style: _text(11, const Color(0xFF168B76),
+                style: _text(11, DcColors.teal,
                     fontWeight: FontWeight.w600),
               ),
             ],
@@ -2905,7 +2846,7 @@ class _SshAgentSocketHintState extends State<_SshAgentSocketHint> {
             'LumenPass writes an IdentityAgent entry to ~/.ssh/config so SSH works without setting SSH_AUTH_SOCK.',
             style: _text(
               11,
-              const Color(0xFF0C4A6E),
+              DcColors.selection,
               fontWeight: FontWeight.w500,
               height: 1.35,
             ),
@@ -2923,7 +2864,7 @@ class _SshAgentSocketHintState extends State<_SshAgentSocketHint> {
               decoration: BoxDecoration(
                 color: _settingsPanelBackground,
                 borderRadius: BorderRadius.circular(7),
-                border: Border.all(color: const Color(0xFFB9DED5)),
+                border: Border.all(color: const Color(0x6647C7B8)),
               ),
               child: Row(
                 children: <Widget>[
@@ -2933,7 +2874,7 @@ class _SshAgentSocketHintState extends State<_SshAgentSocketHint> {
                       style: const TextStyle(
                         fontFamily: 'monospace',
                         fontSize: 11,
-                        color: Color(0xFF0C4A6E),
+                        color: DcColors.selection,
                       ),
                     ),
                   ),
@@ -2942,8 +2883,8 @@ class _SshAgentSocketHintState extends State<_SshAgentSocketHint> {
                     _copied ? TablerIcons.check : TablerIcons.copy,
                     size: 13,
                     color: _copied
-                        ? const Color(0xFF059669)
-                        : const Color(0xFF168B76),
+                        ? DcColors.teal
+                        : DcColors.teal,
                   ),
                 ],
               ),
@@ -2971,11 +2912,11 @@ class _SshAgentLearnMoreDialog extends StatelessWidget {
           constraints: BoxConstraints(maxHeight: size.height - 80),
           decoration: BoxDecoration(
             color: _settingsPanelBackground,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(7),
             border: Border.all(color: _settingsDividerColor),
             boxShadow: <BoxShadow>[
               const BoxShadow(
-                color: Color(0x295B4638),
+                color: DcColors.shadow,
                 blurRadius: 32,
                 offset: Offset(0, 12),
               ),
@@ -3035,9 +2976,9 @@ class _SshAgentLearnMoreDialog extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 16, 20),
       decoration: const BoxDecoration(
-        color: Color(0xFFEAF6F2),
+        color: DcColors.rowAlternate,
         border: Border(
-          bottom: BorderSide(color: Color(0xFFB9DED5), width: 0.5),
+          bottom: BorderSide(color: Color(0x6647C7B8), width: 0.5),
         ),
       ),
       child: Row(
@@ -3047,15 +2988,15 @@ class _SshAgentLearnMoreDialog extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: const Color(0xFFDAF0E9),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFB9DED5)),
+              color: DcColors.well,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0x6647C7B8)),
             ),
             alignment: Alignment.center,
             child: const Icon(
               TablerIcons.terminal_2,
               size: 20,
-              color: Color(0xFF168B76),
+              color: DcColors.teal,
             ),
           ),
           const SizedBox(width: 14),
@@ -3076,7 +3017,7 @@ class _SshAgentLearnMoreDialog extends StatelessWidget {
                   'Use saved SSH keys from LumenPass without exposing private key material to command-line tools.',
                   style: _text(
                     12,
-                    const Color(0xFF0C4A6E),
+                    DcColors.selection,
                     fontWeight: FontWeight.w500,
                     height: 1.4,
                   ),
@@ -3092,14 +3033,14 @@ class _SshAgentLearnMoreDialog extends StatelessWidget {
               color: Colors.transparent,
               child: InkWell(
                 onTap: () => Navigator.of(context).pop(),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(6),
                 child: Container(
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
                     color: _settingsPanelBackground,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFB9DED5)),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0x6647C7B8)),
                   ),
                   alignment: Alignment.center,
                   child: const Icon(
@@ -3130,7 +3071,7 @@ class _SshAgentLearnMoreDialog extends StatelessWidget {
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(6),
               ),
               textStyle: _text(13, Colors.white, fontWeight: FontWeight.w700),
             ),
@@ -3162,14 +3103,14 @@ class _SshAgentLearnMorePoint extends StatelessWidget {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: const Color(0xFFEAF6F2),
-            borderRadius: BorderRadius.circular(10),
+            color: DcColors.rowAlternate,
+            borderRadius: BorderRadius.circular(6),
           ),
           alignment: Alignment.center,
           child: Icon(
             icon,
             size: 17,
-            color: const Color(0xFF168B76),
+            color: DcColors.teal,
           ),
         ),
         const SizedBox(width: 12),
@@ -3212,8 +3153,8 @@ class _SshAgentLearnMoreNote extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F3EA),
-        borderRadius: BorderRadius.circular(12),
+        color: DcColors.rowAlternate,
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: _settingsDividerColor),
       ),
       child: Row(
@@ -3488,8 +3429,8 @@ class _HelpSettingsContentState extends State<_HelpSettingsContent> {
                                   vertical: 12,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF3EDE4),
-                                  borderRadius: BorderRadius.circular(14),
+                                  color: DcColors.well,
+                                  borderRadius: BorderRadius.circular(7),
                                   border:
                                       Border.all(color: _settingsDividerColor),
                                 ),
@@ -3527,15 +3468,15 @@ class _HelpSettingsContentState extends State<_HelpSettingsContent> {
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE6F4EA),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFF9FCDB1)),
+                            color: DcColors.well,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: DcColors.green),
                           ),
                           child: Text(
                             _successMessage!,
                             style: _text(
                               12,
-                              const Color(0xFF1B5E20),
+                              DcColors.green,
                               fontWeight: FontWeight.w600,
                               height: 1.45,
                             ),
@@ -3549,15 +3490,15 @@ class _HelpSettingsContentState extends State<_HelpSettingsContent> {
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFDECEA),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE3A8A2)),
+                            color: DcColors.rowAlternate,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0x66F75C57)),
                           ),
                           child: Text(
                             _formError!,
                             style: _text(
                               12,
-                              const Color(0xFF8B1A10),
+                              DcColors.red,
                               fontWeight: FontWeight.w600,
                               height: 1.45,
                             ),
@@ -3577,7 +3518,7 @@ class _HelpSettingsContentState extends State<_HelpSettingsContent> {
                             vertical: 14,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(7),
                           ),
                         ),
                         child: _isSubmitting
@@ -3761,8 +3702,8 @@ class _AboutSettingsContentState extends State<_AboutSettingsContent> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0E7),
-                      borderRadius: BorderRadius.circular(10),
+                      color: DcColors.rowAlternate,
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     alignment: Alignment.center,
                     child: const Icon(
@@ -3955,7 +3896,7 @@ class _AboutCheckForUpdateBlock extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: _settingsPanelBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: _settingsDividerColor),
       ),
       child: Column(
@@ -4022,7 +3963,7 @@ class _AboutCheckForUpdateBlock extends StatelessWidget {
                     vertical: 12,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                 ),
               ),
@@ -4056,8 +3997,8 @@ class _UpdateCheckResultPanel extends StatelessWidget {
       case _UpdateCheckKind.upToDate:
         return _UpdateStatusBanner(
           icon: Icons.check_circle_rounded,
-          accent: const Color(0xFF1F8F4F),
-          background: const Color(0xFFEAF7EE),
+          accent: DcColors.green,
+          background: DcColors.rowAlternate,
           title: 'You are up to date',
           subtitle:
               'You are running ${_formatReleaseVersion(result.currentVersion)}. Latest available: ${_formatReleaseVersion(result.latestVersion)}.',
@@ -4065,8 +4006,8 @@ class _UpdateCheckResultPanel extends StatelessWidget {
       case _UpdateCheckKind.failure:
         return _UpdateStatusBanner(
           icon: Icons.error_outline_rounded,
-          accent: const Color(0xFFB54708),
-          background: const Color(0xFFFFF4E5),
+          accent: DcColors.deepOrange,
+          background: DcColors.rowAlternate,
           title: 'Check failed',
           subtitle: result.errorMessage ??
               'We could not verify the latest release right now.',
@@ -4076,9 +4017,9 @@ class _UpdateCheckResultPanel extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFEAF7EE),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFB7E2C2)),
+            color: DcColors.rowAlternate,
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: const Color(0x666ED433)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -4089,7 +4030,7 @@ class _UpdateCheckResultPanel extends StatelessWidget {
                   const Icon(
                     Icons.rocket_launch_rounded,
                     size: 18,
-                    color: Color(0xFF1F8F4F),
+                    color: DcColors.green,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -4124,8 +4065,8 @@ class _UpdateCheckResultPanel extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: _settingsPanelBackground,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFC9E9D2)),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0x666ED433)),
                 ),
                 child: SelectableText(
                   (result.changeLog ?? '').trim().isEmpty
@@ -4154,7 +4095,7 @@ class _UpdateCheckResultPanel extends StatelessWidget {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1F8F4F),
+                    backgroundColor: DcColors.green,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(
@@ -4162,7 +4103,7 @@ class _UpdateCheckResultPanel extends StatelessWidget {
                       vertical: 12,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                   ),
                 ),
@@ -4196,7 +4137,7 @@ class _UpdateStatusBanner extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: accent.withValues(alpha: 0.25)),
       ),
       child: Row(
@@ -4351,7 +4292,7 @@ class _SettingsSurfaceSection extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _settingsMutedSurface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(7),
         border: Border.all(color: _settingsDividerColor),
       ),
       child: child,
@@ -4374,7 +4315,7 @@ class _SettingsInfoCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _settingsPanelBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: _settingsDividerColor),
       ),
       child: Column(
@@ -4429,11 +4370,11 @@ class _SettingsDropdownField<T> extends StatelessWidget {
           vertical: 12,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(7),
           borderSide: const BorderSide(color: _settingsDividerColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(7),
           borderSide: const BorderSide(
             color: _settingsSelectedBlue,
             width: 1.4,
@@ -4445,7 +4386,7 @@ class _SettingsDropdownField<T> extends StatelessWidget {
         size: 16,
         color: _settingsTextSecondary,
       ),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(7),
       dropdownColor: _settingsPanelBackground,
       style: _text(
         12,
@@ -4503,11 +4444,11 @@ class _SettingsTextField extends StatelessWidget {
           vertical: maxLines > 1 ? 14 : 12,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(7),
           borderSide: const BorderSide(color: _settingsDividerColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(7),
           borderSide: const BorderSide(
             color: _settingsSelectedBlue,
             width: 1.4,
@@ -4578,7 +4519,7 @@ class _SettingsChoiceChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected
                 ? _settingsActiveItemBackground
-                : const Color(0xFFF3EDE4),
+                : DcColors.well,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: selected
@@ -4622,7 +4563,7 @@ class _AppearanceFontCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(6),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 140),
           width: 140,
@@ -4630,7 +4571,7 @@ class _AppearanceFontCard extends StatelessWidget {
           decoration: BoxDecoration(
             color:
                 selected ? _settingsSelectedSurface : _settingsPanelBackground,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
               color: selected
                   ? _settingsActiveItemBackground
@@ -4693,14 +4634,14 @@ class _DockIconCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(7),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 140),
           width: 56,
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: selected ? _settingsSelectedSurface : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
               color:
                   selected ? _settingsActiveItemBackground : Colors.transparent,
@@ -4744,7 +4685,7 @@ class _SettingsRadioCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(6),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 140),
           width: double.infinity,
@@ -4752,7 +4693,7 @@ class _SettingsRadioCard extends StatelessWidget {
           decoration: BoxDecoration(
             color:
                 selected ? _settingsSelectedSurface : _settingsPanelBackground,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
               color: selected
                   ? _settingsActiveItemBackground
@@ -4772,7 +4713,7 @@ class _SettingsRadioCard extends StatelessWidget {
                   border: Border.all(
                     color: selected
                         ? _settingsActiveItemBackground
-                        : const Color(0xFFA7A298),
+                        : DcColors.line,
                     width: selected ? 5.5 : 1.6,
                   ),
                 ),
@@ -4834,7 +4775,7 @@ class _SettingsInlineToggleCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _settingsPanelBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: _settingsDividerColor),
       ),
       child: Row(
@@ -4864,14 +4805,14 @@ class _SettingsInlineToggleCard extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE7F6ED),
+                          color: DcColors.rowAlternate,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
                           'Active',
                           style: _text(
                             9,
-                            const Color(0xFF0F7B3A),
+                            DcColors.green,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.2,
                           ),
@@ -4899,10 +4840,10 @@ class _SettingsInlineToggleCard extends StatelessWidget {
             child: Switch.adaptive(
               value: value,
               onChanged: onChanged,
-              activeThumbColor: Colors.white,
+              activeThumbColor: DcColors.panel,
               activeTrackColor: _settingsSelectedBlue,
-              inactiveThumbColor: Colors.white,
-              inactiveTrackColor: const Color(0xFFD8D2C7),
+              inactiveThumbColor: DcColors.panel,
+              inactiveTrackColor: DcColors.well,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ),
@@ -4947,10 +4888,10 @@ class _SettingsToggleRow extends StatelessWidget {
               child: Switch.adaptive(
                 value: value,
                 onChanged: enabled ? onChanged : null,
-                activeThumbColor: Colors.white,
+                activeThumbColor: DcColors.panel,
                 activeTrackColor: _settingsSelectedBlue,
-                inactiveThumbColor: Colors.white,
-                inactiveTrackColor: const Color(0xFFD8D2C7),
+                inactiveThumbColor: DcColors.panel,
+                inactiveTrackColor: DcColors.well,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
@@ -5114,7 +5055,7 @@ class _SettingsShortcutCaptureRowState
                   color: _focusNode.hasFocus
                       ? _settingsSelectedSurface
                       : _settingsPanelBackground,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: _focusNode.hasFocus
                         ? _settingsSelectedBlue
@@ -5131,7 +5072,7 @@ class _SettingsShortcutCaptureRowState
                         style: _text(
                           13,
                           _value == null
-                              ? const Color(0xFF908D86)
+                              ? DcColors.muted
                               : _settingsTextPrimary,
                           fontWeight: FontWeight.w500,
                         ),
@@ -5147,7 +5088,7 @@ class _SettingsShortcutCaptureRowState
                         width: 20,
                         height: 20,
                         decoration: const BoxDecoration(
-                          color: Color(0xFF908D86),
+                          color: DcColors.panelRaised,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -5404,7 +5345,7 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
     return Dialog(
       backgroundColor: _settingsPanelBackground,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(7),
         side: const BorderSide(color: _settingsDividerColor),
       ),
       child: ConstrainedBox(
@@ -5421,13 +5362,13 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF2EEFA),
+                      color: DcColors.rowAlternate,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       TablerIcons.lock,
                       size: 18,
-                      color: Color(0xFF7B61D1),
+                      color: DcColors.indigo,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -5462,17 +5403,17 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
                   hintText: 'Enter your master password',
                   hintStyle: _text(13, _settingsTextSecondary),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(6),
                     borderSide: const BorderSide(color: _settingsDividerColor),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(6),
                     borderSide: const BorderSide(color: _settingsDividerColor),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(6),
                     borderSide: const BorderSide(
-                      color: Color(0xFF7B61D1),
+                      color: DcColors.indigo,
                       width: 1.5,
                     ),
                   ),
@@ -5513,7 +5454,7 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
                       backgroundColor: _kPrimaryButtonColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
@@ -5597,7 +5538,7 @@ class _PinSetupDialogState extends State<_PinSetupDialog> {
     return Dialog(
       backgroundColor: _settingsPanelBackground,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(7),
         side: const BorderSide(color: _settingsDividerColor),
       ),
       child: ConstrainedBox(
@@ -5640,15 +5581,15 @@ class _PinSetupDialogState extends State<_PinSetupDialog> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: _mismatch
-                                ? const Color(0xFFEF4444)
+                                ? DcColors.red
                                 : filled
-                                    ? const Color(0xFF7B61D1)
+                                    ? DcColors.indigo
                                     : Colors.transparent,
                             border: Border.all(
                               color: _mismatch
-                                  ? const Color(0xFFEF4444)
+                                  ? DcColors.red
                                   : filled
-                                      ? const Color(0xFF7B61D1)
+                                      ? DcColors.indigo
                                       : _settingsDividerColor,
                               width: 1.5,
                             ),
@@ -5661,7 +5602,7 @@ class _PinSetupDialogState extends State<_PinSetupDialog> {
                     const SizedBox(height: 8),
                     Text(
                       'PINs do not match \u2014 try again',
-                      style: _text(11, const Color(0xFFEF4444)),
+                      style: _text(11, DcColors.red),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -5764,7 +5705,7 @@ class _DisableUnlockMethodDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: _settingsPanelBackground,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(7),
         side: const BorderSide(color: _settingsDividerColor),
       ),
       child: ConstrainedBox(
@@ -5781,13 +5722,13 @@ class _DisableUnlockMethodDialog extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F0),
+                      color: DcColors.rowAlternate,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       TablerIcons.shield_off,
                       size: 18,
-                      color: Color(0xFFEF4444),
+                      color: DcColors.red,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -5841,10 +5782,10 @@ class _DisableUnlockMethodDialog extends StatelessWidget {
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFEF4444),
+                      backgroundColor: DcColors.red,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
@@ -5890,10 +5831,10 @@ class _SetupPinKeyState extends State<_SetupPinKey> {
         duration: const Duration(milliseconds: 80),
         height: 52,
         decoration: BoxDecoration(
-          color: _pressed ? const Color(0xFFF2EEFA) : const Color(0xFFF8F3EA),
-          borderRadius: BorderRadius.circular(12),
+          color: _pressed ? DcColors.rowAlternate : DcColors.rowAlternate,
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: _pressed ? const Color(0xFF7B61D1) : _settingsDividerColor,
+            color: _pressed ? DcColors.indigo : _settingsDividerColor,
           ),
         ),
         alignment: Alignment.center,

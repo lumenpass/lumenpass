@@ -1,5 +1,28 @@
 part of 'vault_screen.dart';
 
+/// Hairline between list rows on the white list surface.
+const Color _kListRowDivider = Color(0x1F6B7D8C);
+
+/// Tertiary text (website line) on the white list surface.
+const Color _kListFaintOnLight = Color(0xFF8A99A6);
+
+/// Indigo dark enough to read on white.
+const Color _kListIndigoOnLight = Color(0xFF4F5BD5);
+
+/// White card on the light canvas (audit report, duplicate groups).
+final BoxDecoration _lightCardDecoration = BoxDecoration(
+  color: DcColors.lightSurface,
+  borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+  border: Border.all(color: DcColors.sidebarLine),
+  boxShadow: const <BoxShadow>[
+    BoxShadow(
+      color: DcColors.lightCardShadow,
+      blurRadius: 6,
+      offset: Offset(0, 2),
+    ),
+  ],
+);
+
 class _ListPane extends StatefulWidget {
   const _ListPane({
     required this.width,
@@ -166,10 +189,7 @@ class _ListPaneState extends State<_ListPane> {
     return Container(
       width: widget.width,
       decoration: const BoxDecoration(
-        color: _VaultColors.surface,
-        border: Border(
-          right: BorderSide(color: _VaultColors.borderPane),
-        ),
+        color: DcColors.lightSurface,
       ),
       child: Stack(
         children: <Widget>[
@@ -190,6 +210,14 @@ class _ListPaneState extends State<_ListPane> {
                     resultCount: widget.entries.length,
                     onClear: widget.onClearSearch,
                   ),
+                _ListControlBar(
+                  itemCount: widget.entries.length,
+                  sortField: widget.sortField,
+                  sortDirection: widget.sortDirection,
+                  onSortChanged: widget.onSortChanged,
+                  isRefreshing: widget.isRefreshing,
+                  onRefreshEntries: widget.onRefreshEntries,
+                ),
                 Expanded(
                   child: widget.isPasswordAuditView && widget.entries.isEmpty
                       ? _PasswordAuditEmptyState(
@@ -200,13 +228,13 @@ class _ListPaneState extends State<_ListPane> {
                           : ScrollbarTheme(
                               data: const ScrollbarThemeData(
                                 thumbColor: WidgetStatePropertyAll<Color>(
-                                  Color(0xFFAAA69F),
+                                  DcColors.lightLineStrong,
                                 ),
                                 trackColor: WidgetStatePropertyAll<Color>(
-                                  _VaultColors.surfaceMuted,
+                                  Colors.transparent,
                                 ),
                                 trackBorderColor: WidgetStatePropertyAll<Color>(
-                                  _VaultColors.borderSoft,
+                                  Colors.transparent,
                                 ),
                               ),
                               child: Scrollbar(
@@ -277,21 +305,13 @@ class _ListPaneState extends State<_ListPane> {
                               ),
                             ),
                 ),
-                _ListControlBar(
-                  itemCount: widget.entries.length,
-                  sortField: widget.sortField,
-                  sortDirection: widget.sortDirection,
-                  onSortChanged: widget.onSortChanged,
-                  isRefreshing: widget.isRefreshing,
-                  onRefreshEntries: widget.onRefreshEntries,
-                ),
               ],
             ),
           ),
           Positioned(
             left: 14,
             right: 14,
-            bottom: 64,
+            bottom: 14,
             child: _VaultFloatingActions(
               key: widget.floatingActionsKey,
               onNewItemPressed: widget.onNewItemPressed,
@@ -324,25 +344,24 @@ class _ListControlBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 38,
+      padding: const EdgeInsets.only(left: 14, right: 8),
       decoration: const BoxDecoration(
-        color: _VaultColors.surfaceMuted,
-        border: Border(
-          top: BorderSide(color: _VaultColors.borderSoft),
-        ),
+        color: DcColors.lightSurface,
+        border: Border(bottom: BorderSide(color: DcColors.sidebarLine)),
       ),
       child: Row(
         children: <Widget>[
           Expanded(
             child: Text(
-              '$itemCount ${itemCount == 1 ? 'item' : 'items'}',
+              '$itemCount ${itemCount == 1 ? 'item' : 'items'}'.toUpperCase(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: _text(
-                12,
-                _VaultColors.title,
+                10,
+                DcColors.sidebarMuted,
                 fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
               ),
             ),
           ),
@@ -376,11 +395,11 @@ class _ActiveSearchBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
       decoration: const BoxDecoration(
-        color: _VaultColors.surfaceMuted,
+        color: DcColors.lightSelectionFill,
         border: Border(
-          bottom: BorderSide(color: _VaultColors.borderPane),
+          bottom: BorderSide(color: DcColors.sidebarLine),
         ),
       ),
       child: Row(
@@ -392,7 +411,7 @@ class _ActiveSearchBanner extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: _text(
                 12,
-                _VaultColors.title,
+                DcColors.sidebarText,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -402,17 +421,18 @@ class _ActiveSearchBanner extends StatelessWidget {
             onTap: onClear,
             borderRadius: BorderRadius.circular(999),
             child: Container(
-              width: 26,
-              height: 26,
-              decoration: const BoxDecoration(
-                color: _VaultColors.headerLabel,
-                shape: BoxShape.circle,
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: DcColors.lightSurface,
+                borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
+                border: Border.all(color: DcColors.lightLineStrong),
               ),
               alignment: Alignment.center,
               child: const Icon(
                 TablerIcons.x,
                 size: 14,
-                color: Colors.white,
+                color: DcColors.sidebarText,
               ),
             ),
           ),
@@ -443,12 +463,13 @@ class _ListSortMenu extends StatelessWidget {
 
     return PopupMenuButton<_VaultSortField>(
       tooltip: 'Sort items',
-      color: _VaultColors.surface,
-      surfaceTintColor: _VaultColors.surface,
+      color: DcColors.lightSurface,
+      surfaceTintColor: DcColors.lightSurface,
+      shadowColor: const Color(0x33263340),
       elevation: 8,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: _VaultColors.borderSoft),
+        borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+        side: const BorderSide(color: DcColors.sidebarLine),
       ),
       onSelected: onSelected,
       itemBuilder: (context) => <PopupMenuEntry<_VaultSortField>>[
@@ -456,38 +477,44 @@ class _ListSortMenu extends StatelessWidget {
           value: _VaultSortField.lastEdited,
           child: Text(
             'Last edited',
-            style: _text(11, _VaultColors.title, fontWeight: FontWeight.w600),
+            style: _text(11, DcColors.sidebarText, fontWeight: FontWeight.w600),
           ),
         ),
         PopupMenuItem<_VaultSortField>(
           value: _VaultSortField.title,
           child: Text(
             'Title',
-            style: _text(11, _VaultColors.title, fontWeight: FontWeight.w600),
+            style: _text(11, DcColors.sidebarText, fontWeight: FontWeight.w600),
           ),
         ),
       ],
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+      child: Container(
+        height: 22,
+        padding: const EdgeInsets.symmetric(horizontal: 7),
+        decoration: BoxDecoration(
+          color: DcColors.lightSurface,
+          borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
+          border: Border.all(color: DcColors.lightLineStrong),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             const Icon(
               TablerIcons.arrows_sort,
-              size: 14,
-              color: _VaultColors.icon,
+              size: 13,
+              color: DcColors.sidebarMuted,
             ),
             const SizedBox(width: 6),
             Text(
               label,
               style: _text(
                 10,
-                _VaultColors.title,
-                fontWeight: FontWeight.w500,
+                DcColors.sidebarText,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(width: 3),
-            Icon(icon, size: 12, color: _kPrimaryButtonColor),
+            Icon(icon, size: 12, color: DcColors.selection),
           ],
         ),
       ),
@@ -513,27 +540,29 @@ class _RefreshListButton extends StatelessWidget {
         button: true,
         label: tooltip,
         child: Material(
-          color: _VaultColors.surfaceMuted,
-          shape: const CircleBorder(
-            side: BorderSide(color: _VaultColors.borderSoft),
+          color: DcColors.lightSurface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
+            side: const BorderSide(color: DcColors.lightLineStrong),
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: isRefreshing ? null : () => onTap(),
-            hoverColor: _VaultColors.peachSoft,
-            highlightColor: _VaultColors.peach,
+            hoverColor: DcColors.lightInset,
+            highlightColor: DcColors.lightSelectionFill,
             child: SizedBox(
-              width: 30,
-              height: 30,
+              width: 24,
+              height: 22,
               child: Center(
                 child: AnimatedRotation(
                   turns: isRefreshing ? 1 : 0,
                   duration: const Duration(milliseconds: 700),
                   child: Icon(
                     TablerIcons.refresh,
-                    size: 14,
-                    color:
-                        isRefreshing ? _kPrimaryButtonColor : _VaultColors.icon,
+                    size: 13,
+                    color: isRefreshing
+                        ? DcColors.selection
+                        : DcColors.sidebarMuted,
                   ),
                 ),
               ),
@@ -560,22 +589,15 @@ class _ListEmptyState extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: _VaultColors.peachSoft,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: _VaultColors.borderSoft),
-                boxShadow: const <BoxShadow>[
-                  BoxShadow(
-                    color: Color(0x12000000),
-                    blurRadius: 12,
-                    offset: Offset(0, 4),
-                  ),
-                ],
+                color: DcColors.lightInset,
+                borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+                border: Border.all(color: DcColors.sidebarLine),
               ),
               alignment: Alignment.center,
               child: const Icon(
                 TablerIcons.inbox,
                 size: 24,
-                color: _kPrimaryButtonColor,
+                color: DcColors.sidebarMuted,
               ),
             ),
             const SizedBox(height: 14),
@@ -583,7 +605,7 @@ class _ListEmptyState extends StatelessWidget {
               'Nothing here yet',
               style: _text(
                 12,
-                _VaultColors.title,
+                DcColors.sidebarText,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -593,7 +615,7 @@ class _ListEmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: _text(
                 11,
-                _VaultColors.headerLabel,
+                DcColors.sidebarMuted,
                 fontWeight: FontWeight.w400,
                 height: 1.5,
               ),
@@ -654,15 +676,15 @@ class _SocialIconTile extends StatelessWidget {
     final domain = _providerDomain(provider);
     final faviconUrl =
         'https://www.google.com/s2/favicons?sz=32&domain=$domain';
-    final fallback = Icon(TablerIcons.link,
-        size: size * 0.65, color: const Color(0xFF6D63D6));
+    final fallback =
+        Icon(TablerIcons.link, size: size * 0.65, color: _kListIndigoOnLight);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: DcColors.lightSurface,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFE2EAF4)),
+        border: Border.all(color: DcColors.sidebarLine),
       ),
       alignment: Alignment.center,
       child: RepaintBoundary(
@@ -719,9 +741,9 @@ class _ListRowState extends State<_ListRow> {
 
   bool _hovered = false;
 
-  static const Color _menuSurface = Color(0xFFFFFFFF);
-  static const Color _menuText = Color(0xFF243247);
-  static const Color _menuBorder = Color(0xFFDDE6F2);
+  static const Color _menuSurface = DcColors.lightSurface;
+  static const Color _menuText = DcColors.sidebarText;
+  static const Color _menuBorder = DcColors.sidebarLine;
 
   PopupMenuItem<String> _menuItem({
     required String value,
@@ -741,7 +763,7 @@ class _ListRowState extends State<_ListRow> {
         decoration: BoxDecoration(
           border: showBottomDivider
               ? const Border(
-                  bottom: BorderSide(color: Color(0xFFE6ECF4)),
+                  bottom: BorderSide(color: _kListRowDivider),
                 )
               : null,
         ),
@@ -753,7 +775,7 @@ class _ListRowState extends State<_ListRow> {
               label,
               style: _text(
                 11,
-                isDestructive ? const Color(0xFFB42318) : _menuText,
+                isDestructive ? DcColors.redOnLight : _menuText,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -779,21 +801,21 @@ class _ListRowState extends State<_ListRow> {
           value: 'open',
           icon: TablerIcons.external_link,
           label: 'Open',
-          iconColor: const Color(0xFF2563EB),
+          iconColor: DcColors.selection,
           isDestructive: false,
         ),
       (
         value: 'edit',
         icon: TablerIcons.edit,
         label: 'Edit',
-        iconColor: const Color(0xFF0F766E),
+        iconColor: DcColors.tealOnLight,
         isDestructive: false,
       ),
       (
         value: 'duplicate',
         icon: TablerIcons.copy,
         label: 'Duplicate',
-        iconColor: const Color(0xFF4F46E5),
+        iconColor: _kListIndigoOnLight,
         isDestructive: false,
       ),
       if (hasTotp)
@@ -801,14 +823,14 @@ class _ListRowState extends State<_ListRow> {
           value: 'copy_totp',
           icon: TablerIcons.clock,
           label: 'Copy TOTP',
-          iconColor: const Color(0xFFD97706),
+          iconColor: DcColors.deepOrange,
           isDestructive: false,
         ),
       (
         value: 'delete',
         icon: TablerIcons.trash,
         label: 'Delete',
-        iconColor: const Color(0xFFDC2626),
+        iconColor: DcColors.redOnLight,
         isDestructive: true,
       ),
     ];
@@ -837,7 +859,7 @@ class _ListRowState extends State<_ListRow> {
       items: items,
       color: _menuSurface,
       surfaceTintColor: _menuSurface,
-      shadowColor: const Color(0x22000000),
+      shadowColor: const Color(0x33263340),
       elevation: 10,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
@@ -946,14 +968,18 @@ class _ListRowState extends State<_ListRow> {
     final hasWebsite = widget.entry.website.trim().isNotEmpty;
     final hasTotp = widget.entry.totpAuthUrl.isNotEmpty;
     final website = widget.entry.website.trim();
+    final selected = widget.selected;
+    final titleColor = selected ? Colors.white : DcColors.sidebarText;
+    final secondaryColor =
+        selected ? const Color(0xE6FFFFFF) : DcColors.sidebarMuted;
     final subtitleStyle = _text(
-      13,
-      const Color(0xFF6E6E73),
+      12,
+      secondaryColor,
       fontWeight: FontWeight.w400,
     );
     final websiteStyle = _text(
-      12,
-      const Color(0xFF8A96A8),
+      11,
+      selected ? const Color(0xCCFFFFFF) : _kListFaintOnLight,
       fontWeight: FontWeight.w400,
     );
 
@@ -979,29 +1005,23 @@ class _ListRowState extends State<_ListRow> {
             // Ink colors are set directly on the widget instead of cloning
             // the whole ThemeData per row (via Theme.of(context).copyWith),
             // which was needless allocation on the scroll hot path.
-            hoverColor: _VaultColors.peachSoft,
-            highlightColor: _VaultColors.peach,
+            hoverColor: Colors.transparent,
+            highlightColor: Colors.transparent,
             splashColor: Colors.transparent,
             splashFactory: NoSplash.splashFactory,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 140),
               curve: Curves.easeOut,
               height: _ListPaneState._rowHeight,
-              padding: const EdgeInsets.fromLTRB(14, 0, 10, 0),
+              padding: const EdgeInsets.fromLTRB(14, 0, 12, 0),
               decoration: BoxDecoration(
-                color: widget.selected
-                    ? _VaultColors.peach
+                color: selected
+                    ? DcColors.selection
                     : (_hovered
-                        ? _VaultColors.surfaceMuted
-                        : _VaultColors.surface),
-                border: Border(
-                  left: BorderSide(
-                    color: widget.selected
-                        ? _kPrimaryButtonColor
-                        : Colors.transparent,
-                    width: 3,
-                  ),
-                  bottom: const BorderSide(color: _VaultColors.borderSoft),
+                        ? DcColors.sidebarHover
+                        : DcColors.lightSurface),
+                border: const Border(
+                  bottom: BorderSide(color: _kListRowDivider),
                 ),
               ),
               child: Row(
@@ -1025,8 +1045,8 @@ class _ListRowState extends State<_ListRow> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: _text(
-                                  15,
-                                  _VaultColors.title,
+                                  14,
+                                  titleColor,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1082,17 +1102,17 @@ class _ListRowState extends State<_ListRow> {
                         if (widget.auditEntry!.hasDuplicated)
                           _AuditBadge(
                             label: 'Duplicated',
-                            color: const Color(0xFFDC2626),
+                            color: DcColors.redOnLight,
                           ),
                         if (widget.auditEntry!.hasWeak)
                           _AuditBadge(
                             label: 'Weak',
-                            color: const Color(0xFFF59E0B),
+                            color: DcColors.deepOrange,
                           ),
                         if (widget.auditEntry!.hasStale)
                           _AuditBadge(
                             label: 'Too old',
-                            color: const Color(0xFF6B7280),
+                            color: DcColors.amberOnLight,
                           ),
                       ],
                     ),
@@ -1101,9 +1121,9 @@ class _ListRowState extends State<_ListRow> {
                   Text(
                     widget.entry.dateLabel,
                     style: _text(
-                      13,
-                      _VaultColors.headerLabel,
-                      fontWeight: FontWeight.w400,
+                      11,
+                      secondaryColor,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -1127,20 +1147,12 @@ class _AuditBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: _text(
-          9,
-          color,
-          fontWeight: FontWeight.w600,
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: DcStatusBadge(
+        label: label,
+        color: color,
+        foreground: Colors.white,
       ),
     );
   }
@@ -1163,16 +1175,16 @@ class _PasswordAuditEmptyState extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
+                color: DcColors.lightInset,
                 borderRadius: BorderRadius.circular(15),
                 border: Border.all(
-                    color: const Color(0xFFDC2626).withValues(alpha: 0.2)),
+                    color: DcColors.redOnLight.withValues(alpha: 0.2)),
               ),
               alignment: Alignment.center,
               child: const Icon(
                 TablerIcons.shield_check,
                 size: 24,
-                color: Color(0xFFDC2626),
+                color: DcColors.redOnLight,
               ),
             ),
             const SizedBox(height: 14),
@@ -1185,7 +1197,7 @@ class _PasswordAuditEmptyState extends StatelessWidget {
               },
               style: _text(
                 12,
-                const Color(0xFF3A4A5E),
+                DcColors.sidebarText,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1195,7 +1207,7 @@ class _PasswordAuditEmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: _text(
                 11,
-                const Color(0xFF9AAABB),
+                DcColors.sidebarMuted,
                 fontWeight: FontWeight.w400,
                 height: 1.5,
               ),
@@ -1226,56 +1238,68 @@ class _PasswordAuditReportPane extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        color: const Color(0xFFF9FAFB),
+        color: DcColors.sidebar,
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          padding: const EdgeInsets.all(18),
           children: <Widget>[
             Row(
               children: <Widget>[
                 const Icon(TablerIcons.shield_check,
-                    size: 32, color: Color(0xFF374151)),
-                const SizedBox(width: 12),
+                    size: 24, color: DcColors.tealOnLight),
+                const SizedBox(width: 10),
                 Text(
                   'Security Checkup',
-                  style: _text(32, const Color(0xFF111827),
-                      fontWeight: FontWeight.w800),
+                  style: _text(20, DcColors.sidebarText,
+                      fontWeight: FontWeight.w700),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 760),
               child: Text(
                 'Review passwords that need attention across this vault. LumenPass groups duplicate, weak, and long-unchanged credentials so you can clean them up faster.',
-                style: _text(14, const Color(0xFF4B5563), height: 1.5),
+                style: _text(13, DcColors.sidebarMuted, height: 1.5),
               ),
             ),
-            const SizedBox(height: 40),
-            Text('Overall Password Strength',
-                style: _text(16, const Color(0xFF111827),
-                    fontWeight: FontWeight.w700)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             Container(
-              height: 12,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFEF4444),
-                    Color(0xFFF59E0B),
-                    Color(0xFF10B981)
-                  ],
-                ),
+              padding: const EdgeInsets.all(DcMetrics.panelPadding),
+              decoration: _lightCardDecoration,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  const DcSectionHeader(
+                    title: 'Overall Password Strength',
+                    icon: TablerIcons.gauge,
+                    tint: DcColors.selection,
+                    titleColor: DcColors.sidebarText,
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    height: 6,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(2),
+                      gradient: const LinearGradient(
+                        colors: <Color>[
+                          DcColors.red,
+                          DcColors.amber,
+                          DcColors.green,
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 14),
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: 2,
-              mainAxisSpacing: 24,
-              crossAxisSpacing: 24,
-              childAspectRatio: 1.8,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 14,
+              childAspectRatio: 1.9,
               children: <Widget>[
                 _AuditReportCard(
                   count: duplicatedCount,
@@ -1283,7 +1307,7 @@ class _PasswordAuditReportPane extends StatelessWidget {
                   description:
                       'Items where the title, username/email and password all match. Review the matching groups so you can merge or remove the extras.',
                   icon: TablerIcons.copy,
-                  iconColor: const Color(0xFFFCA5A5),
+                  iconColor: DcColors.redOnLight,
                   onTap: () => onIssueSelected(PasswordAuditIssue.duplicated),
                 ),
                 _AuditReportCard(
@@ -1292,7 +1316,7 @@ class _PasswordAuditReportPane extends StatelessWidget {
                   description:
                       'Weak passwords are easier to guess. Generate strong passwords to keep your accounts safe.',
                   icon: TablerIcons.lock_off,
-                  iconColor: const Color(0xFFFED7AA),
+                  iconColor: DcColors.deepOrange,
                   onTap: () => onIssueSelected(PasswordAuditIssue.weak),
                 ),
                 _AuditReportCard(
@@ -1301,7 +1325,7 @@ class _PasswordAuditReportPane extends StatelessWidget {
                   description:
                       'Passwords that haven’t been changed in a long time might be at risk. Consider rotating them.',
                   icon: TablerIcons.clock_off,
-                  iconColor: const Color(0xFFD1D5DB),
+                  iconColor: DcColors.amberOnLight,
                   onTap: () => onIssueSelected(PasswordAuditIssue.stale),
                 ),
               ],
@@ -1334,42 +1358,30 @@ class _AuditReportCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+      borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+      hoverColor: DcColors.lightInset,
+      child: Ink(
+        padding: const EdgeInsets.all(DcMetrics.panelPadding),
+        decoration: _lightCardDecoration,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                Text('$count',
-                    style: _text(32, const Color(0xFF111827),
-                        fontWeight: FontWeight.w700)),
-                Icon(icon, size: 32, color: iconColor),
-              ],
+            DcSectionHeader(
+              title: title,
+              icon: icon,
+              tint: iconColor,
+              titleColor: DcColors.sidebarText,
+              trailing: DcStatusBadge(
+                label: '$count',
+                minWidth: 28,
+                color: count == 0 ? DcColors.tealOnLight : iconColor,
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(title,
-                style: _text(14, const Color(0xFF111827),
-                    fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Expanded(
               child: Text(
                 description,
-                style: _text(12, const Color(0xFF6B7280), height: 1.4),
+                style: _text(12, DcColors.sidebarMuted, height: 1.4),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -1379,10 +1391,10 @@ class _AuditReportCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
                 Text('Show Items',
-                    style: _text(12, const Color(0xFF2563EB),
+                    style: _text(12, DcColors.selection,
                         fontWeight: FontWeight.w600)),
                 const Icon(TablerIcons.arrow_right,
-                    size: 14, color: Color(0xFF2563EB)),
+                    size: 14, color: DcColors.selection),
               ],
             ),
           ],
@@ -1429,11 +1441,11 @@ class _PasswordAuditDrilldownHeader extends StatelessWidget {
     final subtitleSuffix = itemsLabel ?? 'items';
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(10, 8, 14, 8),
       decoration: const BoxDecoration(
-        color: Color(0xFFF6F3FF),
+        color: DcColors.lightInset,
         border: Border(
-          bottom: BorderSide(color: _VaultColors.borderPane),
+          bottom: BorderSide(color: DcColors.sidebarLine),
         ),
       ),
       child: Row(
@@ -1444,7 +1456,7 @@ class _PasswordAuditDrilldownHeader extends StatelessWidget {
             child: const Padding(
               padding: EdgeInsets.all(4),
               child: Icon(TablerIcons.arrow_left,
-                  size: 16, color: Color(0xFF3A4457)),
+                  size: 16, color: DcColors.sidebarText),
             ),
           ),
           const SizedBox(width: 8),
@@ -1454,12 +1466,12 @@ class _PasswordAuditDrilldownHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: _text(12, const Color(0xFF3A4457),
+                  style: _text(12, DcColors.sidebarText,
                       fontWeight: FontWeight.w700),
                 ),
                 Text(
                   '$resultCount $subtitleSuffix',
-                  style: _text(10, const Color(0xFF6B7280),
+                  style: _text(10, DcColors.sidebarMuted,
                       fontWeight: FontWeight.w400),
                 ),
               ],
@@ -1488,35 +1500,38 @@ class _PasswordAuditDuplicateGroupsPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          _PasswordAuditDrilldownHeader(
-            issue: PasswordAuditIssue.duplicated,
-            resultCount: groups.length,
-            onBack: onBack,
-            itemsLabel: groups.length == 1 ? 'group' : 'groups',
-          ),
-          Expanded(
-            child: groups.isEmpty
-                ? const _PasswordAuditEmptyState(
-                    issue: PasswordAuditIssue.duplicated,
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    itemCount: groups.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final group = groups[index];
-                      return _DuplicateGroupCard(
-                        group: group,
-                        onTap: () => onGroupSelected(group.key),
-                      );
-                    },
-                  ),
-          ),
-        ],
+      child: ColoredBox(
+        color: DcColors.sidebar,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            _PasswordAuditDrilldownHeader(
+              issue: PasswordAuditIssue.duplicated,
+              resultCount: groups.length,
+              onBack: onBack,
+              itemsLabel: groups.length == 1 ? 'group' : 'groups',
+            ),
+            Expanded(
+              child: groups.isEmpty
+                  ? const _PasswordAuditEmptyState(
+                      issue: PasswordAuditIssue.duplicated,
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      itemCount: groups.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final group = groups[index];
+                        return _DuplicateGroupCard(
+                          group: group,
+                          onTap: () => onGroupSelected(group.key),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1536,31 +1551,28 @@ class _DuplicateGroupCard extends StatelessWidget {
     final title = group.title.trim();
     final username = group.username.trim();
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
+        borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+        hoverColor: DcColors.lightInset,
+        child: Ink(
+          decoration: _lightCardDecoration,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-          ),
           child: Row(
             children: <Widget>[
               Container(
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(8),
+                  color: DcColors.lightInset,
+                  borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
                 ),
                 alignment: Alignment.center,
                 child: const Icon(
                   TablerIcons.copy,
                   size: 18,
-                  color: Color(0xFFB91C1C),
+                  color: DcColors.redOnLight,
                 ),
               ),
               const SizedBox(width: 12),
@@ -1575,7 +1587,7 @@ class _DuplicateGroupCard extends StatelessWidget {
                           : (username.isNotEmpty
                               ? username
                               : group.entries.first.title),
-                      style: _text(13, const Color(0xFF111827),
+                      style: _text(13, DcColors.sidebarText,
                           fontWeight: FontWeight.w700),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1584,7 +1596,7 @@ class _DuplicateGroupCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         username,
-                        style: _text(11, const Color(0xFF6B7280)),
+                        style: _text(11, DcColors.sidebarMuted),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1593,21 +1605,13 @@ class _DuplicateGroupCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '${group.count} items',
-                  style: _text(10, const Color(0xFFB91C1C),
-                      fontWeight: FontWeight.w700),
-                ),
+              DcStatusBadge(
+                label: '${group.count} items',
+                color: DcColors.redOnLight,
               ),
               const SizedBox(width: 6),
               const Icon(TablerIcons.chevron_right,
-                  size: 16, color: Color(0xFF9CA3AF)),
+                  size: 16, color: DcColors.sidebarMuted),
             ],
           ),
         ),

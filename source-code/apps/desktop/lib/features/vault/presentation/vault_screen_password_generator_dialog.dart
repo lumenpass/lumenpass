@@ -134,11 +134,11 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
           width: 570,
           decoration: BoxDecoration(
             color: _VaultColors.surface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(7),
             border: Border.all(color: _VaultColors.borderPane),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: Color(0x295B4638),
+                color: DcColors.shadow,
                 blurRadius: 36,
                 offset: Offset(0, 16),
               ),
@@ -179,7 +179,7 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
           height: 40,
           decoration: BoxDecoration(
             color: _VaultColors.peachSoft,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(6),
           ),
           alignment: Alignment.center,
           child: const Icon(
@@ -220,7 +220,7 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
     return Container(
       decoration: BoxDecoration(
         color: _VaultColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: _VaultColors.borderSoft),
       ),
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
@@ -299,7 +299,7 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                                   col = _kPrimaryButtonColor;
                                 } else if (RegExp(r'[^A-Za-z0-9]')
                                     .hasMatch(c)) {
-                                  col = const Color(0xFFAA6E16);
+                                  col = DcColors.orange;
                                 } else {
                                   col = _VaultColors.title;
                                 }
@@ -325,7 +325,7 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                     size: 18,
                   ),
                   color:
-                      _genCopied ? const Color(0xFF168B76) : _VaultColors.icon,
+                      _genCopied ? DcColors.teal : _VaultColors.icon,
                   visualDensity: VisualDensity.compact,
                 ),
                 IconButton(
@@ -433,7 +433,7 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: Colors.white,
+            activeThumbColor: DcColors.panel,
             activeTrackColor: _kPrimaryButtonColor,
             inactiveThumbColor: _VaultColors.surface,
             inactiveTrackColor: _VaultColors.borderPane,

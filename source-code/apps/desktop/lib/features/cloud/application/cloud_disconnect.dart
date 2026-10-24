@@ -7,10 +7,11 @@ import '../../../core/services/backup_service.dart';
 import '../../../presentation/theme/app_theme.dart';
 import '../../unlock/application/database_registry.dart';
 import 'cloud_service_provider.dart';
+import '../../../presentation/theme/drive_clue_tokens.dart';
 
-const Color _kTitle = Color(0xFF22314A);
-const Color _kLabel = Color(0xFF73839D);
-const Color _kWarnText = Color(0xFFC0392B);
+const Color _kTitle = DcColors.text;
+const Color _kLabel = DcColors.muted;
+const Color _kWarnText = DcColors.red;
 
 TextStyle _t(
   double size,
@@ -37,10 +38,10 @@ Future<bool> confirmCloudDisconnect(BuildContext context) async {
     context: context,
     barrierDismissible: true,
     builder: (ctx) => Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClue(),
       child: AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: DcColors.panel,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         title: Text(
           'Do you want to disconnect this service?',
           style: _t(16, _kTitle, fontWeight: FontWeight.w700),
@@ -97,10 +98,10 @@ Future<bool> confirmUnlinkCloudDatabases(
     context: context,
     barrierDismissible: true,
     builder: (ctx) => Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClue(),
       child: AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: DcColors.panel,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         title: Text(
           'Unlink all $providerLabel vaults?',
           style: _t(16, _kTitle, fontWeight: FontWeight.w700),

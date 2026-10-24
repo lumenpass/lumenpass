@@ -2,16 +2,19 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-const _kBackground = Color(0xFFF7F4EC);
-const _kPaperBright = Color(0xFFFFFCF5);
-const _kInk = Color(0xFF191A1B);
-const _kMuted = Color(0xFF626560);
-const _kLine = Color(0xFF252628);
-const _kSoftLine = Color(0xFFC9CBC8);
-const _kAccent = Color(0xFFFF5B22);
-const _kPeach = Color(0xFFF4D7C8);
-const _kMint = Color(0xFF21A98F);
-const _kMintSoft = Color(0xFFDFF2EC);
+import '../../../presentation/theme/drive_clue_tokens.dart';
+
+// ── Light palette (matches the unlock credentials dialog) ───────────────────
+const _kBackground = DcColors.sidebar;
+const _kPaperBright = DcColors.lightSurface;
+const _kCardBorder = DcColors.sidebarLine;
+const _kCardShadow = DcColors.lightCardShadow;
+const _kInk = DcColors.sidebarText;
+const _kMuted = DcColors.sidebarMuted;
+const _kAccent = DcColors.selection;
+const _kPeach = DcColors.lightSelectionFill;
+const _kMint = DcColors.tealOnLight;
+const _kMintSoft = Color(0x1F1F8A7D);
 
 TextStyle _uText(
   double size,
@@ -127,11 +130,6 @@ class _UnlockingProgressScreenState extends State<UnlockingProgressScreen>
       backgroundColor: _kBackground,
       body: Stack(
         children: <Widget>[
-          const Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(painter: _ProgressGridPainter()),
-            ),
-          ),
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
@@ -140,19 +138,13 @@ class _UnlockingProgressScreenState extends State<UnlockingProgressScreen>
                 padding: const EdgeInsets.fromLTRB(40, 30, 40, 32),
                 decoration: BoxDecoration(
                   color: _kPaperBright,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: _kSoftLine, width: 1.1),
+                  borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+                  border: Border.all(color: _kCardBorder),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x2B191A1B),
-                      blurRadius: 0,
-                      offset: Offset(0, 7),
-                    ),
-                    BoxShadow(
-                      color: Color(0x18191A1B),
-                      blurRadius: 24,
-                      spreadRadius: -8,
-                      offset: Offset(0, 14),
+                      color: _kCardShadow,
+                      blurRadius: 18,
+                      offset: Offset(0, 6),
                     ),
                   ],
                 ),
@@ -165,16 +157,19 @@ class _UnlockingProgressScreenState extends State<UnlockingProgressScreen>
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: _kInk,
-                        borderRadius: BorderRadius.circular(999),
+                        color: _kAccent,
+                        borderRadius:
+                            BorderRadius.circular(DcMetrics.badgeRadius),
                       ),
                       child: Text(
                         'SECURE VAULT',
                         style: _uText(
-                          8.5,
+                          DcMetrics.sectionLabelSize,
                           Colors.white,
-                          fontWeight: FontWeight.w800,
-                        ).copyWith(letterSpacing: 1.1),
+                          fontWeight: FontWeight.w700,
+                        ).copyWith(
+                          letterSpacing: DcMetrics.sectionLabelTracking,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -204,15 +199,9 @@ class _UnlockingProgressScreenState extends State<UnlockingProgressScreen>
                               padding: const EdgeInsets.all(18),
                               decoration: BoxDecoration(
                                 color: _kPeach,
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(color: _kSoftLine),
-                                boxShadow: const <BoxShadow>[
-                                  BoxShadow(
-                                    color: Color(0x26191A1B),
-                                    blurRadius: 0,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
+                                borderRadius: BorderRadius.circular(
+                                  DcMetrics.panelRadius + 7,
+                                ),
                               ),
                               child: Image.asset(
                                 'assets/images/lock_vault.png',
@@ -250,8 +239,8 @@ class _UnlockingProgressScreenState extends State<UnlockingProgressScreen>
                       ),
                       decoration: BoxDecoration(
                         color: _kMintSoft,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: _kSoftLine),
+                        borderRadius:
+                            BorderRadius.circular(DcMetrics.badgeRadius),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -284,27 +273,6 @@ class _UnlockingProgressScreenState extends State<UnlockingProgressScreen>
       ),
     );
   }
-}
-
-class _ProgressGridPainter extends CustomPainter {
-  const _ProgressGridPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = _kLine.withValues(alpha: 0.055)
-      ..strokeWidth = 1;
-    const step = 34.0;
-    for (double x = 0; x <= size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y <= size.height; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _ArcPainter extends CustomPainter {

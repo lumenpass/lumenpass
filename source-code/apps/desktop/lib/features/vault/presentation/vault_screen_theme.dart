@@ -1,23 +1,36 @@
 part of 'vault_screen.dart';
 
+/// Vault palette, mapped onto the DriveClue tokens ([DcColors]).
+///
+/// The names are kept from the previous palette so the ~430 existing
+/// references pick up the new look without touching their call sites.
 class _VaultColors {
-  static const Color canvas = Color(0xFFF5F1E8);
-  static const Color sidebar = Color(0xFFE8DED0);
-  static const Color surface = Color(0xFFFFFCF6);
-  static const Color surfaceMuted = Color(0xFFF8F3EA);
-  static const Color peach = Color(0xFFF3D4C5);
-  static const Color peachSoft = Color(0xFFFAEDE5);
-  static const Color title = Color(0xFF1E2021);
-  static const Color headerLabel = Color(0xFF686B67);
+  /// Window and pane background (dark slate).
+  static const Color canvas = DcColors.background;
+  static const Color sidebar = DcColors.sidebar;
 
-  static const Color icon = Color(0xFF777A75);
-  static const Color borderSoft = Color(0xFFD8D2C7);
-  static const Color borderPane = Color(0xFFCEC7BB);
+  /// Raised surfaces: dialogs, menus, cards.
+  static const Color surface = DcColors.panel;
+
+  /// Recessed fills inside a surface: inputs, chips, wells.
+  static const Color surfaceMuted = DcColors.rowAlternate;
+
+  /// Hover / pressed wash (formerly peach).
+  static const Color peach = DcColors.selectionTint;
+
+  /// Subtle selected wash (formerly soft peach).
+  static const Color peachSoft = DcColors.selectionSoft;
+  static const Color title = DcColors.text;
+  static const Color headerLabel = DcColors.muted;
+
+  static const Color icon = DcColors.muted;
+  static const Color borderSoft = DcColors.line;
+  static const Color borderPane = DcColors.line;
 }
 
-const Color _kPrimaryButtonColor = Color(0xFFFF5B22);
-const Color _kPrimaryButtonHoverColor = Color(0xFFE94A13);
-const Color _kDangerButtonColor = Color(0xFFCF3E32);
+const Color _kPrimaryButtonColor = DcColors.selection;
+const Color _kPrimaryButtonHoverColor = DcColors.selectionHover;
+const Color _kDangerButtonColor = DcColors.red;
 
 TextStyle _text(
   double size,
@@ -91,10 +104,10 @@ int _totpSecondsRemaining(_MockEntry entry, DateTime timestamp) {
 
 Color _totpCountdownColor(int secondsRemaining) {
   if (secondsRemaining <= 9) {
-    return const Color(0xFFDC2626);
+    return DcColors.red;
   }
   if (secondsRemaining <= 15) {
-    return const Color(0xFFF59E0B);
+    return DcColors.amber;
   }
-  return const Color(0xFF16A34A);
+  return DcColors.green;
 }

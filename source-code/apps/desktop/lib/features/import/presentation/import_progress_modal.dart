@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../application/import_executor.dart';
+import 'import_light_colors.dart';
+import '../../../presentation/widgets/drive_clue/dc_dialog_title_bar.dart';
 
 class ImportProgressModal extends StatefulWidget {
   const ImportProgressModal({
@@ -76,14 +78,13 @@ class _ImportProgressModalState extends State<ImportProgressModal>
       backgroundColor: Colors.transparent,
       child: Container(
         width: 400,
-        padding: const EdgeInsets.all(28),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFCF6),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFCEC7BB)),
+          color: ImportColors.panel,
+          borderRadius: BorderRadius.circular(7),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x295B4638),
+              color: ImportColors.shadow,
               blurRadius: 32,
               offset: Offset(0, 14),
             ),
@@ -92,193 +93,189 @@ class _ImportProgressModalState extends State<ImportProgressModal>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            if (isComplete) ...<Widget>[
-              ScaleTransition(
-                scale: _successScale,
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF22C55E).withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    TablerIcons.circle_check,
-                    size: 36,
-                    color: Color(0xFF22C55E),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Import Complete',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E2021),
-                ),
-              ),
-              const SizedBox(height: 8),
-              _buildCompletionStats(progress),
-            ] else ...<Widget>[
-              const Text(
-                'Importing Items',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E2021),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                isRunning
-                    ? 'Processing ${progress.current} of ${progress.total} items'
-                    : 'Preparing...',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: const Color(0xFF74766F),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  value: progress.fraction,
-                  minHeight: 8,
-                  backgroundColor: const Color(0xFFF3EDE4),
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    Color(0xFFFF5B22),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  '${progress.percent}%',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E2021),
-                  ),
-                ),
-              ),
-              if (isRunning && progress.logs.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Import log',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFA09D95),
+            DcDialogTitleBar(
+              title: isComplete ? 'Import Complete' : 'Importing Items',
+            ),
+            Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  if (isComplete) ...<Widget>[
+                    ScaleTransition(
+                      scale: _successScale,
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: ImportColors.green.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          TablerIcons.circle_check,
+                          size: 36,
+                          color: ImportColors.green,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  width: double.infinity,
-                  height: 132,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8F3EA),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFD8D2C7)),
-                  ),
-                  child: ListView.builder(
-                    controller: _logScrollController,
-                    padding: EdgeInsets.zero,
-                    itemCount: progress.logs.length,
-                    itemBuilder: (context, index) {
-                      final entry = progress.logs[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 1),
+                    const SizedBox(height: 16),
+                    _buildCompletionStats(progress),
+                  ] else ...<Widget>[
+                    Text(
+                      isRunning
+                          ? 'Processing ${progress.current} of ${progress.total} items'
+                          : 'Preparing...',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: ImportColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: progress.fraction,
+                        minHeight: 8,
+                        backgroundColor: ImportColors.row,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          ImportColors.selection,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '${progress.percent}%',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: ImportColors.text,
+                        ),
+                      ),
+                    ),
+                    if (isRunning && progress.logs.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
                         child: Text(
-                          entry.message,
+                          'Import log',
                           style: TextStyle(
                             fontSize: 11,
-                            fontFamily: 'monospace',
-                            height: 1.4,
-                            color: entry.isError
-                                ? const Color(0xFFDC2626)
-                                : const Color(0xFF74766F),
+                            fontWeight: FontWeight.w600,
+                            color: ImportColors.faint,
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-              if (isRunning) ...<Widget>[
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    _MiniStat(
-                      label: 'Succeeded',
-                      count: progress.succeeded,
-                      color: const Color(0xFF22C55E),
-                    ),
-                    const SizedBox(width: 16),
-                    _MiniStat(
-                      label: 'Failed',
-                      count: progress.failed,
-                      color: progress.failed > 0
-                          ? const Color(0xFFEF4444)
-                          : const Color(0xFFA09D95),
-                    ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        height: 132,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: ImportColors.row,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: ImportColors.line),
+                        ),
+                        child: ListView.builder(
+                          controller: _logScrollController,
+                          padding: EdgeInsets.zero,
+                          itemCount: progress.logs.length,
+                          itemBuilder: (context, index) {
+                            final entry = progress.logs[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 1),
+                              child: Text(
+                                entry.message,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                  height: 1.4,
+                                  color: entry.isError
+                                      ? ImportColors.red
+                                      : ImportColors.muted,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                    if (isRunning) ...<Widget>[
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          _MiniStat(
+                            label: 'Succeeded',
+                            count: progress.succeeded,
+                            color: ImportColors.green,
+                          ),
+                          const SizedBox(width: 16),
+                          _MiniStat(
+                            label: 'Failed',
+                            count: progress.failed,
+                            color: progress.failed > 0
+                                ? ImportColors.red
+                                : ImportColors.faint,
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
-                ),
-              ],
-            ],
-            const SizedBox(height: 24),
-            if (isComplete)
-              _FooterButton(
-                label: 'Close',
-                backgroundColor: const Color(0xFFFF5B22),
-                textColor: Colors.white,
-                onTap: widget.onDone,
-              )
-            else
-              _FooterButton(
-                label: 'Cancel',
-                backgroundColor: const Color(0xFFFFFCF6),
-                textColor: const Color(0xFF4F524E),
-                borderColor: const Color(0xFFCEC7BB),
-                onTap: () async {
-                  final shouldCancel = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      backgroundColor: const Color(0xFFFFFCF6),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      title: const Text('Cancel Import?',
-                          style: TextStyle(color: Color(0xFF1E2021))),
-                      content: const Text(
-                          'Are you sure you want to cancel the import process? Some items may have already been imported.',
-                          style: TextStyle(color: Color(0xFF686B67))),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          child: const Text('No, continue',
-                              style: TextStyle(color: Color(0xFF686B67))),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(true),
-                          child: const Text('Yes, cancel',
-                              style: TextStyle(color: Color(0xFFDC2626))),
-                        ),
-                      ],
+                  const SizedBox(height: 24),
+                  if (isComplete)
+                    _FooterButton(
+                      label: 'Close',
+                      backgroundColor: ImportColors.selection,
+                      textColor: Colors.white,
+                      onTap: widget.onDone,
+                    )
+                  else
+                    _FooterButton(
+                      label: 'Cancel',
+                      backgroundColor: ImportColors.rowAlternate,
+                      textColor: ImportColors.muted,
+                      borderColor: ImportColors.lineStrong,
+                      onTap: () async {
+                        final shouldCancel = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: ImportColors.rowAlternate,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(7)),
+                            title: const Text('Cancel Import?',
+                                style: TextStyle(color: ImportColors.text)),
+                            content: const Text(
+                                'Are you sure you want to cancel the import process? Some items may have already been imported.',
+                                style: TextStyle(color: ImportColors.muted)),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('No, continue',
+                                    style:
+                                        TextStyle(color: ImportColors.muted)),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: const Text('Yes, cancel',
+                                    style: TextStyle(color: ImportColors.red)),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (shouldCancel == true) {
+                          widget.onCancelRequested();
+                        }
+                      },
                     ),
-                  );
-                  if (shouldCancel == true) {
-                    widget.onCancelRequested();
-                  }
-                },
+                ],
               ),
+            ),
           ],
         ),
       ),
@@ -296,7 +293,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
-            color: const Color(0xFF74766F),
+            color: ImportColors.muted,
           ),
         ),
         const SizedBox(height: 16),
@@ -306,7 +303,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
               child: _ReportStat(
                 label: 'Total',
                 count: progress.total,
-                color: const Color(0xFF4F524E),
+                color: ImportColors.muted,
                 icon: TablerIcons.list_details,
               ),
             ),
@@ -315,7 +312,7 @@ class _ImportProgressModalState extends State<ImportProgressModal>
               child: _ReportStat(
                 label: 'Imported',
                 count: progress.succeeded,
-                color: const Color(0xFF22C55E),
+                color: ImportColors.green,
                 icon: TablerIcons.circle_check,
               ),
             ),
@@ -324,9 +321,8 @@ class _ImportProgressModalState extends State<ImportProgressModal>
               child: _ReportStat(
                 label: 'Failed',
                 count: progress.failed,
-                color: progress.failed > 0
-                    ? const Color(0xFFEF4444)
-                    : const Color(0xFFA09D95),
+                color:
+                    progress.failed > 0 ? ImportColors.red : ImportColors.faint,
                 icon: TablerIcons.circle_x,
               ),
             ),
@@ -356,7 +352,7 @@ class _ReportStat extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
       child: Column(
@@ -377,7 +373,7 @@ class _ReportStat extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
-              color: const Color(0xFF74766F),
+              color: ImportColors.muted,
             ),
           ),
         ],
@@ -406,7 +402,7 @@ class _MiniStat extends StatelessWidget {
           label,
           style: const TextStyle(
             fontSize: 12,
-            color: Color(0xFF74766F),
+            color: ImportColors.muted,
           ),
         ),
         const SizedBox(width: 4),
@@ -455,7 +451,7 @@ class _FooterButtonState extends State<_FooterButton> {
         color: Colors.transparent,
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
@@ -463,7 +459,7 @@ class _FooterButtonState extends State<_FooterButton> {
               color: _hovered && isEnabled
                   ? widget.backgroundColor.withValues(alpha: 0.8)
                   : widget.backgroundColor,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(6),
               border: widget.borderColor != null
                   ? Border.all(color: widget.borderColor!)
                   : null,

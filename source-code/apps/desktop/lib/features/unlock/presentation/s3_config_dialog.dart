@@ -6,13 +6,14 @@ import '../../../core/services/backup_service.dart';
 import '../../../core/services/s3_regions.dart';
 import '../../../core/services/s3_service.dart';
 import '../../../presentation/theme/app_theme.dart';
+import '../../../presentation/theme/drive_clue_tokens.dart';
 
-const Color _kCanvas = Color(0xFFF6F8FB);
-const Color _kBorderSoft = Color(0xFFE1E7F0);
-const Color _kTitle = Color(0xFF22314A);
-const Color _kLabel = Color(0xFF73839D);
-const Color _kIcon = Color(0xFF8A97AC);
-const Color _kBlue = Color(0xFF4B6CFF);
+const Color _kCanvas = DcColors.panel;
+const Color _kBorderSoft = DcColors.line;
+const Color _kTitle = DcColors.text;
+const Color _kLabel = DcColors.muted;
+const Color _kIcon = DcColors.faint;
+const Color _kBlue = DcColors.selection;
 
 TextStyle _uText(
   double size,
@@ -251,10 +252,10 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClue(),
       child: AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: DcColors.panel,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         titlePadding: EdgeInsets.zero,
         contentPadding: EdgeInsets.zero,
         actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
@@ -421,13 +422,13 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: _testOk
-                          ? const Color(0xFFE7F6EC)
-                          : const Color(0xFFFDECEC),
+                          ? DcColors.greenSoft
+                          : DcColors.redSoft,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: _testOk
-                            ? const Color(0xFFB7E2C5)
-                            : const Color(0xFFF3C2C2),
+                            ? DcColors.greenLine
+                            : DcColors.redLine,
                       ),
                     ),
                     child: Row(
@@ -438,8 +439,8 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
                               : TablerIcons.alert_triangle,
                           size: 14,
                           color: _testOk
-                              ? const Color(0xFF1B7A3D)
-                              : const Color(0xFFC0392B),
+                              ? DcColors.green
+                              : DcColors.red,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -448,8 +449,8 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
                             style: _uText(
                               12,
                               _testOk
-                                  ? const Color(0xFF1B7A3D)
-                                  : const Color(0xFFC0392B),
+                                  ? DcColors.green
+                                  : DcColors.red,
                             ),
                           ),
                         ),
@@ -498,7 +499,7 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             style: FilledButton.styleFrom(
               backgroundColor: _connectionVerified && _testOk
                   ? _kBlue
-                  : const Color(0xFFCBD5E1),
+                  : DcColors.lineStrong,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
@@ -539,9 +540,9 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             if (error != null) ...[
               const SizedBox(width: 8),
               Icon(TablerIcons.alert_circle,
-                  size: 12, color: const Color(0xFFC0392B)),
+                  size: 12, color: DcColors.red),
               const SizedBox(width: 4),
-              Text(error, style: _uText(11, const Color(0xFFC0392B))),
+              Text(error, style: _uText(11, DcColors.red)),
             ],
           ],
         ),
@@ -566,14 +567,14 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? const Color(0xFFC0392B) : _kBorderSoft,
+                color: error != null ? DcColors.red : _kBorderSoft,
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? const Color(0xFFC0392B) : _kBlue,
+                color: error != null ? DcColors.red : _kBlue,
                 width: 1.5,
               ),
             ),
@@ -597,9 +598,9 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             if (error != null) ...[
               const SizedBox(width: 8),
               Icon(TablerIcons.alert_circle,
-                  size: 12, color: const Color(0xFFC0392B)),
+                  size: 12, color: DcColors.red),
               const SizedBox(width: 4),
-              Text(error, style: _uText(11, const Color(0xFFC0392B))),
+              Text(error, style: _uText(11, DcColors.red)),
             ],
           ],
         ),
@@ -633,14 +634,14 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? const Color(0xFFC0392B) : _kBorderSoft,
+                color: error != null ? DcColors.red : _kBorderSoft,
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? const Color(0xFFC0392B) : _kBlue,
+                color: error != null ? DcColors.red : _kBlue,
                 width: 1.5,
               ),
             ),
@@ -664,9 +665,9 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             if (error != null) ...[
               const SizedBox(width: 8),
               Icon(TablerIcons.alert_circle,
-                  size: 12, color: const Color(0xFFC0392B)),
+                  size: 12, color: DcColors.red),
               const SizedBox(width: 4),
-              Text(error, style: _uText(11, const Color(0xFFC0392B))),
+              Text(error, style: _uText(11, DcColors.red)),
             ],
           ],
         ),
@@ -691,14 +692,14 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: error != null ? const Color(0xFFC0392B) : _kBorderSoft,
+                  color: error != null ? DcColors.red : _kBorderSoft,
                   width: 1,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: error != null ? const Color(0xFFC0392B) : _kBlue,
+                  color: error != null ? DcColors.red : _kBlue,
                   width: 1.5,
                 ),
               ),
@@ -847,10 +848,10 @@ class _S3PrefixPickerDialogState extends State<_S3PrefixPickerDialog> {
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: AppTheme.light(),
+      data: AppTheme.driveClue(),
       child: Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: DcColors.panel,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         child: SizedBox(
           width: 420,
           height: 440,
@@ -945,7 +946,7 @@ class _S3PrefixPickerDialogState extends State<_S3PrefixPickerDialog> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Text(_error!,
-                      style: _uText(12, const Color(0xFFC0392B)),
+                      style: _uText(12, DcColors.red),
                       textAlign: TextAlign.center),
                 ),
               // Folder list (fills the center)
@@ -983,7 +984,7 @@ class _S3PrefixPickerDialogState extends State<_S3PrefixPickerDialog> {
               Container(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                 decoration: const BoxDecoration(
-                  color: Color(0xFFF8FAFF),
+                  color: DcColors.rowAlternate,
                   border: Border(top: BorderSide(color: _kBorderSoft)),
                 ),
                 child: Row(
@@ -1002,7 +1003,7 @@ class _S3PrefixPickerDialogState extends State<_S3PrefixPickerDialog> {
                           hintText: 'New folder name',
                           hintStyle: _uText(12, _kIcon),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: DcColors.well,
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 10),
@@ -1024,7 +1025,7 @@ class _S3PrefixPickerDialogState extends State<_S3PrefixPickerDialog> {
                       child: FilledButton(
                         style: FilledButton.styleFrom(
                           backgroundColor:
-                              _canCreate ? _kBlue : const Color(0xFFCBD5E1),
+                              _canCreate ? _kBlue : DcColors.lineStrong,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 0),
                           shape: RoundedRectangleBorder(

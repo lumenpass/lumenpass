@@ -23,8 +23,8 @@ class _NewVersionBanner extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFB870),
-              borderRadius: BorderRadius.circular(14),
+              color: DcColors.orange,
+              borderRadius: BorderRadius.circular(7),
               boxShadow: const <BoxShadow>[
                 BoxShadow(
                   color: Color(0x33000000),
@@ -39,7 +39,7 @@ class _NewVersionBanner extends StatelessWidget {
                 const Icon(
                   TablerIcons.rocket,
                   size: 18,
-                  color: Color(0xFF0F172A),
+                  color: DcColors.text,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -48,7 +48,7 @@ class _NewVersionBanner extends StatelessWidget {
                     text: TextSpan(
                       style: _text(
                         11,
-                        const Color(0xFF0F172A),
+                        DcColors.text,
                         fontWeight: FontWeight.w400,
                       ).copyWith(decoration: TextDecoration.none),
                       children: <InlineSpan>[
@@ -100,22 +100,22 @@ class _NewVersionBannerCta extends StatelessWidget {
       icon: const Icon(
         TablerIcons.download,
         size: 14,
-        color: Color(0xFF0F172A),
+        color: DcColors.text,
       ),
       label: Text(
         'Download new version',
         style: _text(
           11,
-          const Color(0xFF0F172A),
+          DcColors.text,
           fontWeight: FontWeight.w700,
         ),
       ),
       style: TextButton.styleFrom(
-        foregroundColor: const Color(0xFF0F172A),
+        foregroundColor: DcColors.text,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        backgroundColor: const Color(0xFF0F172A).withValues(alpha: 0.08),
+        backgroundColor: DcColors.well.withValues(alpha: 0.08),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(6),
         ),
       ),
     );
@@ -138,7 +138,7 @@ class _NewVersionBannerDismiss extends StatelessWidget {
       constraints: const BoxConstraints(),
       icon: const Icon(
         TablerIcons.x,
-        color: Color(0xFF0F172A),
+        color: DcColors.text,
       ),
     );
   }
@@ -160,11 +160,11 @@ class _InAppToast extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 280),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: danger ? const Color(0xFFDC2626) : const Color(0xFF1F2937),
-        borderRadius: BorderRadius.circular(12),
+        color: danger ? DcColors.red : DcColors.well,
+        borderRadius: BorderRadius.circular(6),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: danger ? const Color(0x33DC2626) : const Color(0x1F0F172A),
+            color: danger ? DcColors.shadow : DcColors.shadow,
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -212,7 +212,7 @@ class _RemoveAttributeConfirmationOverlay extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
-            color: const Color(0x99F8FAFC),
+            color: const Color(0x80E3EBF2),
             alignment: Alignment.center,
             child: GestureDetector(
               onTap: () {},
@@ -220,12 +220,12 @@ class _RemoveAttributeConfirmationOverlay extends StatelessWidget {
                 width: 400,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFE5EAF2)),
+                  color: DcColors.lightSurface,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: DcColors.sidebarLine),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x140F172A),
+                      color: Color(0x29263340),
                       blurRadius: 30,
                       offset: Offset(0, 14),
                     ),
@@ -239,7 +239,7 @@ class _RemoveAttributeConfirmationOverlay extends StatelessWidget {
                       'Remove this attribute?',
                       style: _text(
                         18,
-                        const Color(0xFF202939),
+                        DcColors.sidebarText,
                         fontWeight: FontWeight.w700,
                         height: 1.25,
                       ),
@@ -249,7 +249,7 @@ class _RemoveAttributeConfirmationOverlay extends StatelessWidget {
                       'Are you sure you want to remove this attribute? This action cannot be undone.',
                       style: _text(
                         14,
-                        const Color(0xFF4B5565),
+                        DcColors.sidebarText,
                         fontWeight: FontWeight.w500,
                         height: 1.4,
                       ),
@@ -264,7 +264,7 @@ class _RemoveAttributeConfirmationOverlay extends StatelessWidget {
                           foregroundColor: Colors.white,
                           minimumSize: const Size.fromHeight(44),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                         ),
                         child: Text(
@@ -284,16 +284,16 @@ class _RemoveAttributeConfirmationOverlay extends StatelessWidget {
                         onPressed: onCancel,
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(44),
-                          side: const BorderSide(color: Color(0xFFD6DCE6)),
+                          side: const BorderSide(color: DcColors.sidebarLine),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                         ),
                         child: Text(
                           'Cancel',
                           style: _text(
                             14,
-                            const Color(0xFF3E4A5E),
+                            DcColors.sidebarText,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -334,7 +334,7 @@ class VaultDeleteConfirmationOverlay extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
-            color: const Color(0x99F8FAFC),
+            color: DcColors.scrim,
             alignment: Alignment.center,
             child: GestureDetector(
               onTap: () {},
@@ -342,12 +342,12 @@ class VaultDeleteConfirmationOverlay extends StatelessWidget {
                 width: 440,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFE5EAF2)),
+                  color: DcColors.panel,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: DcColors.line),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x140F172A),
+                      color: DcColors.shadow,
                       blurRadius: 30,
                       offset: Offset(0, 14),
                     ),
@@ -363,7 +363,7 @@ class VaultDeleteConfirmationOverlay extends StatelessWidget {
                           : 'Are you sure you want to delete\n"$entryTitle"?',
                       style: _text(
                         18,
-                        const Color(0xFF202939),
+                        DcColors.text,
                         fontWeight: FontWeight.w700,
                         height: 1.25,
                       ),
@@ -375,7 +375,7 @@ class VaultDeleteConfirmationOverlay extends StatelessWidget {
                           : 'Once deleted, you can restore this item from Trash later. This confirmation is shown to prevent accidental removal.',
                       style: _text(
                         14,
-                        const Color(0xFF4B5565),
+                        DcColors.text,
                         fontWeight: FontWeight.w500,
                         height: 1.4,
                       ),
@@ -390,7 +390,7 @@ class VaultDeleteConfirmationOverlay extends StatelessWidget {
                           foregroundColor: Colors.white,
                           minimumSize: const Size.fromHeight(44),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                         ),
                         child: Text(
@@ -414,16 +414,16 @@ class VaultDeleteConfirmationOverlay extends StatelessWidget {
                         onPressed: isDeleting ? null : onCancel,
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(44),
-                          side: const BorderSide(color: Color(0xFFD6DCE6)),
+                          side: const BorderSide(color: DcColors.line),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                         ),
                         child: Text(
                           'Cancel',
                           style: _text(
                             14,
-                            const Color(0xFF3E4A5E),
+                            DcColors.text,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -459,7 +459,7 @@ class _DeleteCategoryConfirmationOverlay extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
-            color: const Color(0x99F8FAFC),
+            color: DcColors.scrim,
             alignment: Alignment.center,
             child: GestureDetector(
               onTap: () {},
@@ -467,12 +467,12 @@ class _DeleteCategoryConfirmationOverlay extends StatelessWidget {
                 width: 440,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFE5EAF2)),
+                  color: DcColors.panel,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: DcColors.line),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x140F172A),
+                      color: DcColors.shadow,
                       blurRadius: 30,
                       offset: Offset(0, 14),
                     ),
@@ -486,7 +486,7 @@ class _DeleteCategoryConfirmationOverlay extends StatelessWidget {
                       'Delete "$categoryName"?',
                       style: _text(
                         18,
-                        const Color(0xFF202939),
+                        DcColors.text,
                         fontWeight: FontWeight.w700,
                         height: 1.25,
                       ),
@@ -496,7 +496,7 @@ class _DeleteCategoryConfirmationOverlay extends StatelessWidget {
                       'The category will be removed. Items inside it will be moved to the recycle bin along with the category. This action cannot be undone from here.',
                       style: _text(
                         14,
-                        const Color(0xFF4B5565),
+                        DcColors.text,
                         fontWeight: FontWeight.w500,
                         height: 1.4,
                       ),
@@ -511,7 +511,7 @@ class _DeleteCategoryConfirmationOverlay extends StatelessWidget {
                           foregroundColor: Colors.white,
                           minimumSize: const Size.fromHeight(44),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                         ),
                         child: Text(
@@ -531,16 +531,16 @@ class _DeleteCategoryConfirmationOverlay extends StatelessWidget {
                         onPressed: onCancel,
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(44),
-                          side: const BorderSide(color: Color(0xFFD6DCE6)),
+                          side: const BorderSide(color: DcColors.line),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                         ),
                         child: Text(
                           'Cancel',
                           style: _text(
                             14,
-                            const Color(0xFF3E4A5E),
+                            DcColors.text,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -576,7 +576,7 @@ class _RemovePasskeyConfirmationOverlay extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
-            color: const Color(0x99F8FAFC),
+            color: DcColors.scrim,
             alignment: Alignment.center,
             child: GestureDetector(
               onTap: () {},
@@ -584,12 +584,12 @@ class _RemovePasskeyConfirmationOverlay extends StatelessWidget {
                 width: 420,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFE5EAF2)),
+                  color: DcColors.panel,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: DcColors.line),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x140F172A),
+                      color: DcColors.shadow,
                       blurRadius: 30,
                       offset: Offset(0, 14),
                     ),
@@ -603,7 +603,7 @@ class _RemovePasskeyConfirmationOverlay extends StatelessWidget {
                       'Remove passkey from\n"$entryTitle"?',
                       style: _text(
                         18,
-                        const Color(0xFF202939),
+                        DcColors.text,
                         fontWeight: FontWeight.w700,
                         height: 1.25,
                       ),
@@ -613,7 +613,7 @@ class _RemovePasskeyConfirmationOverlay extends StatelessWidget {
                       'This will remove the saved passkey data for this item. You can add a new passkey again later if needed.',
                       style: _text(
                         14,
-                        const Color(0xFF4B5565),
+                        DcColors.text,
                         fontWeight: FontWeight.w500,
                         height: 1.4,
                       ),
@@ -628,7 +628,7 @@ class _RemovePasskeyConfirmationOverlay extends StatelessWidget {
                           foregroundColor: Colors.white,
                           minimumSize: const Size.fromHeight(44),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                         ),
                         child: Text(
@@ -648,16 +648,16 @@ class _RemovePasskeyConfirmationOverlay extends StatelessWidget {
                         onPressed: onCancel,
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(44),
-                          side: const BorderSide(color: Color(0xFFD6DCE6)),
+                          side: const BorderSide(color: DcColors.line),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                         ),
                         child: Text(
                           'Cancel',
                           style: _text(
                             14,
-                            const Color(0xFF3E4A5E),
+                            DcColors.text,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -691,11 +691,11 @@ class _CloudSyncBlockingDialog extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 340),
           padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            color: DcColors.panel,
+            borderRadius: BorderRadius.circular(7),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: Color(0x140F172A),
+                color: DcColors.shadow,
                 blurRadius: 36,
                 offset: Offset(0, 12),
               ),
@@ -708,7 +708,7 @@ class _CloudSyncBlockingDialog extends StatelessWidget {
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.4,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                  valueColor: AlwaysStoppedAnimation<Color>(DcColors.selection),
                 ),
               ),
               const SizedBox(width: 14),
@@ -721,7 +721,7 @@ class _CloudSyncBlockingDialog extends StatelessWidget {
                       'Syncing to cloud…',
                       style: _text(
                         15,
-                        const Color(0xFF111827),
+                        DcColors.text,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -730,7 +730,7 @@ class _CloudSyncBlockingDialog extends StatelessWidget {
                       'Finishing upload before locking the vault.',
                       style: _text(
                         12,
-                        const Color(0xFF6B7280),
+                        DcColors.muted,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

@@ -1,5 +1,10 @@
 part of 'vault_screen.dart';
 
+/// Kept in sync with the tagline on the desktop splash screen.
+const String _kAppTagline = 'Private by default. Yours to control.';
+
+/// DriveClue-style 46 px header: app name and tagline on the left (the vault
+/// name already lives in the sidebar), icon-only actions on the right.
 class _VaultTitleBar extends StatelessWidget {
   const _VaultTitleBar({
     required this.onImportPressed,
@@ -12,54 +17,52 @@ class _VaultTitleBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: DcMetrics.headerHeight,
       decoration: const BoxDecoration(
-        color: _VaultColors.surfaceMuted,
+        color: DcColors.background,
         border: Border(
-          bottom: BorderSide(color: _VaultColors.borderSoft),
+          bottom: BorderSide(color: DcColors.line),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(14, 9, 16, 9),
+      padding: const EdgeInsets.only(left: 18, right: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
+          // Two-tone brand wordmark, same colors as the dark splash screen.
+          LumenPassWordmark(
+            fontSize: (15 + currentTextSizeDelta).toDouble(),
+            lumenColor: DcColors.text,
+            passColor: DcColors.cyan,
+          ),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const LumenPassWordmark(
-                  fontSize: 16,
-                  suffix: ' - Private KeePass Password Manager',
-                  suffixColor: _VaultColors.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Local vault session',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _text(
-                    10,
-                    _VaultColors.headerLabel,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            child: Text(
+              _kAppTagline,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _text(12, DcColors.muted),
             ),
           ),
-          const SizedBox(width: 16),
-          _PasswordGeneratorIconButton(
+          const SizedBox(width: 12),
+          DcBorderedButton(
+            icon: TablerIcons.wand,
+            tooltip: 'Generate password',
+            height: 28,
             onPressed: () => _showPasswordGeneratorDialog(context),
           ),
-          const SizedBox(width: 7),
-          _ImportButton(onPressed: onImportPressed),
-          const SizedBox(width: 7),
-          _VaultToolbarIconButton(
+          const SizedBox(width: 6),
+          DcBorderedButton(
+            icon: TablerIcons.download,
+            tooltip: 'Import items',
+            height: 28,
+            onPressed: onImportPressed,
+          ),
+          const SizedBox(width: 6),
+          DcBorderedButton(
             icon: TablerIcons.settings,
             tooltip: 'Settings',
+            height: 28,
             onPressed: onSettingsPressed,
-            accentColor: const Color(0xFF168B76),
           ),
         ],
       ),
@@ -265,35 +268,22 @@ class _VaultFloatingActionsState extends ConsumerState<_VaultFloatingActions> {
                       height: 38,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
-                        color: _VaultColors.surface,
-                        borderRadius: BorderRadius.circular(999),
+                        color: DcColors.lightSurface,
+                        borderRadius:
+                            BorderRadius.circular(DcMetrics.panelRadius),
                         border: Border.all(
                           color: _searchIsOpen
                               ? _kPrimaryButtonColor
-                              : _VaultColors.borderSoft,
+                              : DcColors.lightLineStrong,
                           width: _searchIsOpen ? 1.25 : 1,
                         ),
-                        boxShadow: _searchIsOpen
-                            ? const <BoxShadow>[
-                                BoxShadow(
-                                  color: Color(0x125B4638),
-                                  blurRadius: 9,
-                                  offset: Offset(0, 3),
-                                ),
-                                BoxShadow(
-                                  color: Color(0x0D000000),
-                                  blurRadius: 2,
-                                  offset: Offset(0, 1),
-                                  blurStyle: BlurStyle.inner,
-                                ),
-                              ]
-                            : const <BoxShadow>[
-                                BoxShadow(
-                                  color: Color(0x0D5B4638),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
+                        boxShadow: const <BoxShadow>[
+                          BoxShadow(
+                            color: Color(0x1F263340),
+                            blurRadius: 10,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
                       ),
                       child: _searchIsOpen
                           ? Stack(
@@ -327,7 +317,7 @@ class _VaultFloatingActionsState extends ConsumerState<_VaultFloatingActions> {
                                           hintText: 'Search credentials',
                                           hintStyle: _text(
                                             12,
-                                            _VaultColors.headerLabel,
+                                            DcColors.sidebarMuted,
                                             fontWeight: FontWeight.w500,
                                           ),
                                           isCollapsed: true,
@@ -344,7 +334,7 @@ class _VaultFloatingActionsState extends ConsumerState<_VaultFloatingActions> {
                                         ),
                                         style: _text(
                                           12,
-                                          _VaultColors.title,
+                                          DcColors.sidebarText,
                                           fontWeight: FontWeight.w500,
                                         ),
                                         cursorColor: _kPrimaryButtonColor,
@@ -390,7 +380,7 @@ class _VaultFloatingActionsState extends ConsumerState<_VaultFloatingActions> {
                                           child: Icon(
                                             TablerIcons.x,
                                             size: 14,
-                                            color: _VaultColors.icon,
+                                            color: DcColors.sidebarMuted,
                                           ),
                                         ),
                                       ),
@@ -403,14 +393,15 @@ class _VaultFloatingActionsState extends ConsumerState<_VaultFloatingActions> {
                               message: 'Search credentials (⌘F)',
                               child: InkWell(
                                 onTap: _openSearch,
-                                borderRadius: BorderRadius.circular(999),
+                                borderRadius: BorderRadius.circular(
+                                    DcMetrics.panelRadius),
                                 child: Center(
                                   child: Icon(
                                     TablerIcons.search,
                                     size: 17,
                                     color: searchIsActive
                                         ? _kPrimaryButtonColor
-                                        : _VaultColors.title,
+                                        : DcColors.sidebarText,
                                   ),
                                 ),
                               ),
@@ -451,27 +442,27 @@ class _VaultStorageIcon extends StatelessWidget {
     switch (storageType) {
       case 'googleDrive':
         asset = 'assets/images/google-drive.png';
-        bg = const Color(0xFFF0F4FF);
+        bg = DcColors.rowAlternate;
         break;
       case 'dropbox':
         asset = 'assets/images/dropbox.png';
-        bg = const Color(0xFFEFF6FF);
+        bg = DcColors.rowAlternate;
         break;
       case 'oneDrive':
         asset = 'assets/images/onedrive.png';
-        bg = const Color(0xFFE8F4FD);
+        bg = DcColors.rowAlternate;
         break;
       case 'webdav':
         asset = 'assets/images/webdav.png';
-        bg = const Color(0xFFEFF3F8);
+        bg = DcColors.rowAlternate;
         break;
       case 'sftp':
         asset = 'assets/images/sftp.png';
-        bg = const Color(0xFFEFF3F8);
+        bg = DcColors.rowAlternate;
         break;
       default:
         asset = 'assets/images/dir.png';
-        bg = const Color(0xFFF3F4F6);
+        bg = DcColors.rowAlternate;
         break;
     }
 
@@ -513,12 +504,12 @@ class _SearchSuggestionDropdown extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: _VaultColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _VaultColors.borderSoft),
+        color: DcColors.lightSurface,
+        borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+        border: Border.all(color: DcColors.sidebarLine),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x1F000000),
+            color: Color(0x29263340),
             blurRadius: 22,
             offset: Offset(0, 10),
           ),
@@ -543,7 +534,7 @@ class _SearchSuggestionDropdown extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: _text(
                       11,
-                      _VaultColors.headerLabel,
+                      DcColors.sidebarMuted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -552,14 +543,14 @@ class _SearchSuggestionDropdown extends StatelessWidget {
                   'Enter to search all',
                   style: _text(
                     10,
-                    _VaultColors.headerLabel,
+                    DcColors.sidebarMuted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1, color: _VaultColors.borderSoft),
+          const Divider(height: 1, color: DcColors.sidebarLine),
           if (visibleSuggestions.isNotEmpty)
             ListView.separated(
               shrinkWrap: true,
@@ -568,7 +559,7 @@ class _SearchSuggestionDropdown extends StatelessWidget {
               itemCount: visibleSuggestions.length,
               separatorBuilder: (context, index) => const Divider(
                 height: 1,
-                color: _VaultColors.borderSoft,
+                color: DcColors.sidebarLine,
               ),
               itemBuilder: (context, index) {
                 final entry = visibleSuggestions[index];
@@ -580,11 +571,11 @@ class _SearchSuggestionDropdown extends StatelessWidget {
               },
             ),
           if (visibleSuggestions.isNotEmpty)
-            const Divider(height: 1, color: _VaultColors.borderSoft),
+            const Divider(height: 1, color: DcColors.sidebarLine),
           InkWell(
             onTap: onSearchAll,
             borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(14),
+              bottom: Radius.circular(DcMetrics.panelRadius),
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -593,7 +584,7 @@ class _SearchSuggestionDropdown extends StatelessWidget {
                   const Icon(
                     TablerIcons.search,
                     size: 16,
-                    color: Color(0xFF7C869B),
+                    color: DcColors.sidebarMuted,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -601,7 +592,7 @@ class _SearchSuggestionDropdown extends StatelessWidget {
                       text: TextSpan(
                         style: _text(
                           12,
-                          const Color(0xFF65748B),
+                          DcColors.sidebarMuted,
                           fontWeight: FontWeight.w500,
                         ),
                         children: <InlineSpan>[
@@ -609,7 +600,7 @@ class _SearchSuggestionDropdown extends StatelessWidget {
                             text: 'Search for all matches ',
                             style: _text(
                               12,
-                              const Color(0xFF65748B),
+                              DcColors.sidebarMuted,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -617,7 +608,7 @@ class _SearchSuggestionDropdown extends StatelessWidget {
                             text: '"$query"',
                             style: _text(
                               12,
-                              const Color(0xFF2D3A4F),
+                              DcColors.sidebarText,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -662,7 +653,7 @@ class _SearchSuggestionRowState extends State<_SearchSuggestionRow> {
         onTap: widget.onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          color: _hovered ? _VaultColors.peachSoft : Colors.transparent,
+          color: _hovered ? DcColors.sidebarHover : Colors.transparent,
           child: Row(
             children: <Widget>[
               _FaviconTile(entry: widget.entry, size: 22),
@@ -678,7 +669,7 @@ class _SearchSuggestionRowState extends State<_SearchSuggestionRow> {
                       overflow: TextOverflow.ellipsis,
                       style: _text(
                         12,
-                        _VaultColors.title,
+                        DcColors.sidebarText,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -691,7 +682,7 @@ class _SearchSuggestionRowState extends State<_SearchSuggestionRow> {
                         overflow: TextOverflow.ellipsis,
                         style: _text(
                           11,
-                          _VaultColors.headerLabel,
+                          DcColors.sidebarMuted,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -747,7 +738,7 @@ class _SearchSuggestionRowState extends State<_SearchSuggestionRow> {
               const Icon(
                 TablerIcons.arrow_up_left,
                 size: 16,
-                color: Color(0xFF9AA5B8),
+                color: DcColors.sidebarMuted,
               ),
             ],
           ),
@@ -764,14 +755,12 @@ class _VaultToolbarIconButton extends StatefulWidget {
     required this.tooltip,
     required this.onPressed,
     this.primary = false,
-    this.accentColor,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback onPressed;
   final bool primary;
-  final Color? accentColor;
 
   @override
   State<_VaultToolbarIconButton> createState() =>
@@ -783,16 +772,12 @@ class _VaultToolbarIconButtonState extends State<_VaultToolbarIconButton> {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = widget.accentColor;
     final fill = widget.primary
         ? (_hovered ? _kPrimaryButtonHoverColor : _kPrimaryButtonColor)
-        : accentColor != null
-            ? accentColor.withValues(alpha: _hovered ? 0.16 : 0.09)
-            : _hovered
-                ? _VaultColors.surfaceMuted
-                : _VaultColors.surface;
-    final iconColor =
-        widget.primary ? Colors.white : (accentColor ?? _VaultColors.title);
+        : _hovered
+            ? DcColors.lightInset
+            : DcColors.lightSurface;
+    final iconColor = widget.primary ? Colors.white : DcColors.sidebarText;
 
     return _AppTooltip(
       message: widget.tooltip,
@@ -807,30 +792,26 @@ class _VaultToolbarIconButtonState extends State<_VaultToolbarIconButton> {
             color: Colors.transparent,
             child: InkWell(
               onTap: widget.onPressed,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 140),
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
                   color: fill,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
                   border: Border.all(
                     color: widget.primary
                         ? _kPrimaryButtonHoverColor
-                        : accentColor?.withValues(alpha: 0.22) ??
-                            _VaultColors.borderPane,
-                    width: 1.1,
+                        : DcColors.lightLineStrong,
                   ),
-                  boxShadow: widget.primary
-                      ? const <BoxShadow>[
-                          BoxShadow(
-                            color: Color(0x295B4638),
-                            blurRadius: 5,
-                            offset: Offset(2, 3),
-                          ),
-                        ]
-                      : null,
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x1F263340),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
                 ),
                 alignment: Alignment.center,
                 child: Icon(widget.icon, size: 17, color: iconColor),
@@ -839,21 +820,6 @@ class _VaultToolbarIconButtonState extends State<_VaultToolbarIconButton> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ImportButton extends StatelessWidget {
-  const _ImportButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return _VaultToolbarIconButton(
-      icon: TablerIcons.download,
-      tooltip: 'Import items',
-      onPressed: onPressed,
     );
   }
 }
