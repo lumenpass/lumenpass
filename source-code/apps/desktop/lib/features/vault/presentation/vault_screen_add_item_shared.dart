@@ -708,6 +708,7 @@ class _NewItemTypeRowState extends State<_NewItemTypeRow> {
                 color: widget.option.iconColor,
                 size: 30,
                 iconSize: 17,
+                imagePath: widget.option.imagePath,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -739,6 +740,7 @@ class _AddItemTypeIcon extends StatelessWidget {
     required this.color,
     this.size = 58,
     this.iconSize = 27,
+    this.imagePath,
   });
 
   final IconData icon;
@@ -746,69 +748,51 @@ class _AddItemTypeIcon extends StatelessWidget {
   final double size;
   final double iconSize;
 
+  /// Branded artwork used by the vault list and detail pane for this item
+  /// type. Rendered instead of the tinted icon so the modal matches what the
+  /// user sees elsewhere; the tinted icon stays as the fallback when the
+  /// asset is missing.
+  final String? imagePath;
+
   @override
   Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(size <= 20 ? 4 : size * 0.18);
+    if (imagePath != null) {
+      // Soft accent wash behind the colorful artwork, matching the item rows
+      // and the detail-pane header badge.
+      final inset = size * 0.16;
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: radius,
+        ),
+        alignment: Alignment.center,
+        child: Image.asset(
+          imagePath!,
+          width: size - inset * 2,
+          height: size - inset * 2,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          errorBuilder: (_, __, ___) => Icon(icon, size: iconSize, color: color),
+        ),
+      );
+    }
+    return _buildTintedIcon();
+  }
+
+  Widget _buildTintedIcon() {
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(size <= 20 ? 4 : size * 0.18),
         border: Border.all(color: color.withValues(alpha: 0.24)),
       ),
       alignment: Alignment.center,
       child: Icon(icon, size: iconSize, color: color),
-    );
-  }
-}
-
-class _ModalIconAction extends StatefulWidget {
-  const _ModalIconAction({
-    required this.icon,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  State<_ModalIconAction> createState() => _ModalIconActionState();
-}
-
-class _ModalIconActionState extends State<_ModalIconAction> {
-  bool _hovered = false;
-  final FocusNode _focusNode = FocusNode(skipTraversal: true);
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: InkWell(
-        onTap: widget.onTap,
-        focusNode: _focusNode,
-        borderRadius: BorderRadius.circular(999),
-        child: Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: _hovered ? _VaultColors.peachSoft : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          alignment: Alignment.center,
-          child: Icon(
-            widget.icon,
-            size: 18,
-            color: _VaultColors.headerLabel,
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1835,33 +1819,46 @@ class _CustomAttributeList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ReorderableListView.builder(
-      shrinkWrap: true,
-      primary: false,
-      padding: EdgeInsets.zero,
-      physics: const NeverScrollableScrollPhysics(),
-      buildDefaultDragHandles: false,
-      proxyDecorator: (child, index, animation) {
-        return Material(
-          color: Colors.transparent,
-          child: child,
-        );
-      },
-      itemCount: attributes.length,
-      onReorder: onReorder,
-      itemBuilder: (context, index) {
-        return Padding(
-          key: ObjectKey(attributes[index]),
-          padding: EdgeInsets.only(
-            bottom: index == attributes.length - 1 ? 0 : 10,
+    return Container(
+      key: const Key('custom-attribute-group'),
+      width: double.infinity,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: _ItemModalColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _ItemModalColors.borderSoft),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: _DetailPalette.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
-          child: _CustomAttributeCard(
+        ],
+      ),
+      child: ReorderableListView.builder(
+        shrinkWrap: true,
+        primary: false,
+        padding: EdgeInsets.zero,
+        physics: const NeverScrollableScrollPhysics(),
+        buildDefaultDragHandles: false,
+        proxyDecorator: (child, index, animation) {
+          return Material(
+            color: Colors.transparent,
+            child: child,
+          );
+        },
+        itemCount: attributes.length,
+        onReorder: onReorder,
+        itemBuilder: (context, index) {
+          return _CustomAttributeCard(
+            key: ObjectKey(attributes[index]),
             attribute: attributes[index],
             dragIndex: index,
+            showDivider: index != attributes.length - 1,
             onRemove: () => onRemove(index),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
@@ -1871,11 +1868,14 @@ class _CustomAttributeCard extends StatefulWidget {
     required this.attribute,
     required this.dragIndex,
     required this.onRemove,
+    this.showDivider = false,
+    super.key,
   });
 
   final _LoginCustomAttribute attribute;
   final int dragIndex;
   final VoidCallback onRemove;
+  final bool showDivider;
 
   @override
   State<_CustomAttributeCard> createState() => _CustomAttributeCardState();
@@ -1883,6 +1883,7 @@ class _CustomAttributeCard extends StatefulWidget {
 
 class _CustomAttributeCardState extends State<_CustomAttributeCard> {
   bool _isSecretVisible = false;
+  bool _rowFocused = false;
 
   bool get _isSecretField {
     final label = widget.attribute.labelController.text.trim().toLowerCase();
@@ -1893,11 +1894,15 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
   void initState() {
     super.initState();
     widget.attribute.labelController.addListener(_handleLabelChanged);
+    widget.attribute.labelFocusNode.addListener(_handleFieldFocusChanged);
+    widget.attribute.valueFocusNode.addListener(_handleFieldFocusChanged);
   }
 
   @override
   void dispose() {
     widget.attribute.labelController.removeListener(_handleLabelChanged);
+    widget.attribute.labelFocusNode.removeListener(_handleFieldFocusChanged);
+    widget.attribute.valueFocusNode.removeListener(_handleFieldFocusChanged);
     super.dispose();
   }
 
@@ -1914,49 +1919,60 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
     setState(() {});
   }
 
+  void _handleFieldFocusChanged() {
+    if (!mounted) {
+      return;
+    }
+    final hasFocus = widget.attribute.valueFocusNode.hasFocus ||
+        widget.attribute.labelFocusNode.hasFocus;
+    if (hasFocus != _rowFocused) {
+      setState(() => _rowFocused = hasFocus);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isSecretField = _isSecretField;
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: _ItemModalColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _ItemModalColors.borderSoft),
+        color: _rowFocused ? DcColors.selectionSoft : Colors.transparent,
+        border: Border(
+          bottom: widget.showDivider
+              ? const BorderSide(color: _ItemModalColors.borderSoft)
+              : BorderSide.none,
+        ),
       ),
+      padding: const EdgeInsets.fromLTRB(16, 11, 12, 11),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: ReorderableDragStartListener(
-              index: widget.dragIndex,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.grab,
-                child: Tooltip(
-                  message: 'Drag to reorder',
-                  child: const Icon(
-                    TablerIcons.menu_2,
-                    size: 24,
-                    color: _ItemModalColors.title,
-                  ),
+          ReorderableDragStartListener(
+            index: widget.dragIndex,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.grab,
+              child: Tooltip(
+                message: 'Drag to reorder',
+                child: Icon(
+                  TablerIcons.menu_2,
+                  size: 16,
+                  color: _ItemModalColors.icon,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 TextField(
                   controller: widget.attribute.labelController,
+                  focusNode: widget.attribute.labelFocusNode,
                   maxLines: 1,
                   style: _text(
-                    12,
-                    _ItemModalColors.title,
+                    11,
+                    _ItemModalColors.headerLabel,
                     fontWeight: FontWeight.w500,
                   ),
                   decoration: const InputDecoration(
@@ -1972,24 +1988,26 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 3),
                 TextField(
                   controller: widget.attribute.valueController,
+                  focusNode: widget.attribute.valueFocusNode,
                   maxLines: 1,
                   obscureText: isSecretField && !_isSecretVisible,
+                  obscuringCharacter: '•',
                   autocorrect: !isSecretField,
                   enableSuggestions: !isSecretField,
                   style: _text(
-                    10,
-                    _ItemModalColors.headerLabel,
-                    fontWeight: FontWeight.w400,
+                    12,
+                    _ItemModalColors.title,
+                    fontWeight: FontWeight.w500,
                   ),
                   decoration: InputDecoration(
                     hintText: 'Enter value',
                     hintStyle: _text(
-                      10,
+                      12,
                       _ItemModalColors.icon,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w500,
                     ),
                     filled: false,
                     fillColor: Colors.transparent,
@@ -2007,33 +2025,30 @@ class _CustomAttributeCardState extends State<_CustomAttributeCard> {
             ),
           ),
           const SizedBox(width: 12),
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                if (isSecretField) ...<Widget>[
-                  InkWell(
-                    onTap: () => setState(() {
-                      _isSecretVisible = !_isSecretVisible;
-                    }),
-                    borderRadius: BorderRadius.circular(999),
-                    child: Padding(
-                      padding: const EdgeInsets.all(2),
-                      child: Icon(
-                        _isSecretVisible
-                            ? TablerIcons.eye_off
-                            : TablerIcons.eye,
-                        size: 16,
-                        color: _ItemModalColors.icon,
-                      ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (isSecretField) ...<Widget>[
+                InkWell(
+                  onTap: () => setState(() {
+                    _isSecretVisible = !_isSecretVisible;
+                  }),
+                  borderRadius: BorderRadius.circular(999),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Icon(
+                      _isSecretVisible
+                          ? TablerIcons.eye_off
+                          : TablerIcons.eye,
+                      size: 16,
+                      color: _ItemModalColors.icon,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                ],
-                _WebsiteRemoveButton(onTap: widget.onRemove),
+                ),
+                const SizedBox(width: 6),
               ],
-            ),
+              _WebsiteRemoveButton(onTap: widget.onRemove),
+            ],
           ),
         ],
       ),
@@ -2393,14 +2408,16 @@ class _LoginAttachmentThumb extends StatelessWidget {
 
 class _LoginFooterButton extends StatefulWidget {
   const _LoginFooterButton({
-    required this.label,
+    required this.icon,
+    required this.tooltip,
     required this.backgroundColor,
     required this.textColor,
     required this.onTap,
     this.borderColor,
   });
 
-  final String label;
+  final IconData icon;
+  final String tooltip;
   final Color backgroundColor;
   final Color textColor;
   final Color? borderColor;
@@ -2428,42 +2445,43 @@ class _LoginFooterButtonState extends State<_LoginFooterButton> {
         scale: _hovered && isEnabled ? 1.02 : 1,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(6),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: isEnabled
-                  ? widget.backgroundColor
-                  : widget.backgroundColor.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(6),
-              border: widget.borderColor != null
-                  ? Border.all(color: widget.borderColor!)
-                  : null,
-              boxShadow:
-                  widget.backgroundColor == _kPrimaryButtonColor && isEnabled
-                      ? <BoxShadow>[
-                          BoxShadow(
-                            color: _hovered
-                                ? _kPrimaryButtonColor.withValues(alpha: 0.24)
-                                : _kPrimaryButtonColor.withValues(alpha: 0.14),
-                            blurRadius: _hovered ? 12 : 6,
-                            offset: Offset(0, _hovered ? 4 : 2),
-                          ),
-                        ]
-                      : null,
-            ),
-            child: Text(
-              widget.label,
-              style: _text(
-                12,
-                isEnabled
+        child: Tooltip(
+          message: widget.tooltip,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(6),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              curve: Curves.easeOut,
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: isEnabled
+                    ? widget.backgroundColor
+                    : widget.backgroundColor.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(6),
+                border: widget.borderColor != null
+                    ? Border.all(color: widget.borderColor!)
+                    : null,
+                boxShadow:
+                    widget.backgroundColor == _kPrimaryButtonColor && isEnabled
+                        ? <BoxShadow>[
+                            BoxShadow(
+                              color: _hovered
+                                  ? _kPrimaryButtonColor.withValues(alpha: 0.24)
+                                  : _kPrimaryButtonColor.withValues(alpha: 0.14),
+                              blurRadius: _hovered ? 12 : 6,
+                              offset: Offset(0, _hovered ? 4 : 2),
+                            ),
+                          ]
+                        : null,
+              ),
+              child: Icon(
+                widget.icon,
+                size: 14,
+                color: isEnabled
                     ? widget.textColor
                     : widget.textColor.withValues(alpha: 0.75),
-                fontWeight: FontWeight.w600,
               ),
             ),
           ),

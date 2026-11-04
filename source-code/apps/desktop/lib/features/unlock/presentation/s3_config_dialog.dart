@@ -2,31 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:flutter_aws_s3_client/flutter_aws_s3_client.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
+import '../../../core/services/appearance_preferences.dart';
 import '../../../core/services/backup_service.dart';
 import '../../../core/services/s3_regions.dart';
 import '../../../core/services/s3_service.dart';
 import '../../../presentation/theme/app_theme.dart';
 import '../../../presentation/theme/drive_clue_tokens.dart';
+import '../../../presentation/widgets/drive_clue/dc_flow_page.dart';
 
-const Color _kCanvas = DcColors.panel;
-const Color _kBorderSoft = DcColors.line;
-const Color _kTitle = DcColors.text;
-const Color _kLabel = DcColors.muted;
-const Color _kIcon = DcColors.faint;
+// ── Light palette (sidebar-toned, matches the Cloud Services page) ─────────
+const Color _kSurface = DcColors.lightSurface;
+const Color _kSurfaceMuted = DcColors.lightInset;
+const Color _kBorderSoft = DcColors.sidebarLine;
+const Color _kBorderRow = DcColors.lightLineStrong;
+const Color _kTitle = DcColors.sidebarText;
+const Color _kLabel = DcColors.sidebarMuted;
+const Color _kIcon = DcColors.sidebarMuted;
 const Color _kBlue = DcColors.selection;
+const Color _kDanger = DcColors.redOnLight;
+const Color _kSuccess = DcColors.tealOnLight;
 
 TextStyle _uText(
   double size,
   Color color, {
   FontWeight fontWeight = FontWeight.w400,
   double? letterSpacing,
+  double? height,
 }) {
   return TextStyle(
     fontSize: size,
     color: color,
     fontWeight: fontWeight,
-    fontFamily: 'Ubuntu Sans',
+    fontFamily: currentFontFamily,
     letterSpacing: letterSpacing,
+    height: height,
+  );
+}
+
+/// Page-heading style used by the inner pages: tight tracking, heavy weight.
+TextStyle _uHeading(double size, Color color, {double? height}) {
+  return TextStyle(
+    fontSize: size,
+    color: color,
+    fontWeight: FontWeight.w700,
+    fontFamily: currentFontFamily,
+    letterSpacing: -0.3,
+    height: height,
   );
 }
 
@@ -251,53 +272,26 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final bool editing = widget.initialConfig != null;
     return Theme(
       data: AppTheme.driveClue(),
-      child: AlertDialog(
-        backgroundColor: DcColors.panel,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-        titlePadding: EdgeInsets.zero,
-        contentPadding: EdgeInsets.zero,
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-        title: Container(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Image.asset('assets/images/aws-s3-icon.png',
-                      width: 24, height: 24),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Connect to Amazon S3',
-                      style: _uText(16, _kTitle, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(TablerIcons.x, size: 18, color: _kIcon),
-                    onPressed:
-                        _busy ? null : () => Navigator.of(context).pop(null),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Enter your AWS credentials and bucket information.',
-                style: _uText(12, _kLabel, letterSpacing: 0.02),
-              ),
-            ],
-          ),
-        ),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      child: DcFlowPage(
+        title: editing ? 'Reconnect Amazon S3' : 'Connect to Amazon S3',
+        subtitle: editing
+            ? 'Update the credentials, region and bucket for this vault'
+            : 'Enter your AWS credentials and bucket information',
+        icon: TablerIcons.cloud_upload,
+        iconBackground: _kBlue,
+        onBack: _busy ? null : () => Navigator.of(context).pop(null),
+        body: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
+              children: <Widget>[
+                _buildPageHeading(),
+                const SizedBox(height: 16),
                 _buildField(
                   label: 'Access Key ID',
                   controller: _accessKeyController,
@@ -306,11 +300,11 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
                   enabled: !_busy,
                   onChange: (v) => _onChanged('accessKey', v),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 _buildSecretField(),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 _buildRegionDropdown(),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 _buildField(
                   label: 'Bucket Name',
                   controller: _bucketController,
@@ -319,8 +313,8 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
                   enabled: !_busy,
                   onChange: (v) => _onChanged('bucketId', v),
                 ),
-                const SizedBox(height: 14),
-                // ── Root path – locked until connection is verified ─────
+                const SizedBox(height: 12),
+                // ── Root path – locked until connection is verified ──
                 Text(
                   'Path',
                   style: _uText(
@@ -332,14 +326,16 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
                 const SizedBox(height: 6),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  children: <Widget>[
                     Expanded(
                       child: TextField(
                         controller: _rootPathController,
                         readOnly: true,
                         enabled: _connectionVerified,
-                        style:
-                            _uText(13, _connectionVerified ? _kTitle : _kIcon),
+                        style: _uText(
+                          13,
+                          _connectionVerified ? _kTitle : _kIcon,
+                        ),
                         decoration: InputDecoration(
                           hintText: _connectionVerified
                               ? 'Choose a path with Browse'
@@ -347,18 +343,22 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
                           hintStyle: _uText(13, _kIcon),
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
                           filled: true,
-                          fillColor: _kCanvas,
+                          fillColor: _kSurfaceMuted,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide:
-                                const BorderSide(color: _kBorderSoft, width: 1),
+                            borderSide: const BorderSide(color: _kBorderRow),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide:
-                                const BorderSide(color: _kBorderSoft, width: 1),
+                            borderSide: const BorderSide(color: _kBorderRow),
+                          ),
+                          disabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: _kBorderRow),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -369,151 +369,83 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    SizedBox(
-                      height: 40,
-                      child: FilledButton.icon(
-                        icon: Icon(TablerIcons.folder_open,
-                            size: 14,
-                            color: _connectionVerified && !_busy
-                                ? _kBlue
-                                : _kIcon),
-                        label: Text('Browse',
-                            style: _uText(
-                              12,
-                              _connectionVerified && !_busy ? _kBlue : _kIcon,
-                              fontWeight: FontWeight.w600,
-                            )),
-                        onPressed: (_connectionVerified && !_busy)
-                            ? _browseRootPath
-                            : null,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          side: BorderSide(
-                              color: _connectionVerified && !_busy
-                                  ? _kBlue
-                                  : _kBorderSoft,
-                              width: 1),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 0),
-                        ),
-                      ),
+                    _BrowseButton(
+                      enabled: _connectionVerified && !_busy,
+                      onPressed: _browseRootPath,
                     ),
                   ],
                 ),
-                if (!_connectionVerified) ...[
-                  const SizedBox(height: 4),
+                if (!_connectionVerified) ...<Widget>[
+                  const SizedBox(height: 6),
                   Row(
-                    children: [
-                      Icon(TablerIcons.lock, size: 11, color: _kIcon),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Path selection unlocked after a successful test.',
-                        style: _uText(11, _kIcon),
+                    children: <Widget>[
+                      const Icon(TablerIcons.lock, size: 12, color: _kIcon),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Path selection unlocked after a successful test.',
+                          style: _uText(10, _kLabel),
+                        ),
                       ),
                     ],
                   ),
                 ],
-                if (_testMessage != null) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _testOk
-                          ? DcColors.greenSoft
-                          : DcColors.redSoft,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: _testOk
-                            ? DcColors.greenLine
-                            : DcColors.redLine,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _testOk
-                              ? TablerIcons.circle_check
-                              : TablerIcons.alert_triangle,
-                          size: 14,
-                          color: _testOk
-                              ? DcColors.green
-                              : DcColors.red,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _testMessage!,
-                            style: _uText(
-                              12,
-                              _testOk
-                                  ? DcColors.green
-                                  : DcColors.red,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                if (_testMessage != null) ...<Widget>[
+                  const SizedBox(height: 12),
+                  _buildTestResult(),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: 6),
               ],
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: _busy ? null : () => Navigator.of(context).pop(null),
-            style: TextButton.styleFrom(
-              foregroundColor: _kLabel,
-              textStyle: _uText(13, _kLabel),
-            ),
-            child: const Text('Cancel'),
-          ),
-          const SizedBox(width: 8),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: _kCanvas,
-              foregroundColor: _kBlue,
-              side: const BorderSide(color: _kBorderSoft, width: 1),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            ),
-            onPressed: _busy ? null : _test,
-            child: _busy
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 1.5),
-                  )
-                : Text(
-                    _testOk ? 'Re-test' : 'Test Connection',
-                    style: _uText(12, _kBlue, fontWeight: FontWeight.w600),
-                  ),
-          ),
-          const SizedBox(width: 8),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: _connectionVerified && _testOk
-                  ? _kBlue
-                  : DcColors.lineStrong,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            ),
-            onPressed:
-                (_connectionVerified && _testOk && !_busy) ? _connect : null,
-            child: Text(
-              'Connect',
-              style: _uText(12, Colors.white, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
+        footer: _buildFooterRow(),
       ),
+    );
+  }
+
+  /// Inner-page style heading: branded icon tile, heavy title, muted subtitle.
+  Widget _buildPageHeading() {
+    final editing = widget.initialConfig != null;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        Container(
+          width: 46,
+          height: 46,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: _kSurfaceMuted,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: _kBorderSoft),
+          ),
+          child: Image.asset('assets/images/aws-s3-icon.png',
+              width: 24, height: 24),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                editing ? 'Reconnect Amazon S3' : 'Connect to Amazon S3',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: _uHeading(19, _kTitle, height: 1.15),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                editing
+                    ? 'Update the credentials, region and bucket for this vault.'
+                    : 'Enter your AWS credentials and bucket information.',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: _uText(12, _kLabel, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -539,10 +471,9 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             ),
             if (error != null) ...[
               const SizedBox(width: 8),
-              Icon(TablerIcons.alert_circle,
-                  size: 12, color: DcColors.red),
+              Icon(TablerIcons.alert_circle, size: 12, color: _kDanger),
               const SizedBox(width: 4),
-              Text(error, style: _uText(11, DcColors.red)),
+              Text(error, style: _uText(11, _kDanger)),
             ],
           ],
         ),
@@ -557,24 +488,29 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             hintStyle: _uText(13, _kIcon),
             isDense: true,
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             filled: true,
-            fillColor: _kCanvas,
+            fillColor: _kSurfaceMuted,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: _kBorderSoft, width: 1),
+              borderSide: BorderSide(
+                color: error != null ? _kDanger : _kBorderRow,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? DcColors.red : _kBorderSoft,
-                width: 1,
+                color: error != null ? _kDanger : _kBorderRow,
               ),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: _kBorderRow),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? DcColors.red : _kBlue,
+                color: error != null ? _kDanger : _kBlue,
                 width: 1.5,
               ),
             ),
@@ -597,10 +533,9 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             ),
             if (error != null) ...[
               const SizedBox(width: 8),
-              Icon(TablerIcons.alert_circle,
-                  size: 12, color: DcColors.red),
+              Icon(TablerIcons.alert_circle, size: 12, color: _kDanger),
               const SizedBox(width: 4),
-              Text(error, style: _uText(11, DcColors.red)),
+              Text(error, style: _uText(11, _kDanger)),
             ],
           ],
         ),
@@ -616,9 +551,10 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             hintStyle: _uText(13, _kIcon),
             isDense: true,
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             filled: true,
-            fillColor: _kCanvas,
+            fillColor: _kSurfaceMuted,
+            prefixIcon: const Icon(TablerIcons.lock, size: 16, color: _kIcon),
             suffixIcon: IconButton(
               icon: Icon(
                 _obscureSecret ? TablerIcons.eye_off : TablerIcons.eye,
@@ -629,19 +565,24 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: _kBorderSoft, width: 1),
+              borderSide: BorderSide(
+                color: error != null ? _kDanger : _kBorderRow,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? DcColors.red : _kBorderSoft,
-                width: 1,
+                color: error != null ? _kDanger : _kBorderRow,
               ),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: _kBorderRow),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? DcColors.red : _kBlue,
+                color: error != null ? _kDanger : _kBlue,
                 width: 1.5,
               ),
             ),
@@ -664,10 +605,9 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
             ),
             if (error != null) ...[
               const SizedBox(width: 8),
-              Icon(TablerIcons.alert_circle,
-                  size: 12, color: DcColors.red),
+              Icon(TablerIcons.alert_circle, size: 12, color: _kDanger),
               const SizedBox(width: 4),
-              Text(error, style: _uText(11, DcColors.red)),
+              Text(error, style: _uText(11, _kDanger)),
             ],
           ],
         ),
@@ -675,31 +615,33 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
         SizedBox(
           width: double.infinity,
           child: DropdownButtonFormField<String>(
-            value: _selectedRegion,
+            initialValue: _selectedRegion,
             isExpanded: true,
             isDense: true,
             style: _uText(13, _kTitle),
+            icon: const Icon(TablerIcons.chevron_down, size: 16, color: _kIcon),
             decoration: InputDecoration(
               isDense: true,
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               filled: true,
-              fillColor: _kCanvas,
+              fillColor: _kSurfaceMuted,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: _kBorderSoft, width: 1),
+                borderSide: BorderSide(
+                  color: error != null ? _kDanger : _kBorderRow,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: error != null ? DcColors.red : _kBorderSoft,
-                  width: 1,
+                  color: error != null ? _kDanger : _kBorderRow,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: error != null ? DcColors.red : _kBlue,
+                  color: error != null ? _kDanger : _kBlue,
                   width: 1.5,
                 ),
               ),
@@ -727,6 +669,150 @@ class _S3ConfigDialogState extends State<S3ConfigDialog> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTestResult() {
+    final bool inProgress = _busy;
+    final Color color = inProgress ? _kBlue : (_testOk ? _kSuccess : _kDanger);
+    final Color bg = inProgress
+        ? DcColors.lightSelectionFill
+        : (_testOk ? DcColors.tealSoft : DcColors.redSoft);
+    final Color border = inProgress
+        ? DcColors.selectionLine
+        : (_testOk ? DcColors.tealLine : DcColors.redLine);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: <Widget>[
+          if (inProgress)
+            SizedBox.square(
+              dimension: 14,
+              child: CircularProgressIndicator(strokeWidth: 2, color: color),
+            )
+          else
+            Icon(
+              _testOk ? TablerIcons.circle_check : TablerIcons.alert_triangle,
+              size: 14,
+              color: color,
+            ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(_testMessage!, style: _uText(11, color))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooterRow() {
+    return Row(
+      children: <Widget>[
+        Flexible(
+          child: OutlinedButton.icon(
+            onPressed: _busy ? null : _test,
+            icon: _busy
+                ? const SizedBox.square(
+                    dimension: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(TablerIcons.plug_connected, size: 15),
+            label: Text(
+              _testOk ? 'Re-test' : 'Test Connection',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _kTitle,
+              disabledForegroundColor: _kIcon,
+              side: const BorderSide(color: _kBorderRow),
+              backgroundColor: _kSurfaceMuted,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+              minimumSize: const Size(0, 38),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: _uText(12, _kTitle, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Spacer(),
+        OutlinedButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(null),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _kLabel,
+            disabledForegroundColor: _kIcon,
+            side: const BorderSide(color: _kBorderRow),
+            backgroundColor: _kSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+            minimumSize: const Size(0, 38),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
+          ),
+          child: const Text('Cancel'),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed:
+              (_connectionVerified && _testOk && !_busy) ? _connect : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kBlue,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: DcColors.lightLineStrong,
+            disabledForegroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
+            minimumSize: const Size(0, 38),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
+          ),
+          child: const Text('Connect'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Compact "Browse" button shown beside the Path field.
+class _BrowseButton extends StatelessWidget {
+  const _BrowseButton({required this.enabled, required this.onPressed});
+
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 46,
+      child: OutlinedButton.icon(
+        onPressed: enabled ? onPressed : null,
+        icon: const Icon(TablerIcons.folder_search, size: 15),
+        label: const Text('Browse'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _kTitle,
+          disabledForegroundColor: _kIcon,
+          side: BorderSide(color: enabled ? _kBorderRow : _kBorderSoft),
+          backgroundColor: _kSurfaceMuted,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+          minimumSize: const Size(0, 46),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          textStyle: _uText(12, _kTitle, fontWeight: FontWeight.w600),
+        ),
+      ),
     );
   }
 }
@@ -849,204 +935,276 @@ class _S3PrefixPickerDialogState extends State<_S3PrefixPickerDialog> {
   Widget build(BuildContext context) {
     return Theme(
       data: AppTheme.driveClue(),
-      child: Dialog(
-        backgroundColor: DcColors.panel,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-        child: SizedBox(
-          width: 420,
-          height: 440,
+      child: DcFlowPage(
+        title: 'Select S3 Folder',
+        subtitle: _currentPrefix.isEmpty ? 'Bucket root' : _currentPrefix,
+        icon: TablerIcons.folder,
+        onBack: _depth > 0 ? _navigateUp : () => Navigator.of(context).pop(),
+        scrollable: false,
+        inset: false,
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        body: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                decoration: const BoxDecoration(
-                  border:
-                      Border(bottom: BorderSide(color: _kBorderSoft, width: 1)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(TablerIcons.bucket, size: 18, color: _kBlue),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _currentPrefix.isEmpty ? 'Bucket root' : _currentPrefix,
-                        style: _uText(13, _kTitle, fontWeight: FontWeight.w600),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (_depth > 0)
-                      IconButton(
-                        tooltip: 'Up',
-                        icon:
-                            Icon(TablerIcons.arrow_up, size: 18, color: _kIcon),
-                        onPressed: _navigateUp,
-                      ),
-                    IconButton(
-                      tooltip: 'New folder',
-                      icon: Icon(TablerIcons.folder_plus,
-                          size: 18, color: _kIcon),
-                      onPressed: () =>
-                          setState(() => _newFolderController.clear()),
-                    ),
-                    IconButton(
-                      tooltip: 'Close',
-                      icon: Icon(TablerIcons.x, size: 18, color: _kIcon),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-              ),
-              // Current path + Select button
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                child: Row(
-                  children: [
-                    Icon(TablerIcons.folder_check, size: 16, color: _kBlue),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _currentPrefix.isEmpty
-                            ? '/ (bucket root)'
-                            : _currentPrefix,
-                        style: _uText(12, _kLabel),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      height: 32,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _kBlue,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 0),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6)),
-                        ),
-                        onPressed: () {
-                          final clean = _currentPrefix.endsWith('/')
-                              ? _currentPrefix.substring(
-                                  0, _currentPrefix.length - 1)
-                              : _currentPrefix;
-                          Navigator.of(context).pop(clean);
-                        },
-                        child: Text('Select',
-                            style: _uText(11, Colors.white,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1, color: _kBorderSoft),
-              // Error
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _buildFolderHeading(),
               if (_error != null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Text(_error!,
-                      style: _uText(12, DcColors.red),
-                      textAlign: TextAlign.center),
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                  child: Text(
+                    _error!,
+                    style: _uText(12, _kDanger),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              // Folder list (fills the center)
               Expanded(
                 child: _loading
                     ? const Center(
-                        child: CircularProgressIndicator(strokeWidth: 1.5))
+                        child: CircularProgressIndicator(strokeWidth: 1.5),
+                      )
                     : _prefixes.isEmpty
                         ? Center(
                             child: Text(
                               _depth == 0
                                   ? 'No folders found in this bucket.'
                                   : 'This folder is empty.',
-                              style: _uText(12, _kIcon),
+                              style: _uText(12, _kLabel),
                             ),
                           )
                         : ListView.builder(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
                             itemCount: _prefixes.length,
                             itemBuilder: (context, index) {
                               final p = _prefixes[index];
-                              return ListTile(
-                                dense: true,
-                                leading: Icon(TablerIcons.folder,
-                                    size: 18, color: _kIcon),
-                                title: Text(_displayName(p),
-                                    style: _uText(13, _kTitle)),
-                                onTap: () => _navigateTo(p),
-                                trailing: Icon(TablerIcons.chevron_right,
-                                    size: 16, color: _kIcon),
+                              return _S3PrefixTile(
+                                label: _displayName(p),
+                                onNavigate: () => _navigateTo(p),
                               );
                             },
                           ),
               ),
-              // New-folder inline input (pinned to the bottom)
-              Container(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                decoration: const BoxDecoration(
-                  color: DcColors.rowAlternate,
-                  border: Border(top: BorderSide(color: _kBorderSoft)),
+              _buildNewFolderInput(),
+            ],
+          ),
+        ),
+        footer: _buildFooterRow(),
+      ),
+    );
+  }
+
+  /// Inner-page style heading showing where the browse currently points.
+  Widget _buildFolderHeading() {
+    final current = _currentPrefix.isEmpty ? 'Bucket root' : _currentPrefix;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _kBorderSoft)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _kSurfaceMuted,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _kBorderSoft),
+            ),
+            child: const Icon(TablerIcons.bucket, size: 19, color: _kBlue),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  current,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _uHeading(16, _kTitle, height: 1.2),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _newFolderController,
-                        enabled: !_creatingFolder,
-                        textInputAction: TextInputAction.done,
-                        onChanged: (_) => setState(() {}),
-                        onSubmitted: (_) {
-                          if (_canCreate) _createFolder();
-                        },
-                        style: _uText(12, _kTitle, fontWeight: FontWeight.w500),
-                        decoration: InputDecoration(
-                          hintText: 'New folder name',
-                          hintStyle: _uText(12, _kIcon),
-                          filled: true,
-                          fillColor: DcColors.well,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: _kBorderSoft),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide:
-                                const BorderSide(color: _kBlue, width: 1.4),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      height: 40,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor:
-                              _canCreate ? _kBlue : DcColors.lineStrong,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 0),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                        ),
-                        onPressed: _canCreate ? _createFolder : null,
-                        child: _creatingFolder
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 1.5, color: Colors.white),
-                              )
-                            : Text('Create',
-                                style: _uText(12, Colors.white,
-                                    fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 2),
+                Text(
+                  'Choose the folder to store this vault in.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _uText(11, _kLabel, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewFolderInput() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: const BoxDecoration(
+        color: _kSurfaceMuted,
+        border: Border(top: BorderSide(color: _kBorderSoft)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _newFolderController,
+              enabled: !_creatingFolder,
+              textInputAction: TextInputAction.done,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) {
+                if (_canCreate) _createFolder();
+              },
+              style: _uText(12, _kTitle, fontWeight: FontWeight.w500),
+              decoration: InputDecoration(
+                hintText: 'New folder name',
+                hintStyle: _uText(12, _kIcon),
+                filled: true,
+                fillColor: _kSurface,
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: _kBorderRow),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: _kBlue, width: 1.4),
+                ),
+                prefixIcon: const Icon(TablerIcons.folder_plus,
+                    size: 16, color: _kIcon),
+                prefixIconConstraints:
+                    const BoxConstraints(minWidth: 40, minHeight: 38),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            height: 40,
+            child: ElevatedButton.icon(
+              onPressed: _canCreate ? _createFolder : null,
+              icon: _creatingFolder
+                  ? const SizedBox.square(
+                      dimension: 14,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(TablerIcons.plus, size: 14),
+              label: Text(_creatingFolder ? 'Creating...' : 'Create'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kBlue,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: DcColors.lightLineStrong,
+                disabledForegroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6)),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                textStyle:
+                    _uText(12, Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooterRow() {
+    return Row(
+      children: [
+        OutlinedButton(
+          onPressed: () => Navigator.of(context).pop(),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _kLabel,
+            side: const BorderSide(color: _kBorderRow),
+            backgroundColor: _kSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            minimumSize: const Size(0, 36),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
+          ),
+          child: const Text('Cancel'),
+        ),
+        const Spacer(),
+        ElevatedButton(
+          onPressed: () {
+            final clean = _currentPrefix.endsWith('/')
+                ? _currentPrefix.substring(0, _currentPrefix.length - 1)
+                : _currentPrefix;
+            Navigator.of(context).pop(clean);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kBlue,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            minimumSize: const Size(0, 36),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
+          ),
+          child: const Text('Select Path'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Light row for a bucket prefix inside the picker.
+class _S3PrefixTile extends StatefulWidget {
+  const _S3PrefixTile({required this.label, required this.onNavigate});
+
+  final String label;
+  final VoidCallback onNavigate;
+
+  @override
+  State<_S3PrefixTile> createState() => _S3PrefixTileState();
+}
+
+class _S3PrefixTileState extends State<_S3PrefixTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onNavigate,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 80),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          decoration: BoxDecoration(
+            color: _hovered ? DcColors.lightSelectionFill : _kSurface,
+            border: const Border(bottom: BorderSide(color: _kBorderSoft)),
+          ),
+          child: Row(
+            children: <Widget>[
+              Icon(TablerIcons.folder,
+                  size: 15, color: _hovered ? _kBlue : _kIcon),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: _uText(12, _hovered ? _kBlue : _kTitle,
+                      fontWeight: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              Icon(TablerIcons.chevron_right,
+                  size: 14, color: _hovered ? _kBlue : _kIcon),
             ],
           ),
         ),

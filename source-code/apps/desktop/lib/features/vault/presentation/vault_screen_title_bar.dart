@@ -4,15 +4,20 @@ part of 'vault_screen.dart';
 const String _kAppTagline = 'Private by default. Yours to control.';
 
 /// DriveClue-style 46 px header: app name and tagline on the left (the vault
-/// name already lives in the sidebar), icon-only actions on the right.
+/// name already lives in the sidebar), search control left of the icon-only
+/// actions on the right.
 class _VaultTitleBar extends StatelessWidget {
   const _VaultTitleBar({
     required this.onImportPressed,
     required this.onSettingsPressed,
+    required this.floatingActionsKey,
+    required this.onEntryRequested,
   });
 
   final VoidCallback onImportPressed;
   final VoidCallback onSettingsPressed;
+  final GlobalKey<_VaultSearchControlState> floatingActionsKey;
+  final ValueChanged<String> onEntryRequested;
 
   @override
   Widget build(BuildContext context) {
@@ -25,73 +30,99 @@ class _VaultTitleBar extends StatelessWidget {
         ),
       ),
       padding: const EdgeInsets.only(left: 18, right: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: <Widget>[
-          // Two-tone brand wordmark, same colors as the dark splash screen.
-          LumenPassWordmark(
-            fontSize: (15 + currentTextSizeDelta).toDouble(),
-            lumenColor: DcColors.text,
-            passColor: DcColors.cyan,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              _kAppTagline,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _text(12, DcColors.muted),
-            ),
-          ),
-          const SizedBox(width: 12),
-          DcBorderedButton(
-            icon: TablerIcons.wand,
-            tooltip: 'Generate password',
-            height: 28,
-            onPressed: () => _showPasswordGeneratorDialog(context),
-          ),
-          const SizedBox(width: 6),
-          DcBorderedButton(
-            icon: TablerIcons.download,
-            tooltip: 'Import items',
-            height: 28,
-            onPressed: onImportPressed,
-          ),
-          const SizedBox(width: 6),
-          DcBorderedButton(
-            icon: TablerIcons.settings,
-            tooltip: 'Settings',
-            height: 28,
-            onPressed: onSettingsPressed,
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Reserve room for the wordmark, gaps and the right button group so
+          // the expanded search never pushes the row into overflow on narrow
+          // windows; the tagline (Expanded) absorbs whatever is left.
+          final expandedSearchWidth = math.min(
+            440.0,
+            math.max(220.0, constraints.maxWidth - 440),
+          );
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              // Two-tone brand wordmark, same colors as the dark splash screen.
+              LumenPassWordmark(
+                fontSize: (15 + currentTextSizeDelta).toDouble(),
+                lumenColor: DcColors.text,
+                passColor: DcColors.cyan,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _kAppTagline,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _text(12, DcColors.muted),
+                ),
+              ),
+              const SizedBox(width: 12),
+              _VaultSearchControl(
+                key: floatingActionsKey,
+                expandedWidth: expandedSearchWidth,
+                onEntryRequested: onEntryRequested,
+              ),
+              const SizedBox(width: 6),
+              DcBorderedButton(
+                icon: TablerIcons.wand,
+                imagePath: 'assets/images/ic_wand_white.png',
+                tooltip: 'Generate password',
+                height: 28,
+                onPressed: () => _showPasswordGeneratorDialog(context),
+              ),
+              const SizedBox(width: 6),
+              DcBorderedButton(
+                icon: TablerIcons.download,
+                imagePath: 'assets/images/ic_import_white.png',
+                tooltip: 'Import items',
+                height: 28,
+                onPressed: onImportPressed,
+              ),
+              const SizedBox(width: 6),
+              DcBorderedButton(
+                icon: TablerIcons.settings,
+                imagePath: 'assets/images/ic_settings_white.png',
+                tooltip: 'Settings',
+                height: 28,
+                onPressed: onSettingsPressed,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _VaultFloatingActions extends ConsumerStatefulWidget {
-  const _VaultFloatingActions({
+/// Collapsible search control living in the vault title bar, to the left of
+/// the right button group. Collapsed it is a 38 px icon button; opening it
+/// (click or ⌘F/Ctrl+F) expands it to [expandedWidth] and drops the quick
+/// matches suggestion panel right below the field.
+class _VaultSearchControl extends ConsumerStatefulWidget {
+  const _VaultSearchControl({
     super.key,
-    required this.onNewItemPressed,
+    required this.expandedWidth,
     required this.onEntryRequested,
   });
 
-  final VoidCallback onNewItemPressed;
+  final double expandedWidth;
   final ValueChanged<String> onEntryRequested;
 
   @override
-  ConsumerState<_VaultFloatingActions> createState() =>
-      _VaultFloatingActionsState();
+  ConsumerState<_VaultSearchControl> createState() =>
+      _VaultSearchControlState();
 }
 
-class _VaultFloatingActionsState extends ConsumerState<_VaultFloatingActions> {
+class _VaultSearchControlState extends ConsumerState<_VaultSearchControl> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final OverlayPortalController _searchOverlayController =
       OverlayPortalController();
   final LayerLink _searchFieldLink = LayerLink();
   bool _searchIsOpen = false;
+  bool _hovered = false;
 
   @override
   void initState() {
@@ -210,212 +241,214 @@ class _VaultFloatingActionsState extends ConsumerState<_VaultFloatingActions> {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final expandedSearchWidth = math.min(
-          440.0,
-          math.max(220.0, constraints.maxWidth - 52),
+    return OverlayPortal(
+      controller: _searchOverlayController,
+      overlayChildBuilder: (context) {
+        if (!_searchIsOpen || trimmedDraftQuery.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return CompositedTransformFollower(
+          link: _searchFieldLink,
+          showWhenUnlinked: false,
+          // The control sits in the title bar at the top of the window, so
+          // the suggestion panel opens downward from the field.
+          targetAnchor: Alignment.bottomRight,
+          followerAnchor: Alignment.topRight,
+          offset: const Offset(0, 8),
+          // The overlay child is stretched to the full overlay, so the
+          // dropdown must be pinned to its top-right corner: the follower
+          // anchors the Align's top-right just below the field.
+          child: Align(
+            alignment: Alignment.topRight,
+            widthFactor: 1,
+            heightFactor: 1,
+            child: Material(
+              color: Colors.transparent,
+              child: TextFieldTapRegion(
+                child: SizedBox(
+                  width: widget.expandedWidth,
+                  child: _SearchSuggestionDropdown(
+                    query: trimmedDraftQuery,
+                    suggestions: suggestions,
+                    isSearching: isSearching,
+                    onSuggestionSelected: _selectSuggestion,
+                    onSearchAll: () => _applySearch(trimmedDraftQuery),
+                    subtitleBuilder: _suggestionSubtitle,
+                  ),
+                ),
+              ),
+            ),
+          ),
         );
-
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              OverlayPortal(
-                controller: _searchOverlayController,
-                overlayChildBuilder: (context) {
-                  if (!_searchIsOpen || trimmedDraftQuery.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return CompositedTransformFollower(
-                    link: _searchFieldLink,
-                    showWhenUnlinked: false,
-                    targetAnchor: Alignment.topRight,
-                    followerAnchor: Alignment.bottomRight,
-                    offset: const Offset(0, -8),
-                    child: Align(
-                      alignment: Alignment.bottomRight,
-                      widthFactor: 1,
-                      heightFactor: 1,
-                      child: Material(
-                        color: Colors.transparent,
-                        child: TextFieldTapRegion(
-                          child: SizedBox(
-                            width: expandedSearchWidth,
-                            child: _SearchSuggestionDropdown(
-                              query: trimmedDraftQuery,
-                              suggestions: suggestions,
-                              isSearching: isSearching,
-                              onSuggestionSelected: _selectSuggestion,
-                              onSearchAll: () =>
-                                  _applySearch(trimmedDraftQuery),
-                              subtitleBuilder: _suggestionSubtitle,
+      },
+      child: CompositedTransformTarget(
+        link: _searchFieldLink,
+        child: TextFieldTapRegion(
+          child: MouseRegion(
+            cursor:
+                _searchIsOpen ? MouseCursor.defer : SystemMouseCursors.click,
+            onEnter: (_) => setState(() => _hovered = true),
+            onExit: (_) => setState(() => _hovered = false),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 110),
+              curve: Curves.easeOutCubic,
+              width: _searchIsOpen ? widget.expandedWidth : 26,
+              height: _searchIsOpen ? 38 : 28,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                // Collapsed matches DcBorderedButton on the dark title bar:
+                // translucent white fill, white @ 22% border, radius 6.
+                color: _searchIsOpen
+                    ? DcColors.lightSurface
+                    : _hovered
+                        ? const Color(0x2EFFFFFF)
+                        : const Color(0x17FFFFFF),
+                borderRadius: BorderRadius.circular(
+                  _searchIsOpen
+                      ? DcMetrics.panelRadius
+                      : DcMetrics.controlRadius,
+                ),
+                border: Border.all(
+                  color: _searchIsOpen
+                      ? _kPrimaryButtonColor
+                      : DcColors.lineStrong,
+                  width: _searchIsOpen ? 1.25 : 1,
+                ),
+                boxShadow: _searchIsOpen
+                    ? const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x1F263340),
+                          blurRadius: 10,
+                          offset: Offset(0, 3),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: _searchIsOpen
+                  ? Stack(
+                      children: <Widget>[
+                        const Positioned(
+                          left: 12,
+                          top: 0,
+                          bottom: 0,
+                          child: Center(
+                            child: _ColorfulActionIcon(
+                              icon: TablerIcons.search,
+                              imagePath: 'assets/images/ic_search_blue.png',
+                              size: 16,
+                              fallbackColor: _kPrimaryButtonColor,
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  );
-                },
-                child: CompositedTransformTarget(
-                  link: _searchFieldLink,
-                  child: TextFieldTapRegion(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      width: _searchIsOpen ? expandedSearchWidth : 38,
-                      height: 38,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: DcColors.lightSurface,
-                        borderRadius:
-                            BorderRadius.circular(DcMetrics.panelRadius),
-                        border: Border.all(
-                          color: _searchIsOpen
-                              ? _kPrimaryButtonColor
-                              : DcColors.lightLineStrong,
-                          width: _searchIsOpen ? 1.25 : 1,
-                        ),
-                        boxShadow: const <BoxShadow>[
-                          BoxShadow(
-                            color: Color(0x1F263340),
-                            blurRadius: 10,
-                            offset: Offset(0, 3),
+                        Positioned.fill(
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                              left: 39,
+                              right: 39,
+                            ),
+                            child: Center(
+                              child: TextField(
+                                focusNode: _searchFocusNode,
+                                controller: _searchController,
+                                onChanged: _onSearchChanged,
+                                onSubmitted: _applySearch,
+                                onTapOutside: (_) => _closeSearch(),
+                                decoration: InputDecoration(
+                                  hintText: 'Search credentials',
+                                  hintStyle: _text(
+                                    12,
+                                    DcColors.sidebarMuted,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  isCollapsed: true,
+                                  filled: false,
+                                  fillColor: Colors.transparent,
+                                  hoverColor: Colors.transparent,
+                                  contentPadding: EdgeInsets.zero,
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  disabledBorder: InputBorder.none,
+                                  errorBorder: InputBorder.none,
+                                  focusedErrorBorder: InputBorder.none,
+                                ),
+                                style: _text(
+                                  12,
+                                  DcColors.sidebarText,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                cursorColor: _kPrimaryButtonColor,
+                              ),
+                            ),
                           ),
-                        ],
-                      ),
-                      child: _searchIsOpen
-                          ? Stack(
-                              children: <Widget>[
-                                const Positioned(
-                                  left: 12,
-                                  top: 0,
-                                  bottom: 0,
-                                  child: Center(
-                                    child: Icon(
-                                      TablerIcons.search,
-                                      size: 17,
-                                      color: _kPrimaryButtonColor,
-                                    ),
-                                  ),
+                        ),
+                        if (isSearching)
+                          const Positioned(
+                            right: 32,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: SizedBox(
+                                width: 13,
+                                height: 13,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  color: _kPrimaryButtonColor,
                                 ),
-                                Positioned.fill(
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 39,
-                                      right: 39,
-                                    ),
-                                    child: Center(
-                                      child: TextField(
-                                        focusNode: _searchFocusNode,
-                                        controller: _searchController,
-                                        onChanged: _onSearchChanged,
-                                        onSubmitted: _applySearch,
-                                        onTapOutside: (_) => _closeSearch(),
-                                        decoration: InputDecoration(
-                                          hintText: 'Search credentials',
-                                          hintStyle: _text(
-                                            12,
-                                            DcColors.sidebarMuted,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          isCollapsed: true,
-                                          filled: false,
-                                          fillColor: Colors.transparent,
-                                          hoverColor: Colors.transparent,
-                                          contentPadding: EdgeInsets.zero,
-                                          border: InputBorder.none,
-                                          enabledBorder: InputBorder.none,
-                                          focusedBorder: InputBorder.none,
-                                          disabledBorder: InputBorder.none,
-                                          errorBorder: InputBorder.none,
-                                          focusedErrorBorder: InputBorder.none,
-                                        ),
-                                        style: _text(
-                                          12,
-                                          DcColors.sidebarText,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        cursorColor: _kPrimaryButtonColor,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (isSearching)
-                                  const Positioned(
-                                    right: 32,
-                                    top: 0,
-                                    bottom: 0,
-                                    child: Center(
-                                      child: SizedBox(
-                                        width: 13,
-                                        height: 13,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 1.5,
-                                          color: _kPrimaryButtonColor,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                Positioned(
-                                  right: 7,
-                                  top: 0,
-                                  bottom: 0,
-                                  child: Center(
-                                    child: _AppTooltip(
-                                      message: trimmedDraftQuery.isNotEmpty ||
-                                              searchIsActive
-                                          ? 'Clear search'
-                                          : 'Close search',
-                                      child: InkWell(
-                                        onTap: trimmedDraftQuery.isNotEmpty ||
-                                                searchIsActive
-                                            ? _clearSearch
-                                            : _closeSearch,
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                        child: const Padding(
-                                          padding: EdgeInsets.all(4),
-                                          child: Icon(
-                                            TablerIcons.x,
-                                            size: 14,
-                                            color: DcColors.sidebarMuted,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                          : _AppTooltip(
-                              message: 'Search credentials (⌘F)',
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          right: 7,
+                          top: 0,
+                          bottom: 0,
+                          child: Center(
+                            child: _AppTooltip(
+                              message:
+                                  trimmedDraftQuery.isNotEmpty || searchIsActive
+                                      ? 'Clear search'
+                                      : 'Close search',
                               child: InkWell(
-                                onTap: _openSearch,
-                                borderRadius: BorderRadius.circular(
-                                    DcMetrics.panelRadius),
-                                child: Center(
+                                onTap: trimmedDraftQuery.isNotEmpty ||
+                                        searchIsActive
+                                    ? _clearSearch
+                                    : _closeSearch,
+                                borderRadius: BorderRadius.circular(999),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
                                   child: Icon(
-                                    TablerIcons.search,
-                                    size: 17,
-                                    color: searchIsActive
-                                        ? _kPrimaryButtonColor
-                                        : DcColors.sidebarText,
+                                    TablerIcons.x,
+                                    size: 14,
+                                    color: DcColors.sidebarMuted,
                                   ),
                                 ),
                               ),
                             ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : _AppTooltip(
+                      message: 'Search credentials (⌘F)',
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _openSearch,
+                        child: Center(
+                          child: _ColorfulActionIcon(
+                            icon: TablerIcons.search,
+                            imagePath: 'assets/images/ic_search_white.png',
+                            size: 15,
+                            fallbackColor: searchIsActive
+                                ? _kPrimaryButtonColor
+                                : DcColors.text,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 7),
-              _NewItemButton(onPressed: widget.onNewItemPressed),
-            ],
+            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -820,6 +853,34 @@ class _VaultToolbarIconButtonState extends State<_VaultToolbarIconButton> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Small colorful artwork with a Tabler glyph fallback, for toolbar-sized
+/// icon slots on the dark title bar.
+class _ColorfulActionIcon extends StatelessWidget {
+  const _ColorfulActionIcon({
+    required this.icon,
+    required this.imagePath,
+    required this.size,
+    required this.fallbackColor,
+  });
+
+  final IconData icon;
+  final String imagePath;
+  final double size;
+  final Color fallbackColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      imagePath,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+      errorBuilder: (_, __, ___) => Icon(icon, size: size, color: fallbackColor),
     );
   }
 }

@@ -2,7 +2,22 @@
 
 LumenPass Desktop is accountless and free to use. Local vault authentication and optional cloud-provider authentication remain because they protect vaults or connect storage chosen by the user.
 
-Source code is licensed under the [Mozilla Public License 2.0](../../LICENSE), except for third-party files carrying their own license notices.
+Source code is licensed under the [Apache License 2.0](../../LICENSE), except for third-party files carrying their own license notices. See [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md) for the dependency inventory and the outstanding GPL-3.0 KDBX dependency that must be resolved before redistributing binaries.
+
+## First build
+
+The vendored S3 client ships without its generated sources, so generate them once before the first build. From this directory:
+
+```bash
+flutter pub get
+
+cd third_party/flutter_aws_s3_client
+dart pub get
+dart run build_runner build
+cd ../..
+```
+
+Skipping this step fails the build with `Error: Undefined name '_$serializers'` in `third_party/flutter_aws_s3_client`.
 
 ## Local secrets / OAuth keys (dart-defines)
 

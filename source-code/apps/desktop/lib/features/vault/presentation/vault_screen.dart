@@ -51,6 +51,7 @@ import '../../../core/services/vault_unlock_service.dart';
 
 import '../../import/presentation/import_flow.dart';
 import '../../unlock/presentation/unlock_screen.dart';
+import '../../settings/presentation/open_settings_window.dart';
 import '../../unlock/presentation/restore_backups_modal.dart';
 import '../../unlock/application/database_registry.dart';
 import '../application/vault_item_type.dart';
@@ -107,8 +108,6 @@ enum _VaultSortDirection { ascending, descending }
 
 class _VaultScreenState extends ConsumerState<VaultScreen>
     with WidgetsBindingObserver {
-  static const double _kVaultWindowWidth = 1200;
-  static const double _kVaultWindowHeight = 760;
   static const double _kQuickSearchWindowMinHeight = 178;
   static const double _kQuickSearchGeneratorHeight = 428.0;
 
@@ -154,7 +153,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
   LatestRelease? _pendingUpdate;
   bool _updateBannerDismissed = false;
 
-  final _floatingActionsKey = GlobalKey<_VaultFloatingActionsState>();
+  final _floatingActionsKey = GlobalKey<_VaultSearchControlState>();
 
   static const MethodChannel _windowChannel = MethodChannel('lumenpass/window');
 
@@ -163,13 +162,6 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
     super.initState();
     if (Platform.isMacOS) {
       _windowChannel.invokeMethod<void>('hideNativeTitleBar');
-      _windowChannel.invokeMethod<void>(
-        'setSize',
-        <String, double>{
-          'width': _kVaultWindowWidth,
-          'height': _kVaultWindowHeight,
-        },
-      );
     }
     if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
       _windowChannel.setMethodCallHandler(_handleWindowMethodCall);
@@ -648,7 +640,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
                     ),
                   if (_isAddCategoryModalOpen)
                     Positioned.fill(
-                      child: _AddCategoryOverlay(
+                      child: AddCategoryOverlay(
                         onClose: _dismissAddCategoryModal,
                         onShowToast: _showToast,
                         onCategoryCreated: _handleCategoryCreated,
@@ -699,7 +691,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
                     ),
                   if (_isEditCategoryModalOpen && _editingCategory != null)
                     Positioned.fill(
-                      child: _EditCategoryOverlay(
+                      child: EditCategoryOverlay(
                         category: _editingCategory!,
                         onClose: _dismissEditCategoryModal,
                         onShowToast: _showToast,
@@ -1763,6 +1755,37 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
 
   void _openSettings(
       {_SettingsSectionId section = _SettingsSectionId.general}) {
+    // macOS hosts Settings in its own native window (second engine), so the
+    // main window keeps its size and stays usable while it is open. Only
+    // preference-only sections live there; panes that need the decrypted
+    // vault keep using the in-window overlay.
+    //
+    // `security` (Vault Access & Behavior) stays in-window because biometric
+    // and PIN enrolment need the decrypted vault; only `cardSecurity` moves.
+    const detachedSections = <_SettingsSectionId>{
+      _SettingsSectionId.general,
+      _SettingsSectionId.appearance,
+      _SettingsSectionId.cardSecurity,
+      _SettingsSectionId.developer,
+      _SettingsSectionId.advanced,
+      _SettingsSectionId.about,
+    };
+    if (detachedSections.contains(section)) {
+      unawaited(_openDetachedSettings(section));
+      return;
+    }
+    setState(() {
+      _settingsInitialSection = section;
+      _isSettingsOpen = true;
+    });
+  }
+
+  /// Opens the detached Settings window, falling back to the in-window
+  /// overlay on platforms that do not implement the native host yet.
+  Future<void> _openDetachedSettings(_SettingsSectionId section) async {
+    final opened = await openDetachedSettingsWindow(section: section.name);
+    if (opened || !mounted) return;
+    // No native host (Windows/Linux today): keep Settings reachable.
     setState(() {
       _settingsInitialSection = section;
       _isSettingsOpen = true;
@@ -1993,7 +2016,7 @@ class _VaultWindow extends StatelessWidget {
   final String searchQuery;
   final VoidCallback onClearSearch;
   final ValueChanged<String> onEntryRequested;
-  final GlobalKey<_VaultFloatingActionsState> floatingActionsKey;
+  final GlobalKey<_VaultSearchControlState> floatingActionsKey;
   final ValueChanged<int> onOpenEntryWebsite;
   final ValueChanged<int> onEditEntry;
   final ValueChanged<int> onDuplicateEntry;
@@ -2072,6 +2095,8 @@ class _VaultWindow extends StatelessWidget {
         _VaultTitleBar(
           onImportPressed: onOpenImport,
           onSettingsPressed: onOpenSettings,
+          floatingActionsKey: floatingActionsKey,
+          onEntryRequested: onEntryRequested,
         ),
         if (isPasswordAuditView && passwordAuditSelection == null)
           _PasswordAuditReportPane(
@@ -2135,9 +2160,7 @@ class _VaultWindow extends StatelessWidget {
                   ),
                   onPasswordAuditIssueSelected: onPasswordAuditIssueSelected,
                   onPasswordAuditBack: onPasswordAuditBack,
-                  floatingActionsKey: floatingActionsKey,
                   onNewItemPressed: onOpenNewItemModal,
-                  onEntryRequested: onEntryRequested,
                 ),
                 const _VaultWorkspaceDivider(),
                 if (_resolveSelectedEntry() != null)

@@ -8,6 +8,7 @@ import 'package:lumenpass/core/services/local_storage_service.dart';
 import 'package:lumenpass/features/unlock/application/database_connection_health.dart';
 
 import 'package:lumenpass/features/unlock/presentation/unlock_screen.dart';
+import 'package:lumenpass/presentation/widgets/drive_clue/dc_confirm_dialog.dart';
 
 void main() {
   testWidgets(
@@ -71,22 +72,26 @@ void main() {
       expect(find.text('Primary Vault'), findsOneWidget);
       expect(find.byTooltip('Show sync issue details'), findsOneWidget);
 
-      final unlockButton = tester.widget<ElevatedButton>(
-          find.widgetWithText(ElevatedButton, 'Unlock'));
-      expect(unlockButton.onPressed, isNull);
+      // The row is blocked: double-clicking it must not open the credentials
+      // dialog, so the "Unlock vault" action never appears.
+      await tester.tap(find.text('Primary Vault'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Primary Vault'));
+      await tester.pumpAndSettle();
+      expect(find.text('Unlock vault'), findsNothing);
 
       await tester.tap(find.byTooltip('Show sync issue details'));
       await tester.pumpAndSettle();
 
       expect(
         find.descendant(
-          of: find.byType(AlertDialog),
+          of: find.byType(DcConfirmDialog),
           matching: find.text('Pending changes did not sync'),
         ),
         findsOneWidget,
       );
       expect(
-        find.widgetWithText(FilledButton, 'Reconnect Google Drive'),
+        find.widgetWithText(ElevatedButton, 'Reconnect Google Drive'),
         findsOneWidget,
       );
       expect(find.text('Check again'), findsOneWidget);

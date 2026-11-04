@@ -27,19 +27,19 @@ import '../../vault/presentation/vault_screen.dart';
 import '../application/database_connection_health.dart';
 import '../application/database_registry.dart';
 import '../application/unlock_controller.dart';
+import '../application/vault_group_order.dart';
 import 'create_database_modal.dart';
 import 'duplicate_database_modal.dart';
 import 'open_existing_database_modal.dart';
+import 'provider_config_route.dart';
 import 'restore_backups_modal.dart';
-import 's3_config_dialog.dart';
-import 'sftp_config_dialog.dart';
 import 'splash_screen.dart';
+import 'storage_source_list.dart';
 import 'unlocking_progress_screen.dart';
-import 'webdav_config_dialog.dart';
+
+import '../../../presentation/widgets/drive_clue/dc_confirm_dialog.dart';
 
 // ── Shared palette (DriveClue tokens) ──────────────────────────────────────
-const Color _kTitle = DcColors.text;
-const Color _kLabel = DcColors.muted;
 const Color _kActionDark = DcColors.selection;
 
 // ── Vault list body palette (light, sidebar-toned) ────────────────────────
@@ -51,13 +51,32 @@ const Color _kPickerLine = DcColors.sidebarLine;
 const Color _kPickerLineStrong = DcColors.lightLineStrong;
 const Color _kPickerMuted = DcColors.sidebarMuted;
 const Color _kPickerFaint = DcColors.faint;
-const Color _kPickerHover = Color(0xFFE9F1F9);
-const Color _kPickerTableHeader = DcColors.sidebar;
 const Color _kPickerOrange = DcColors.selection;
 const Color _kPickerOrangeDark = DcColors.selectionHover;
 
 /// Distance of the floating database search field from the bottom edge.
 const double _kDatabaseSearchBottomOffset = 74;
+
+// ── Vault grid metrics ────────────────────────────────────────────────────
+/// Outer padding of the grouped vault grid.
+const double _kVaultGridGutter = 16;
+
+/// Gap between cards, and between grid rows.
+const double _kVaultGridGap = 12;
+
+/// Cards never get narrower than this; the column count is derived from it.
+const double _kVaultCardMinWidth = 236;
+
+/// Preferred order of storage groups in the vault grid.
+const List<String> _storageGroupOrder = <String>[
+  'local',
+  'googleDrive',
+  'dropbox',
+  'oneDrive',
+  'webdav',
+  'sftp',
+  's3',
+];
 
 // ── Credentials dialog palette (light, sidebar-toned) ─────────────────────
 const Color _kCredInk = DcColors.sidebarText;
@@ -170,6 +189,23 @@ InputDecoration _unlockFieldDecoration({
 
 enum _DatabaseSortField { recent, name, createdAt }
 
+/// One storage bucket in the vault grid (Local, Google Drive, Dropbox...).
+class _DatabaseStorageGroup {
+  const _DatabaseStorageGroup({
+    required this.storageType,
+    required this.title,
+    required this.assetPath,
+    required this.accent,
+    required this.records,
+  });
+
+  final String storageType;
+  final String title;
+  final String assetPath;
+  final Color accent;
+  final List<DatabaseRecord> records;
+}
+
 enum UnlockAutoPromptMode {
   none,
   immediate,
@@ -203,7 +239,6 @@ class UnlockScreen extends ConsumerStatefulWidget {
 
 class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   static const MethodChannel _windowChannel = MethodChannel('lumenpass/window');
-  static const double _kWindowHeight = 480.0;
   bool _showSplash = false;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
@@ -217,15 +252,15 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   String _databaseHealthSignature = '';
   int _databaseHealthGeneration = 0;
 
+  /// On-disk size in bytes per `DatabaseRecord.id`, resolved lazily.
+  final Map<String, int?> _vaultSizes = <String, int?>{};
+  String _vaultSizeSignature = '';
+
   @override
   void initState() {
     super.initState();
     if (Platform.isMacOS) {
       _windowChannel.invokeMethod<void>('hideNativeTitleBar');
-      _windowChannel.invokeMethod<void>(
-        'setSize',
-        <String, double>{'width': 820, 'height': _kWindowHeight},
-      );
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final args = ModalRoute.of(context)?.settings.arguments;
@@ -261,8 +296,14 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   @override
   Widget build(BuildContext context) {
     final databases = ref.watch(databaseRegistryProvider);
+    final groupOrder = ref.watch(vaultGroupOrderProvider);
     _scheduleDatabaseHealthChecks(databases);
+    _scheduleVaultSizes(databases);
     final visibleDatabases = _visibleDatabases(databases);
+    final visibleGroups = _groupDatabases(
+      visibleDatabases,
+      preferredOrder: groupOrder,
+    );
     final selectedRecord = _selectedRecordFrom(visibleDatabases);
 
     final unlockContent = Theme(
@@ -284,12 +325,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                       children: <Widget>[
                         _buildHeader(),
                         if (databases.isNotEmpty)
-                          _DatabaseListHeader(
-                            sortField: _sortField,
-                            sortAscending: _sortAscending,
-                            onSort: _toggleSort,
-                            isRefreshing: _isRefreshingDatabaseHealth,
-                            onRefresh: _refreshAllDatabaseHealth,
+                          _buildVaultToolbar(
+                            databaseCount: databases.length,
+                            groupCount: visibleGroups.length,
                           ),
                         Expanded(
                           child: databases.isEmpty
@@ -302,56 +340,84 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                                       padding: EdgeInsets.all(20),
                                       child: _EmptySearchState(),
                                     )
-                                  : ListView.builder(
+                              : LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final columns =
+                                        _vaultGridColumnCount(constraints);
+                                    return ReorderableListView.builder(
                                       padding: EdgeInsets.only(
                                         bottom: _showDatabaseSearch ? 82 : 16,
                                       ),
-                                      itemCount: visibleDatabases.length,
-                                      itemBuilder: (_, index) {
-                                        final db = visibleDatabases[index];
-                                        final health = _databaseHealth[db.id];
-
-                                        return _DatabaseRow(
-                                          index: index,
-                                          record: db,
-                                          selected: selectedRecord?.id == db.id,
-                                          health: health,
-                                          onTap: _isDatabaseInteractionBlocked(
-                                            db,
-                                            health: health,
-                                          )
-                                              ? null
-                                              : () => _selectDatabase(db),
-                                          onDoubleTap:
-                                              _isDatabaseInteractionBlocked(
-                                            db,
-                                            health: health,
-                                          )
-                                                  ? null
-                                                  : () => _handleOpenDatabase(
-                                                        db,
-                                                        autoPromptMode:
-                                                            UnlockAutoPromptMode
-                                                                .immediate,
-                                                      ),
-                                          onShowHealthDetails: health != null &&
-                                                  health.hasError
-                                              ? () =>
-                                                  _showDatabaseHealthDetails(db)
-                                              : null,
-                                          onSetDefault: () =>
-                                              _handleSetDefaultDatabase(db),
-                                          onSaveAs: () =>
-                                              _handleSaveDatabaseAs(db),
-                                          onDuplicate: () =>
-                                              _handleDuplicateDatabase(db),
-                                          onRestore: () =>
-                                              _handleRestoreDatabase(db),
-                                          onRemove: () =>
-                                              _handleRemoveDatabase(db),
+                                      // Dragging is driven by the grip handle on
+                                      // each group header, not a whole-row grab.
+                                      buildDefaultDragHandles: false,
+                                      proxyDecorator: _groupDragProxy,
+                                      itemCount: visibleGroups.length,
+                                      onReorder: (int oldIndex, int newIndex) {
+                                        // ReorderableListView reports the index
+                                        // BEFORE the dragged row is removed.
+                                        final target =
+                                            newIndex > oldIndex
+                                                ? newIndex - 1
+                                                : newIndex;
+                                        _moveDatabaseGroup(
+                                          visibleGroups: visibleGroups,
+                                          fromIndex: oldIndex,
+                                          toIndex: target,
                                         );
                                       },
-                                    ),
+                                      itemBuilder: (_, index) {
+                                        final group = visibleGroups[index];
+                                        return KeyedSubtree(
+                                          key: ValueKey<String>(
+                                            'vault-group-${group.storageType}',
+                                          ),
+                                          child: _DatabaseGroupSection(
+                                            group: group,
+                                            columns: columns,
+                                            isFirst: index == 0,
+                                            selectedRecordId: selectedRecord?.id,
+                                            healthFor:
+                                                (record) => _databaseHealth[
+                                                    record.id],
+                                            isInteractionBlocked:
+                                                (record, health) =>
+                                                    _isDatabaseInteractionBlocked(
+                                              record,
+                                              health: health,
+                                            ),
+                                            onSelect: _selectDatabase,
+                                            onOpen: (record) =>
+                                                _handleOpenDatabase(
+                                              record,
+                                              autoPromptMode:
+                                                  UnlockAutoPromptMode.immediate,
+                                            ),
+                                            onShowHealthDetails:
+                                                _showDatabaseHealthDetails,
+                                            onSetDefault:
+                                                _handleSetDefaultDatabase,
+                                            onSaveAs: _handleSaveDatabaseAs,
+                                            onDuplicate:
+                                                _handleDuplicateDatabase,
+                                            onRestore: _handleRestoreDatabase,
+                                            onRemove: _handleRemoveDatabase,
+                                            sizeFor: (record) =>
+                                                _vaultSizes[record.id],
+                                            groupIndex: index,
+                                            groupCount: visibleGroups.length,
+                                            onReorderGroup: (newIndex) =>
+                                                _moveDatabaseGroup(
+                                              visibleGroups: visibleGroups,
+                                              fromIndex: index,
+                                              toIndex: newIndex,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
                         ),
                         _VaultStatisticsFooter(databases: databases),
                       ],
@@ -470,6 +536,70 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     );
   }
 
+  /// Compact toolbar under the header: sort controls, group summary and the
+  /// connection-status refresh. Replaces the old table header now that vaults
+  /// render as a grouped card grid.
+  Widget _buildVaultToolbar({
+    required int databaseCount,
+    required int groupCount,
+  }) {
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: _kVaultGridGutter),
+      decoration: const BoxDecoration(
+        color: _kPickerInset,
+        border: Border(bottom: BorderSide(color: _kPickerLine)),
+      ),
+      child: Row(
+        children: <Widget>[
+          // Expanded (not Flexible+Spacer): guarantees the summary yields all
+          // remaining width before the sort controls, so the toolbar can never
+          // overflow at the 960px minimum window size.
+          Expanded(
+            child: Text(
+              groupCount > 1
+                  ? '${databaseCount == 1 ? '1 vault' : '$databaseCount vaults'}  •  $groupCount sources'
+                  : (databaseCount == 1 ? '1 vault' : '$databaseCount vaults'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _pickerText(
+                11,
+                _kPickerMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          _SortLabel(
+            label: 'Name',
+            active: _sortField == _DatabaseSortField.name,
+            ascending: _sortAscending,
+            onTap: () => _toggleSort(_DatabaseSortField.name),
+          ),
+          const SizedBox(width: 12),
+          _SortLabel(
+            label: 'Recent',
+            active: _sortField == _DatabaseSortField.recent,
+            ascending: false,
+            onTap: () => _toggleSort(_DatabaseSortField.recent),
+          ),
+          const SizedBox(width: 12),
+          _SortLabel(
+            label: 'Created',
+            active: _sortField == _DatabaseSortField.createdAt,
+            ascending: _sortAscending,
+            onTap: () => _toggleSort(_DatabaseSortField.createdAt),
+          ),
+          const SizedBox(width: 10),
+          _DatabaseHealthRefreshButton(
+            isRefreshing: _isRefreshingDatabaseHealth,
+            onRefresh: _refreshAllDatabaseHealth,
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openDatabaseSearch() {
     if (_showDatabaseSearch) {
       _searchFocusNode.requestFocus();
@@ -509,11 +639,49 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     });
   }
 
+  /// Resolves on-disk `.kdbx` sizes for the local vaults in [databases].
+  ///
+  /// Local paths are read directly; cloud vaults report the size of their
+  /// downloaded cache copy. Sizing is best-effort: a failure leaves the entry
+  /// null and the card simply omits the size.
+  void _scheduleVaultSizes(List<DatabaseRecord> databases) {
+    final signature = databases.map((record) {
+      return '${record.id}::${record.databasePath}';
+    }).join('|');
+    if (_vaultSizeSignature == signature) {
+      return;
+    }
+    _vaultSizeSignature = signature;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_refreshVaultSizes(databases));
+    });
+  }
+
+  Future<void> _refreshVaultSizes(List<DatabaseRecord> databases) async {
+    final next = <String, int?>{};
+    for (final record in databases) {
+      try {
+        final file = File(record.databasePath);
+        next[record.id] =
+            await file.exists() ? await file.length() : null;
+      } catch (_) {
+        next[record.id] = null;
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _vaultSizes
+        ..clear()
+        ..addAll(next);
+    });
+  }
+
   bool _isDatabaseInteractionBlocked(
     DatabaseRecord record, {
     DatabaseConnectionHealth? health,
-  }) {
-    if (!isCloudBackedDatabaseRecord(record)) return false;
+  }) {    if (!isCloudBackedDatabaseRecord(record)) return false;
     if (health == null) return true;
     return health.blocksUnlock;
   }
@@ -744,48 +912,160 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
           _locationLabel(record).toLowerCase().contains(query);
     }).toList();
 
-    filtered.sort((a, b) {
-      if (a.isDefaultStartup != b.isDefaultStartup) {
-        return a.isDefaultStartup ? -1 : 1;
-      }
-
-      int result;
-      switch (_sortField) {
-        case _DatabaseSortField.recent:
-          // Most recently opened first; never-opened vaults sink to the bottom.
-          final aTime = a.lastOpenedAt;
-          final bTime = b.lastOpenedAt;
-          if (aTime == null && bTime == null) {
-            result = 0;
-          } else if (aTime == null) {
-            return 1;
-          } else if (bTime == null) {
-            return -1;
-          } else {
-            result = bTime.compareTo(aTime);
-          }
-          break;
-        case _DatabaseSortField.name:
-          result = a.nickname.toLowerCase().compareTo(b.nickname.toLowerCase());
-          break;
-        case _DatabaseSortField.createdAt:
-          result = a.addedAt.compareTo(b.addedAt);
-          break;
-      }
-
-      if (result == 0) {
-        result = a.nickname.toLowerCase().compareTo(b.nickname.toLowerCase());
-      }
-
-      // The recent sort defines its own descending order above; the ascending
-      // toggle only applies to the column-based Name / Created at sorts.
-      if (_sortField == _DatabaseSortField.recent) {
-        return result;
-      }
-      return _sortAscending ? result : -result;
-    });
-
+    filtered.sort(_compareDatabases);
     return filtered;
+  }
+
+  /// Buckets [databases] by storage provider, preserving the sorted order
+  /// from `_visibleDatabases` both across groups and inside each group.
+  ///
+  /// Group order follows the user's persisted drag order in
+  /// [vaultGroupOrderProvider]; providers they have not reordered yet keep the
+  /// default [_storageGroupOrder] position.
+  List<_DatabaseStorageGroup> _groupDatabases(
+    List<DatabaseRecord> databases, {
+    required List<String> preferredOrder,
+  }) {
+    final byStorage = <String, List<DatabaseRecord>>{};
+    for (final record in databases) {
+      byStorage
+          .putIfAbsent(record.storageType, () => <DatabaseRecord>[])
+          .add(record);
+    }
+
+    // Persisted entries win, then any provider not yet in that list.
+    final order = <String>[
+      ...preferredOrder.where(byStorage.containsKey),
+      ..._storageGroupOrder.where(
+        (type) => !preferredOrder.contains(type) && byStorage.containsKey(type),
+      ),
+      ...byStorage.keys.where(
+        (type) =>
+            !preferredOrder.contains(type) &&
+            !_storageGroupOrder.contains(type),
+      ),
+    ];
+
+    return <_DatabaseStorageGroup>[
+      for (final storageType in order)
+        if (byStorage[storageType] case final List<DatabaseRecord> records)
+          _DatabaseStorageGroup(
+            storageType: storageType,
+            title: _storageGroupTitle(storageType),
+            assetPath: _storageGroupAsset(storageType),
+            accent: _storageGroupAccent(storageType),
+            records: records,
+          ),
+    ];
+  }
+
+  /// Lifts the dragged group off the paper while it is being reordered.
+  Widget _groupDragProxy(
+    Widget child,
+    int index,
+    Animation<double> animation,
+  ) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (BuildContext context, Widget? built) {
+        final double t = Curves.easeOut.transform(animation.value);
+        return Material(
+          color: Colors.transparent,
+          child: Transform.scale(
+            scale: 1 + 0.012 * t,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: _kPickerPaperBright,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _kPickerLineStrong),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.14 * t),
+                    blurRadius: 18 * t,
+                    offset: Offset(0, 6 * t),
+                  ),
+                ],
+              ),
+              child: built,
+            ),
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
+  /// Moves a whole provider group from [fromIndex] to [toIndex] and persists
+  /// the new display order.
+  void _moveDatabaseGroup({
+    required List<_DatabaseStorageGroup> visibleGroups,
+    required int fromIndex,
+    required int toIndex,
+  }) {
+    if (fromIndex < 0 || fromIndex >= visibleGroups.length) return;
+    final clamped = toIndex.clamp(0, visibleGroups.length - 1);
+    if (fromIndex == clamped) return;
+
+    final order = <String>[for (final group in visibleGroups) group.storageType];
+    final moved = order.removeAt(fromIndex);
+    order.insert(clamped, moved);
+
+    unawaited(
+      ref.read(vaultGroupOrderProvider.notifier).applyVisibleOrder(
+            order,
+            // Seed from the DEFAULT provider order so that providers filtered
+            // out by a search keep a stable slot instead of losing their place.
+            knownOrder: _storageGroupOrder,
+          ),
+    );
+  }
+
+  /// Column count for the vault card grid at a given content width.
+  int _vaultGridColumnCount(BoxConstraints constraints) {    final double available = constraints.maxWidth - _kVaultGridGutter * 2;
+    final int fit =
+        (available / (_kVaultCardMinWidth + _kVaultGridGap)).floor();
+    return fit.clamp(1, 6);
+  }
+
+  int _compareDatabases(DatabaseRecord a, DatabaseRecord b) {
+    if (a.isDefaultStartup != b.isDefaultStartup) {
+      return a.isDefaultStartup ? -1 : 1;
+    }
+
+    int result;
+    switch (_sortField) {
+      case _DatabaseSortField.recent:
+        // Most recently opened first; never-opened vaults sink to the bottom.
+        final aTime = a.lastOpenedAt;
+        final bTime = b.lastOpenedAt;
+        if (aTime == null && bTime == null) {
+          result = 0;
+        } else if (aTime == null) {
+          return 1;
+        } else if (bTime == null) {
+          return -1;
+        } else {
+          result = bTime.compareTo(aTime);
+        }
+        break;
+      case _DatabaseSortField.name:
+        result = a.nickname.toLowerCase().compareTo(b.nickname.toLowerCase());
+        break;
+      case _DatabaseSortField.createdAt:
+        result = a.addedAt.compareTo(b.addedAt);
+        break;
+    }
+
+    if (result == 0) {
+      result = a.nickname.toLowerCase().compareTo(b.nickname.toLowerCase());
+    }
+
+    // The recent sort defines its own descending order above; the ascending
+    // toggle only applies to the column-based Name / Created at sorts.
+    if (_sortField == _DatabaseSortField.recent) {
+      return result;
+    }
+    return _sortAscending ? result : -result;
   }
 
   DatabaseRecord? _selectedRecordFrom(List<DatabaseRecord> databases) {
@@ -885,31 +1165,21 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
           await BackupService.instance.connectOneDrive();
           return BackupService.instance.isOneDriveConnected;
         case 'webdav':
-          final account = await showDialog<String?>(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => WebDavConfigDialog(
-              initialConfig: BackupService.instance.currentWebDavConfig,
-            ),
+          final account = await pushWebDavConfigPage(
+            context,
+            initialConfig: BackupService.instance.currentWebDavConfig,
           );
           if (!mounted) return false;
           return account != null && BackupService.instance.isWebDavConnected;
         case 'sftp':
-          final account = await showDialog<String?>(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => SftpConfigDialog(
-              initialConfig: BackupService.instance.currentSftpConfig,
-            ),
+          final account = await pushSftpConfigPage(
+            context,
+            initialConfig: BackupService.instance.currentSftpConfig,
           );
           if (!mounted) return false;
           return account != null && BackupService.instance.isSftpConnected;
         case 's3':
-          final account = await showDialog<String?>(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => S3ConfigDialog(),
-          );
+          final account = await pushS3ConfigPage(context);
           if (!mounted) return false;
           return account != null &&
               BackupService.instance.currentS3Account != null;
@@ -946,34 +1216,21 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   }
 
   Future<void> _openCreateDatabase() async {
-    if (Platform.isMacOS) {
-      await _windowChannel.invokeMethod<void>(
-        'setSize',
-        <String, double>{'width': 820, 'height': 720},
-      );
-    }
-
     if (!mounted) return;
 
     String? createdPath;
 
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => CreateDatabaseModal(
-        onCreated: (String dbPath, String nickname) async {
-          // addDatabase is already called inside the modal; just capture path.
-          createdPath = dbPath;
-        },
+    // Full-page route inside the fixed shell — the window never resizes.
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => CreateDatabaseModal(
+          onCreated: (String dbPath, String nickname) async {
+            // addDatabase is already called inside the page; just capture path.
+            createdPath = dbPath;
+          },
+        ),
       ),
     );
-
-    if (Platform.isMacOS && mounted) {
-      await _windowChannel.invokeMethod<void>(
-        'setSize',
-        <String, double>{'width': 820, 'height': _kWindowHeight},
-      );
-    }
 
     if (createdPath != null && mounted) {
       final createdRecord = _recordForPath(createdPath!);
@@ -984,33 +1241,20 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   }
 
   Future<void> _openExistingDatabase() async {
-    if (Platform.isMacOS) {
-      await _windowChannel.invokeMethod<void>(
-        'setSize',
-        <String, double>{'width': 820, 'height': 620},
-      );
-    }
-
     if (!mounted) return;
 
     String? openedPath;
 
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => OpenExistingDatabaseModal(
-        onOpened: (String dbPath) async {
-          openedPath = dbPath;
-        },
+    // Full-page route inside the fixed shell — the window never resizes.
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => OpenExistingDatabaseModal(
+          onOpened: (String dbPath) async {
+            openedPath = dbPath;
+          },
+        ),
       ),
     );
-
-    if (Platform.isMacOS && mounted) {
-      await _windowChannel.invokeMethod<void>(
-        'setSize',
-        <String, double>{'width': 820, 'height': _kWindowHeight},
-      );
-    }
 
     if (openedPath != null && mounted) {
       final addedRecord = _recordForPath(openedPath!);
@@ -1021,25 +1265,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   }
 
   Future<void> _openCloudServices() async {
-    // Give the management screen more vertical room on macOS, then restore
-    // the compact unlock-window size when the user returns.
-    if (Platform.isMacOS) {
-      await _windowChannel.invokeMethod<void>(
-        'setSize',
-        <String, double>{'width': 820, 'height': 640},
-      );
-    }
-
     if (!mounted) return;
 
     await Navigator.of(context).pushNamed(CloudServicesScreen.routeName);
-
-    if (Platform.isMacOS && mounted) {
-      await _windowChannel.invokeMethod<void>(
-        'setSize',
-        <String, double>{'width': 820, 'height': _kWindowHeight},
-      );
-    }
 
     if (!mounted) return;
     _databaseHealthSignature = '';
@@ -1073,36 +1301,18 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   }
 
   Future<void> _handleRemoveDatabase(DatabaseRecord record) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(
-          'Remove "${record.nickname}"?',
-          style: _uText(15, _kTitle, fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'This removes the database from LumenPass. The file on disk is not deleted.',
-          style: _uText(12, _kLabel),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: _uText(12, _kLabel)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(
-              'Remove',
-              style: _uText(12, DcColors.red, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+    final confirmed = await showDcConfirmDialog(
+      context,
+      barTitle: 'Remove vault',
+      heading: 'Remove "${record.nickname}"?',
+      message: 'This removes the database from LumenPass. '
+          'The file on disk is not deleted.',
+      confirmLabel: 'Remove',
+      icon: TablerIcons.trash,
+      isDestructive: true,
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       await ref.read(databaseRegistryProvider.notifier).removeDatabase(
             record.id,
           );
@@ -1244,39 +1454,23 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
 
       if (!mounted) return;
 
-      if (Platform.isMacOS) {
-        await _windowChannel.invokeMethod<void>(
-          'setSize',
-          <String, double>{'width': 820, 'height': 600},
-        );
-      }
-
       String? duplicatePath;
 
-      if (!mounted) return;
-      await showDialog<void>(
-        // ignore: use_build_context_synchronously
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => DuplicateDatabaseModal(
-          source: record,
-          sourcePath: sourcePath,
-          defaultNickname: _nextDuplicateNickname(
-            record.nickname,
-            ref.read(databaseRegistryProvider),
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => DuplicateDatabaseModal(
+            source: record,
+            sourcePath: sourcePath,
+            defaultNickname: _nextDuplicateNickname(
+              record.nickname,
+              ref.read(databaseRegistryProvider),
+            ),
+            onDuplicated: (dbPath) async {
+              duplicatePath = dbPath;
+            },
           ),
-          onDuplicated: (dbPath) async {
-            duplicatePath = dbPath;
-          },
         ),
       );
-
-      if (Platform.isMacOS && mounted) {
-        await _windowChannel.invokeMethod<void>(
-          'setSize',
-          <String, double>{'width': 820, 'height': _kWindowHeight},
-        );
-      }
 
       if (duplicatePath != null && mounted) {
         final duplicatedRecord = _recordForPath(duplicatePath!);
@@ -1314,13 +1508,388 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   }
 }
 
-// ── Database row ────────────────────────────────────────────────────────────
+// ── Vault grid (grouped by storage provider) ────────────────────────────────
 
-class _DatabaseRow extends StatefulWidget {
-  const _DatabaseRow({
-    this.index = 0,
+/// A provider section of the vault grid: an identity header plus the
+/// responsive card grid for that storage type.
+class _DatabaseGroupSection extends StatelessWidget {
+  const _DatabaseGroupSection({
+    required this.group,
+    required this.columns,
+    required this.isFirst,
+    required this.selectedRecordId,
+    required this.healthFor,
+    required this.isInteractionBlocked,
+    required this.onSelect,
+    required this.onOpen,
+    required this.onShowHealthDetails,
+    required this.onSetDefault,
+    required this.onSaveAs,
+    required this.onDuplicate,
+    required this.onRestore,
+    required this.onRemove,
+    required this.sizeFor,
+    required this.groupIndex,
+    required this.groupCount,
+    required this.onReorderGroup,
+  });
+
+  final _DatabaseStorageGroup group;
+  final int columns;
+  final bool isFirst;
+  final String? selectedRecordId;
+  final DatabaseConnectionHealth? Function(DatabaseRecord record) healthFor;
+  final bool Function(DatabaseRecord record, DatabaseConnectionHealth? health)
+      isInteractionBlocked;
+  final ValueChanged<DatabaseRecord> onSelect;
+  final ValueChanged<DatabaseRecord> onOpen;
+  final ValueChanged<DatabaseRecord> onShowHealthDetails;
+  final ValueChanged<DatabaseRecord> onSetDefault;
+  final ValueChanged<DatabaseRecord> onSaveAs;
+  final ValueChanged<DatabaseRecord> onDuplicate;
+  final ValueChanged<DatabaseRecord> onRestore;
+  final ValueChanged<DatabaseRecord> onRemove;
+
+  /// On-disk size in bytes for a vault, or null when unknown.
+  final int? Function(DatabaseRecord record) sizeFor;
+
+  /// Position among the rendered groups, and how many there are in total.
+  /// Drives the move controls on the group header.
+  final int groupIndex;
+  final int groupCount;
+
+  /// Moves this group to [newIndex] in the display order.
+  final ValueChanged<int> onReorderGroup;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        _kVaultGridGutter,
+        isFirst ? 14 : 20,
+        _kVaultGridGutter,
+        0,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          _DatabaseGroupHeader(
+            group: group,
+            groupIndex: groupIndex,
+            groupCount: groupCount,
+            onReorder: onReorderGroup,
+          ),
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              // Distribute leftover pixels so the last card is not short.
+              final double cardWidth =
+                  (constraints.maxWidth - _kVaultGridGap * (columns - 1)) /
+                      columns;
+              return Wrap(
+                spacing: _kVaultGridGap,
+                runSpacing: _kVaultGridGap,
+                children: <Widget>[
+                  for (final record in group.records)
+                    SizedBox(
+                      width: cardWidth,
+                      child: _VaultCard(
+                        record: record,
+                        accent: group.accent,
+                        selected: selectedRecordId == record.id,
+                        health: healthFor(record),
+                        fileSize: sizeFor(record),
+                        isInteractionBlocked:
+                            isInteractionBlocked(record, healthFor(record)),
+                        onTap: () => onSelect(record),
+                        onDoubleTap: () => onOpen(record),
+                        onShowHealthDetails: () => onShowHealthDetails(record),
+                        onSetDefault: () => onSetDefault(record),
+                        onSaveAs: () => onSaveAs(record),
+                        onDuplicate: () => onDuplicate(record),
+                        onRestore: () => onRestore(record),
+                        onRemove: () => onRemove(record),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sticky-feeling identity header that introduces a provider's card grid.
+///
+/// The trailing "Vaults" label is replaced by a **Move** control that lets the
+/// user reorder the whole group on the grid.
+class _DatabaseGroupHeader extends StatelessWidget {
+  const _DatabaseGroupHeader({
+    required this.group,
+    required this.groupIndex,
+    required this.groupCount,
+    required this.onReorder,
+  });
+
+  final _DatabaseStorageGroup group;
+  final int groupIndex;
+  final int groupCount;
+  final ValueChanged<int> onReorder;
+
+  Future<void> _showMoveMenu(BuildContext anchorContext) async {
+    final overlayContext = Overlay.maybeOf(anchorContext)?.context;
+    final overlayBox = overlayContext?.findRenderObject();
+    final anchorBox = anchorContext.findRenderObject();
+    if (overlayBox is! RenderBox || anchorBox is! RenderBox) {
+      return;
+    }
+    final topLeft = anchorBox.localToGlobal(Offset.zero, ancestor: overlayBox);
+    final bottomRight = anchorBox.localToGlobal(
+      anchorBox.size.bottomRight(Offset.zero),
+      ancestor: overlayBox,
+    );
+
+    final selection = await showMenu<_GroupMoveAction>(
+      context: anchorContext,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(topLeft, bottomRight),
+        Offset.zero & overlayBox.size,
+      ),
+      color: _kPickerPaperBright,
+      surfaceTintColor: _kPickerPaperBright,
+      shadowColor: const Color(0x30000000),
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: _kPickerLineStrong, width: 1.3),
+      ),
+      menuPadding: const EdgeInsets.symmetric(vertical: 2),
+      constraints: const BoxConstraints(minWidth: 178, maxWidth: 230),
+      items: <PopupMenuEntry<_GroupMoveAction>>[
+        _moveItem(
+          _GroupMoveAction.top,
+          TablerIcons.arrow_bar_up,
+          'Move to top',
+          enabled: groupIndex > 0,
+        ),
+        _moveItem(
+          _GroupMoveAction.up,
+          TablerIcons.arrow_up,
+          'Move up',
+          enabled: groupIndex > 0,
+        ),
+        _moveItem(
+          _GroupMoveAction.down,
+          TablerIcons.arrow_down,
+          'Move down',
+          enabled: groupIndex < groupCount - 1,
+        ),
+        _moveItem(
+          _GroupMoveAction.bottom,
+          TablerIcons.arrow_bar_down,
+          'Move to bottom',
+          enabled: groupIndex < groupCount - 1,
+        ),
+      ],
+    );
+
+    if (selection == null) return;
+    switch (selection) {
+      case _GroupMoveAction.top:
+        onReorder(0);
+      case _GroupMoveAction.up:
+        onReorder(groupIndex - 1);
+      case _GroupMoveAction.down:
+        onReorder(groupIndex + 1);
+      case _GroupMoveAction.bottom:
+        onReorder(groupCount - 1);
+    }
+  }
+
+  PopupMenuItem<_GroupMoveAction> _moveItem(
+    _GroupMoveAction action,
+    IconData icon,
+    String label, {
+    required bool enabled,
+  }) {
+    return PopupMenuItem<_GroupMoveAction>(
+      value: enabled ? action : null,
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        children: <Widget>[
+          Icon(
+            icon,
+            size: 14,
+            color: enabled ? _kPickerMuted : _kPickerFaint,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: _uText(
+              11,
+              enabled ? _kPickerInk : _kPickerFaint,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            color: group.accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
+            border: Border.all(color: group.accent.withValues(alpha: 0.35)),
+          ),
+          alignment: Alignment.center,
+          child: Image.asset(group.assetPath, width: 15, height: 15),
+        ),
+        const SizedBox(width: 9),
+        Text(
+          group.title.toUpperCase(),
+          style: _pickerText(
+            DcMetrics.sectionLabelSize,
+            _kPickerInk,
+            fontWeight: FontWeight.w700,
+            letterSpacing: DcMetrics.sectionLabelTracking,
+          ),
+        ),
+        const SizedBox(width: 7),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: _kPickerInset,
+            borderRadius: BorderRadius.circular(DcMetrics.badgeRadius),
+            border: Border.all(color: _kPickerLine),
+          ),
+          child: Text(
+            '${group.records.length}',
+            style: _pickerText(
+              10,
+              _kPickerMuted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(height: 1, color: _kPickerLine),
+        ),
+        const SizedBox(width: 10),
+        // Only meaningful when there is more than one group to reorder.
+        if (groupCount > 1)
+          Builder(
+            builder: (anchorContext) => _GroupMoveButton(
+              accent: group.accent,
+              groupIndex: groupIndex,
+              onMenuTap: () => _showMoveMenu(anchorContext),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// The trailing "Move" affordance on a group header.
+///
+/// The grip is a dedicated drag handle: dragging it reorders the group, while
+/// clicking it opens an explicit move menu for users who prefer not to drag.
+class _GroupMoveButton extends StatefulWidget {
+  const _GroupMoveButton({
+    required this.accent,
+    required this.groupIndex,
+    required this.onMenuTap,
+  });
+
+  final Color accent;
+  final int groupIndex;
+  final VoidCallback onMenuTap;
+
+  @override
+  State<_GroupMoveButton> createState() => _GroupMoveButtonState();
+}
+
+class _GroupMoveButtonState extends State<_GroupMoveButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.grab,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        decoration: BoxDecoration(
+          color: _hovered
+              ? widget.accent.withValues(alpha: 0.10)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
+          border: Border.all(
+            color: _hovered ? widget.accent : _kPickerLine,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            // Drag handle only.
+            Tooltip(
+              message: 'Drag to reorder this group',
+              child: ReorderableDragStartListener(
+                index: widget.groupIndex,
+                child: Icon(
+                  TablerIcons.grip_vertical,
+                  size: 14,
+                  color: _hovered ? widget.accent : _kPickerMuted,
+                ),
+              ),
+            ),
+            const SizedBox(width: 3),
+            // Click target for the explicit move menu.
+            Tooltip(
+              message: 'Move this group',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: widget.onMenuTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Text(
+                    'Move',
+                    style: _pickerText(
+                      10,
+                      _hovered ? widget.accent : _kPickerMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _GroupMoveAction { top, up, down, bottom }
+
+class _VaultCard extends StatefulWidget {
+  const _VaultCard({
     required this.record,
+    required this.accent,
     required this.selected,
+    required this.isInteractionBlocked,
     required this.onTap,
     required this.onDoubleTap,
     required this.onSetDefault,
@@ -1330,14 +1899,17 @@ class _DatabaseRow extends StatefulWidget {
     required this.onRemove,
     this.health,
     this.onShowHealthDetails,
+    this.fileSize,
   });
 
-  /// Position in the list; drives the striped row color.
-  final int index;
   final DatabaseRecord record;
+
+  /// Brand color of the storage group this card belongs to.
+  final Color accent;
   final bool selected;
-  final VoidCallback? onTap;
-  final VoidCallback? onDoubleTap;
+  final bool isInteractionBlocked;
+  final VoidCallback onTap;
+  final VoidCallback onDoubleTap;
   final VoidCallback onSetDefault;
   final VoidCallback onSaveAs;
   final VoidCallback onDuplicate;
@@ -1346,11 +1918,14 @@ class _DatabaseRow extends StatefulWidget {
   final DatabaseConnectionHealth? health;
   final VoidCallback? onShowHealthDetails;
 
+  /// On-disk size of the vault in bytes; null while unknown.
+  final int? fileSize;
+
   @override
-  State<_DatabaseRow> createState() => _DatabaseRowState();
+  State<_VaultCard> createState() => _VaultCardState();
 }
 
-class _DatabaseRowState extends State<_DatabaseRow> {
+class _VaultCardState extends State<_VaultCard> {
   bool _hovered = false;
 
   static const Color _menuSurface = _kPickerPaperBright;
@@ -1505,7 +2080,7 @@ class _DatabaseRowState extends State<_DatabaseRow> {
     BuildContext menuContext,
     Offset globalPosition,
   ) async {
-    widget.onTap?.call();
+    widget.onTap();
     final overlayContext = Overlay.maybeOf(context)?.context;
     final overlayBox = overlayContext?.findRenderObject();
     if (overlayBox is! RenderBox) {
@@ -1528,7 +2103,7 @@ class _DatabaseRowState extends State<_DatabaseRow> {
     BuildContext menuContext,
     BuildContext anchorContext,
   ) async {
-    widget.onTap?.call();
+    widget.onTap();
     final overlayContext = Overlay.maybeOf(context)?.context;
     final overlayBox = overlayContext?.findRenderObject();
     final anchorBox = anchorContext.findRenderObject();
@@ -1560,34 +2135,24 @@ class _DatabaseRowState extends State<_DatabaseRow> {
     final isPendingCheck = isCloudBacked && health == null;
     final isChecking = (health?.isChecking ?? false) || isPendingCheck;
     final hasHealthError = health?.hasError ?? false;
-    final disabled = isPendingCheck || isChecking || hasHealthError;
+    final disabled =
+        widget.isInteractionBlocked || isChecking || hasHealthError;
     final selected = widget.selected;
-    final titleColor = selected
-        ? Colors.white
-        : hasHealthError
-            ? DcColors.redOnLight
-            : isChecking
-                ? _kPickerFaint
-                : _kPickerInk;
-    final subtitleColor = selected
-        ? const Color(0xD9FFFFFF)
-        : hasHealthError
-            ? DcColors.redOnLight
-            : isChecking
-                ? _kPickerFaint
-                : _kPickerMuted;
-    final backgroundColor = selected
-        ? DcColors.selection
-        : _hovered && !disabled
-            ? _kPickerHover
-            : widget.index.isEven
-                ? _kPickerPaper
-                : _kPickerInset;
-    final locationText = hasHealthError
+    final titleColor = hasHealthError
+        ? DcColors.redOnLight
+        : isChecking
+            ? _kPickerFaint
+            : _kPickerInk;
+    final subtitleColor = hasHealthError
+        ? DcColors.redOnLight
+        : isChecking
+            ? _kPickerFaint
+            : _kPickerMuted;
+    final detailText = hasHealthError
         ? health?.title ?? 'This vault needs attention.'
         : isChecking
             ? 'Checking connection status…'
-            : _locationLabel(widget.record);
+            : _shortenPath(widget.record.databasePath);
     final indicatorHealth = isPendingCheck
         ? DatabaseConnectionHealth.checking(
             providerLabel:
@@ -1595,6 +2160,13 @@ class _DatabaseRowState extends State<_DatabaseRow> {
             checkedAt: DateTime.now(),
           )
         : health;
+    final accent = widget.accent;
+
+    final borderColor = selected
+        ? accent
+        : _hovered
+            ? accent.withValues(alpha: 0.55)
+            : _kPickerLineStrong;
 
     return Theme(
       data: Theme.of(context).copyWith(
@@ -1612,8 +2184,8 @@ class _DatabaseRowState extends State<_DatabaseRow> {
             onExit: (_) => setState(() => _hovered = false),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: widget.onTap,
-              onDoubleTap: widget.onDoubleTap,
+              onTap: disabled ? null : widget.onTap,
+              onDoubleTap: disabled ? null : widget.onDoubleTap,
               onSecondaryTapDown: isChecking
                   ? null
                   : (details) {
@@ -1621,112 +2193,195 @@ class _DatabaseRowState extends State<_DatabaseRow> {
                     },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 120),
-                height: 52,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: backgroundColor,
-                  border: const Border(
-                    bottom: BorderSide(color: _kPickerLine),
+                  // Selected cards keep a light tint plus a brand ring instead
+                  // of a heavy solid fill, so they read as a card, not a row.
+                  color: selected
+                      ? accent.withValues(alpha: 0.10)
+                      : _kPickerPaperBright,
+                  borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
+                  border: Border.all(
+                    color: borderColor,
+                    width: selected ? 1.6 : 1,
                   ),
+                  boxShadow: _hovered || selected
+                      ? const <BoxShadow>[
+                          BoxShadow(
+                            color: DcColors.lightCardShadow,
+                            blurRadius: 10,
+                            offset: Offset(0, 3),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: <Widget>[
-                    Opacity(
-                      opacity: isChecking ? 0.62 : 1,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 11, 8, 11),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
-                          _DatabaseBadge(
-                              record: widget.record, selected: widget.selected),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Row(
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Opacity(
+                                opacity: isChecking ? 0.55 : 1,
+                                child: _DatabaseBadge(
+                                  record: widget.record,
+                                  selected: false,
+                                ),
+                              ),
+                              const SizedBox(width: 9),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: <Widget>[
-                                    Flexible(
-                                      child: Text(
-                                        widget.record.nickname,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: _pickerText(
-                                          13,
-                                          titleColor,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                    Text(
+                                      widget.record.nickname,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: _pickerText(
+                                        13,
+                                        titleColor,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    if (widget
-                                        .record.isDefaultStartup) ...<Widget>[
-                                      const SizedBox(width: 8),
-                                      _StatusChip(
-                                        icon: TablerIcons.star_filled,
-                                        label: 'Default',
-                                        backgroundColor: widget.selected
-                                            ? const Color(0x33FFFFFF)
-                                            : DcColors.amber,
-                                        foregroundColor: widget.selected
-                                            ? Colors.white
-                                            : DcColors.sidebarText,
-                                      ),
-                                    ],
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: <Widget>[
+                                        if (indicatorHealth != null &&
+                                            (isChecking || hasHealthError))
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(right: 5),
+                                            child: _DatabaseHealthIndicator(
+                                              health: indicatorHealth,
+                                              onTap: widget.onShowHealthDetails,
+                                              compact: true,
+                                            ),
+                                          ),
+                                        Expanded(
+                                          child: Text(
+                                            _locationLabel(widget.record),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: _pickerText(
+                                              11,
+                                              subtitleColor,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ],
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  locationText,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: _pickerText(
-                                    11,
-                                    subtitleColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Builder(
+                                builder: (anchorContext) => _DatabaseItemMenu(
+                                  selected: false,
+                                  enabled: !isChecking,
+                                  onTap: isChecking
+                                      ? null
+                                      : () => _showMenuAnchoredTo(
+                                            menuContext,
+                                            anchorContext,
+                                          ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 9),
+                          Text(
+                            detailText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: _pickerText(
+                              10,
+                              hasHealthError
+                                  ? DcColors.redOnLight
+                                  : _kPickerFaint,
+                            ),
+                          ),
+                          const SizedBox(height: 9),
+                          Row(
+                            children: <Widget>[
+                              if (widget.record.isDefaultStartup)
+                                _StatusChip(
+                                  icon: TablerIcons.star_filled,
+                                  label: 'Default',
+                                  backgroundColor: DcColors.amber,
+                                  foregroundColor: DcColors.sidebarText,
+                                ),
+                              const Spacer(),
+                              if (widget.fileSize case final int bytes) ...<Widget>[
+                                Tooltip(
+                                  message:
+                                      '${_formatFileSize(bytes)} on disk',
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      const Icon(
+                                        TablerIcons.database,
+                                        size: 10,
+                                        color: _kPickerFaint,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        _formatFileSize(bytes),
+                                        style: _pickerText(
+                                          10,
+                                          _kPickerFaint,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  width: 1,
+                                  height: 9,
+                                  color: _kPickerLine,
+                                ),
+                                const SizedBox(width: 8),
                               ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          SizedBox(
-                            width: 110,
-                            child: Text(
-                              _formatCreatedAt(widget.record.addedAt),
-                              textAlign: TextAlign.left,
-                              style: _pickerText(
-                                11,
-                                subtitleColor,
-                                fontWeight: FontWeight.w500,
+                              Text(
+                                _formatCreatedAt(widget.record.addedAt),
+                                style: _pickerText(
+                                  10,
+                                  _kPickerFaint,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Builder(
-                            builder: (anchorContext) => _DatabaseItemMenu(
-                              selected: widget.selected,
-                              enabled: !isChecking,
-                              onTap: isChecking
-                                  ? null
-                                  : () => _showMenuAnchoredTo(
-                                        menuContext,
-                                        anchorContext,
-                                      ),
-                            ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    if ((isChecking || hasHealthError) &&
-                        indicatorHealth != null)
+                    if (selected)
                       Positioned(
-                        right: 2,
-                        bottom: 0,
-                        child: _DatabaseHealthIndicator(
-                          health: indicatorHealth,
-                          onTap: widget.onShowHealthDetails,
-                          compact: true,
+                        top: 0,
+                        right: 0,
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: accent,
+                            borderRadius: const BorderRadius.only(
+                              topRight:
+                                  Radius.circular(DcMetrics.panelRadius - 1),
+                              bottomLeft: Radius.circular(8),
+                            ),
+                          ),
+                          child: const Icon(
+                            TablerIcons.check,
+                            size: 11,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                   ],
@@ -2326,75 +2981,6 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-class _DatabaseListHeader extends StatelessWidget {
-  const _DatabaseListHeader({
-    required this.sortField,
-    required this.sortAscending,
-    required this.onSort,
-    required this.isRefreshing,
-    required this.onRefresh,
-  });
-
-  final _DatabaseSortField sortField;
-  final bool sortAscending;
-  final ValueChanged<_DatabaseSortField> onSort;
-  final bool isRefreshing;
-  final Future<void> Function() onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 30,
-      padding: const EdgeInsets.only(left: 60, right: 14),
-      decoration: const BoxDecoration(
-        color: _kPickerTableHeader,
-        border: Border(bottom: BorderSide(color: _kPickerLine)),
-      ),
-      alignment: Alignment.centerLeft,
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: _SortLabel(
-              label: 'Name',
-              active: sortField == _DatabaseSortField.name,
-              ascending: sortAscending,
-              onTap: () => onSort(_DatabaseSortField.name),
-            ),
-          ),
-          SizedBox(
-            width: 80,
-            child: _SortLabel(
-              label: 'Recent',
-              active: sortField == _DatabaseSortField.recent,
-              ascending: false,
-              onTap: () => onSort(_DatabaseSortField.recent),
-            ),
-          ),
-          SizedBox(
-            width: 118,
-            child: _SortLabel(
-              label: 'Created at',
-              active: sortField == _DatabaseSortField.createdAt,
-              ascending: sortAscending,
-              onTap: () => onSort(_DatabaseSortField.createdAt),
-            ),
-          ),
-          SizedBox(
-            width: 48,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: _DatabaseHealthRefreshButton(
-                isRefreshing: isRefreshing,
-                onRefresh: onRefresh,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _DatabaseHealthRefreshButton extends StatelessWidget {
   const _DatabaseHealthRefreshButton({
     required this.isRefreshing,
@@ -2460,20 +3046,22 @@ class _SortLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      // Shrink-wraps: this label is laid out as a non-flex child of a Row,
+      // which hands down unbounded width constraints. A Flexible child here
+      // would assert and take the whole tree down with it.
       child: Row(
-        mainAxisSize: MainAxisSize.max,
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Flexible(
-            child: Text(
-              label.toUpperCase(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _pickerText(
-                10,
-                active ? _kPickerInk : _kPickerMuted,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
-              ),
+          Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: _pickerText(
+              10,
+              active ? _kPickerInk : _kPickerMuted,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(width: 4),
@@ -2723,7 +3311,7 @@ class _GuidePanelFooter extends StatelessWidget {
                           const SizedBox(width: 5),
                           Expanded(
                             child: Text(
-                              'github.com/lumenpass/lumenpass  ·  MPL-2.0',
+                              'github.com/lumenpass/lumenpass  ·  Apache-2.0',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: _pickerText(
@@ -2777,9 +3365,8 @@ class _DatabaseItemMenu extends StatelessWidget {
                 color: selected ? const Color(0x33FFFFFF) : _kPickerPaper,
                 borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
                 border: Border.all(
-                  color: selected
-                      ? const Color(0x66FFFFFF)
-                      : _kPickerLineStrong,
+                  color:
+                      selected ? const Color(0x66FFFFFF) : _kPickerLineStrong,
                 ),
               ),
               child: Icon(
@@ -2892,15 +3479,12 @@ class _UnlockCredentialsDialog extends ConsumerStatefulWidget {
 class _UnlockCredentialsDialogState
     extends ConsumerState<_UnlockCredentialsDialog>
     with WidgetsBindingObserver {
-  static const MethodChannel _windowChannel = MethodChannel('lumenpass/window');
-
   late final TextEditingController _passwordController;
   bool _obscurePassword = true;
   bool _showAdvanced = false;
   bool _acceptNoPassword = false;
   String? _toastMessage;
   Timer? _toastTimer;
-  bool _navigatedToVault = false;
   bool _biometricEnabled = false;
   bool _pinEnabled = false;
   bool _showPinPad = false;
@@ -2910,9 +3494,6 @@ class _UnlockCredentialsDialogState
   bool _lifecycleResumedOnce = false;
   bool _onFocusPostFrameScheduled = false;
 
-  static const double _kHeightNormal = 520;
-  static const double _kHeightAdvanced = 640;
-
   @override
   void initState() {
     super.initState();
@@ -2921,12 +3502,6 @@ class _UnlockCredentialsDialogState
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     _passwordController = TextEditingController();
     _loadUnlockPreferences();
-    if (Platform.isMacOS) {
-      _windowChannel.invokeMethod<void>(
-        'setSize',
-        <String, double>{'width': 820, 'height': _kHeightNormal},
-      );
-    }
   }
 
   @override
@@ -2960,26 +3535,11 @@ class _UnlockCredentialsDialogState
     _toastTimer?.cancel();
     _passwordController.dispose();
     WidgetsBinding.instance.removeObserver(this);
-    if (Platform.isMacOS && !_navigatedToVault) {
-      _windowChannel.invokeMethod<void>(
-        'setSize',
-        <String, double>{'width': 820, 'height': 480},
-      );
-    }
     super.dispose();
   }
 
   void _toggleAdvanced(bool v) {
     setState(() => _showAdvanced = v);
-    if (Platform.isMacOS) {
-      _windowChannel.invokeMethod<void>(
-        'setSize',
-        <String, double>{
-          'width': 820,
-          'height': v ? _kHeightAdvanced : _kHeightNormal,
-        },
-      );
-    }
   }
 
   Future<void> _loadUnlockPreferences() async {
@@ -3126,7 +3686,6 @@ class _UnlockCredentialsDialogState
             if (!navigator.mounted) return;
             navigator.pop();
             if (!mounted) return;
-            _navigatedToVault = true;
             Navigator.of(dialogContext).pop(true);
           },
           onFailure: (msg) {
@@ -4316,6 +4875,65 @@ String _locationLabel(DatabaseRecord record) {
   }
 }
 
+/// Display name of a storage group header.
+String _storageGroupTitle(String storageType) {
+  switch (storageType) {
+    case 'local':
+      return 'This Mac';
+    default:
+      return providerLabelForStorageType(storageType);
+  }
+}
+
+/// Bundled logo for a storage group header and card badges.
+String _storageGroupAsset(String storageType) {
+  switch (storageType) {
+    case 'googleDrive':
+      return 'assets/images/google-drive.png';
+    case 'dropbox':
+      return 'assets/images/dropbox.png';
+    case 'oneDrive':
+      return 'assets/images/onedrive.png';
+    case 'webdav':
+      return 'assets/images/webdav.png';
+    case 'sftp':
+      return 'assets/images/sftp.png';
+    case 's3':
+      return 'assets/images/aws-s3-icon.png';
+    default:
+      return 'assets/images/dir.png';
+  }
+}
+
+/// Brand accent used for the group chip, card edge and selection ring.
+Color _storageGroupAccent(String storageType) {
+  switch (storageType) {
+    case 'googleDrive':
+      return StorageBrandColors.googleDrive;
+    case 'dropbox':
+      return StorageBrandColors.dropbox;
+    case 'oneDrive':
+      return StorageBrandColors.oneDrive;
+    case 'webdav':
+      return StorageBrandColors.webDav;
+    case 'sftp':
+      return StorageBrandColors.sftp;
+    case 's3':
+      return StorageBrandColors.s3;
+    default:
+      return StorageBrandColors.local;
+  }
+}
+
+/// Human-readable file size for vault cards (e.g. `48.2 KB`, `1.24 MB`).
+String _formatFileSize(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  final double kb = bytes / 1024;
+  if (kb < 1024) return '${kb.toStringAsFixed(kb < 10 ? 1 : 0)} KB';
+  final double mb = kb / 1024;
+  return '${mb.toStringAsFixed(mb < 10 ? 2 : 1)} MB';
+}
+
 String _formatCreatedAt(DateTime value) {
   const months = <String>[
     'Jan',
@@ -4353,6 +4971,11 @@ String _shortenPath(String path) {
 
 enum _DatabaseHealthDialogAction { close, retry, reconnect, unlinkDatabases }
 
+/// Light confirmation surface for a vault whose cloud sync is unhealthy.
+///
+/// Migrated from a dark [AlertDialog] so it matches the light vault list it is
+/// opened from: branded title bar, warning heading, bulleted next steps, then
+/// Close / Check again / Unlink / Reconnect.
 class _DatabaseHealthIssueDialog extends StatelessWidget {
   const _DatabaseHealthIssueDialog({
     required this.record,
@@ -4369,50 +4992,48 @@ class _DatabaseHealthIssueDialog extends StatelessWidget {
     final providerLabel =
         health.providerLabel ?? providerLabelForStorageType(record.storageType);
 
-    return Theme(
-      data: AppTheme.driveClue(),
-      child: AlertDialog(
-        backgroundColor: DcColors.panel,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
-          side: const BorderSide(color: DcColors.line),
+    return DcConfirmDialog(
+      barTitle: 'Vault sync issue',
+      heading: health.title ?? 'This vault needs attention',
+      message: '"${record.nickname}" is linked to $providerLabel.\n\n'
+          '${health.details ?? 'The vault cannot confirm sync health.'}',
+      icon: TablerIcons.alert_triangle,
+      width: 500,
+      confirmLabel: 'Reconnect $providerLabel',
+      confirmIcon: TablerIcons.refresh,
+      // Cancel and the title-bar close both surface as "no action taken".
+      onCancel: () =>
+          Navigator.of(context).pop(_DatabaseHealthDialogAction.close),
+      onConfirm: () =>
+          Navigator.of(context).pop(_DatabaseHealthDialogAction.reconnect),
+      extraActions: <Widget>[
+        if (_canReconnect)
+          _HealthDialogActionButton(
+            label: 'Unlink Databases',
+            color: DcColors.redOnLight,
+            onPressed: () => Navigator.of(context)
+                .pop(_DatabaseHealthDialogAction.unlinkDatabases),
+          ),
+        _HealthDialogActionButton(
+          label: 'Check again',
+          color: DcColors.selection,
+          onPressed: () =>
+              Navigator.of(context).pop(_DatabaseHealthDialogAction.retry),
         ),
-        title: Row(
-          children: <Widget>[
-            const Icon(
-              TablerIcons.alert_triangle,
-              color: DcColors.red,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                health.title ?? 'This vault needs attention',
-                style: _uText(15, _kTitle, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                '"${record.nickname}" is linked to $providerLabel.',
-                style: _uText(12, _kTitle, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                health.details ?? 'The vault cannot confirm sync health.',
-                style: _uText(12, _kLabel, height: 1.4),
-              ),
-              if (health.recommendedActions.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 14),
-                Text(
+      ],
+      body: health.recommendedActions.isEmpty
+          ? null
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
                   'Recommended actions',
-                  style: _uText(12, _kTitle, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: DcColors.sidebarText,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 for (final action in health.recommendedActions)
@@ -4421,79 +5042,66 @@ class _DatabaseHealthIssueDialog extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Container(
-                            width: 5,
-                            height: 5,
-                            decoration: const BoxDecoration(
-                              color: _kActionDark,
-                              shape: BoxShape.circle,
-                            ),
+                        Container(
+                          width: 5,
+                          height: 5,
+                          margin: const EdgeInsets.only(top: 5, right: 8),
+                          decoration: const BoxDecoration(
+                            color: DcColors.selection,
+                            shape: BoxShape.circle,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             action,
-                            style: _uText(12, _kLabel, height: 1.35),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              height: 1.4,
+                              color: DcColors.sidebarMuted,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
               ],
-            ],
-          ),
+            ),
+    );
+  }
+}
+
+/// Ghost footer button used by the vault-health dialog for its secondary
+/// actions (Check again / Unlink Databases).
+class _HealthDialogActionButton extends StatelessWidget {
+  const _HealthDialogActionButton({
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final String label;
+  final Color color;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    // Spacing between footer actions is owned by the dialog's footer Wrap, so
+    // this button must not add its own trailing margin.
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: color,
+        minimumSize: const Size(0, 38),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: color,
         ),
-        actionsPadding:
-            const EdgeInsets.only(left: 16, right: 16, bottom: 12, top: 4),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () =>
-                Navigator.of(context).pop(_DatabaseHealthDialogAction.close),
-            child: Text('Close', style: _uText(12, _kLabel)),
-          ),
-          if (_canReconnect)
-            TextButton(
-              onPressed: () => Navigator.of(context)
-                  .pop(_DatabaseHealthDialogAction.unlinkDatabases),
-              child: Text(
-                'Unlink Databases',
-                style: _uText(
-                  12,
-                  DcColors.red,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          TextButton(
-            onPressed: () =>
-                Navigator.of(context).pop(_DatabaseHealthDialogAction.retry),
-            child: Text(
-              'Check again',
-              style: _uText(12, _kActionDark, fontWeight: FontWeight.w600),
-            ),
-          ),
-          if (_canReconnect)
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: _kActionDark,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(DcMetrics.controlRadius),
-                ),
-              ),
-              onPressed: () => Navigator.of(context)
-                  .pop(_DatabaseHealthDialogAction.reconnect),
-              child: Text(
-                'Reconnect $providerLabel',
-                style: _uText(12, Colors.white, fontWeight: FontWeight.w600),
-              ),
-            ),
-        ],
       ),
     );
   }

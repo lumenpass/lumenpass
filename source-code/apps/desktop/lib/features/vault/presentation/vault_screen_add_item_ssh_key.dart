@@ -792,7 +792,8 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: <Widget>[
                                   _LoginFooterButton(
-                                    label: 'Cancel',
+                                    icon: TablerIcons.x,
+                                    tooltip: 'Cancel',
                                     backgroundColor:
                                         _ItemModalColors.surfaceMuted,
                                     textColor: _ItemModalColors.headerLabel,
@@ -802,7 +803,8 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                                   ),
                                   const SizedBox(width: 10),
                                   _LoginFooterButton(
-                                    label: 'Generate',
+                                    icon: TablerIcons.check,
+                                    tooltip: 'Generate',
                                     backgroundColor: _kPrimaryButtonColor,
                                     textColor: Colors.white,
                                     onTap: () {
@@ -1280,14 +1282,16 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: <Widget>[
                               _LoginFooterButton(
-                                label: 'Cancel Add',
+                                icon: TablerIcons.x,
+                                tooltip: 'Cancel Add',
                                 backgroundColor: _ItemModalColors.surfaceMuted,
                                 textColor: _ItemModalColors.headerLabel,
                                 onTap: () => Navigator.of(dialogContext).pop(),
                               ),
                               const SizedBox(width: 10),
                               _LoginFooterButton(
-                                label: 'Save Passphrase',
+                                icon: TablerIcons.check,
+                                tooltip: 'Save Passphrase',
                                 backgroundColor: _kPrimaryButtonColor,
                                 textColor: Colors.white,
                                 onTap: () {
@@ -1834,6 +1838,7 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                             const _AddItemTypeIcon(
                               icon: TablerIcons.prompt,
                               color: DcColors.tealOnLight,
+                              imagePath: 'assets/images/item_type_ssh.png',
                             )
                           else
                             _SshKeyHeroIcon(
@@ -2025,7 +2030,8 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: <Widget>[
                           _LoginFooterButton(
-                            label: 'Cancel',
+                            icon: TablerIcons.x,
+                            tooltip: 'Cancel',
                             backgroundColor: _ItemModalColors.surfaceMuted,
                             textColor: _ItemModalColors.headerLabel,
                             borderColor: _ItemModalColors.borderPane,
@@ -2033,7 +2039,10 @@ class _AddSshKeyItemModalState extends ConsumerState<_AddSshKeyItemModal> {
                           ),
                           const SizedBox(width: 10),
                           _LoginFooterButton(
-                            label: _isSaving
+                            icon: _isSaving
+                                ? TablerIcons.loader_2
+                                : TablerIcons.check,
+                            tooltip: _isSaving
                                 ? 'Saving...'
                                 : (_isEditing ? 'Save changes' : 'Save'),
                             backgroundColor: _kPrimaryButtonColor,
@@ -2188,6 +2197,7 @@ class _SshKeyHeroIcon extends StatelessWidget {
           const _AddItemTypeIcon(
             icon: TablerIcons.prompt,
             color: DcColors.tealOnLight,
+            imagePath: 'assets/images/item_type_ssh.png',
           ),
           Positioned(
             right: 0,

@@ -3772,7 +3772,7 @@ class _AboutSettingsContentState extends State<_AboutSettingsContent> {
               _SettingsSectionBlock(
                 title: 'Open source',
                 subtitle:
-                    'LumenPass source code is available under the Mozilla Public License 2.0.',
+                    'LumenPass source code is available under the Apache License 2.0.',
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: OutlinedButton.icon(

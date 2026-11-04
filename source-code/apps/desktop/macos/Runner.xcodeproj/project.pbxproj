@@ -32,6 +32,7 @@
 		5AFE10010000000000000003 /* SafariExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 5AFE10020000000000000005 /* SafariExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9D20F2BA936EA8633DBF591B /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F2DC5B1D91B9B7C1E6FE582E /* Pods_RunnerTests.framework */; };
 		AA3F1B0011223344AABB0001 /* SshAgentServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F1B0011223344AABB0002 /* SshAgentServer.swift */; };
+		AA3F1B0011223344AABB0021 /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F1B0011223344AABB0022 /* SettingsWindow.swift */; };
 		B158FD7F32A2BDBCFDA04703 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 27929C4BD9F145E2E9C853BB /* Pods_Runner.framework */; };
 		C6B261132F8F460C00512C23 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6B261122F8F460C00512C23 /* StoreKit.framework */; };
 /* End PBXBuildFile section */
@@ -112,6 +113,7 @@
 		8BC98BFCF1B891A495984E1E /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		AA3F1B0011223344AABB0002 /* SshAgentServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SshAgentServer.swift; sourceTree = "<group>"; };
+		AA3F1B0011223344AABB0022 /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
 		C6B261122F8F460C00512C23 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		CABD7C55DA09AEEE9692D7A1 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		D66AC9B343F48C991E07A771 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
@@ -212,6 +214,7 @@
 				AA3F1B0011223344AABB0011 /* main.swift */,
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				AA3F1B0011223344AABB0002 /* SshAgentServer.swift */,
+				AA3F1B0011223344AABB0022 /* SettingsWindow.swift */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
@@ -559,6 +562,7 @@
 				AA3F1B0011223344AABB0010 /* main.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 				AA3F1B0011223344AABB0001 /* SshAgentServer.swift in Sources */,
+				AA3F1B0011223344AABB0021 /* SettingsWindow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

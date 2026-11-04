@@ -2,30 +2,19 @@ part of 'vault_screen.dart';
 
 /// Vault palette, mapped onto the DriveClue tokens ([DcColors]).
 ///
-/// The names are kept from the previous palette so the ~430 existing
-/// references pick up the new look without touching their call sites.
+/// The names are kept from the previous palette so existing references pick up
+/// the new look without touching their call sites. Every modal and dialog in
+/// the vault workspace is a light surface under a dark [DcDialogTitleBar], so
+/// the dark-slate entries that used to live here are gone — keeping them would
+/// silently offer an unused "wrong" surface to new code.
 class _VaultColors {
   /// Window and pane background (dark slate).
   static const Color canvas = DcColors.background;
   static const Color sidebar = DcColors.sidebar;
 
-  /// Raised surfaces: dialogs, menus, cards.
-  static const Color surface = DcColors.panel;
-
-  /// Recessed fills inside a surface: inputs, chips, wells.
-  static const Color surfaceMuted = DcColors.rowAlternate;
-
-  /// Hover / pressed wash (formerly peach).
-  static const Color peach = DcColors.selectionTint;
-
-  /// Subtle selected wash (formerly soft peach).
-  static const Color peachSoft = DcColors.selectionSoft;
   static const Color title = DcColors.text;
-  static const Color headerLabel = DcColors.muted;
 
   static const Color icon = DcColors.muted;
-  static const Color borderSoft = DcColors.line;
-  static const Color borderPane = DcColors.line;
 }
 
 const Color _kPrimaryButtonColor = DcColors.selection;

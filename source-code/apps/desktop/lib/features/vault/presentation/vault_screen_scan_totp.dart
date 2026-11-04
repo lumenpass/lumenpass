@@ -204,17 +204,15 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
     );
   }
 
-  Widget _buildInputStep() {
-    final bool canContinue =
-        _manualCtrl.text.trim().isNotEmpty && !_isProcessing;
-
+  Widget _modalShell({required double width, required Widget child}) {
     return Container(
-      width: 520,
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      width: width,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: DcColors.panel,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: DcColors.line),
+        // Light body under the shared dark title bar, matching the rest of the
+        // refreshed dialogs.
+        color: DcColors.lightSurface,
+        borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
         boxShadow: const <BoxShadow>[
           BoxShadow(
             color: DcColors.shadow,
@@ -223,202 +221,205 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
           ),
         ],
       ),
+      child: child,
+    );
+  }
+
+  Widget _buildInputStep() {
+    final bool canContinue =
+        _manualCtrl.text.trim().isNotEmpty && !_isProcessing;
+
+    return _modalShell(
+      width: 520,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          // Header
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  'Add 2FA Code',
-                  style: _text(17, DcColors.text,
-                      fontWeight: FontWeight.w700),
-                ),
-              ),
-              InkWell(
-                onTap: widget.onClose,
-                borderRadius: BorderRadius.circular(999),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
-                  child:
-                      Icon(TablerIcons.x, size: 16, color: DcColors.muted),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Drop zone
-          DropTarget(
-            onDragEntered: (_) => setState(() => _isDragOver = true),
-            onDragExited: (_) => setState(() => _isDragOver = false),
-            onDragDone: (detail) {
-              setState(() => _isDragOver = false);
-              if (detail.files.isNotEmpty) {
-                _handleFilePath(detail.files.first.path);
-              }
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: double.infinity,
-              height: 160,
-              decoration: BoxDecoration(
-                color: _isDragOver
-                    ? DcColors.rowAlternate
-                    : DcColors.panel,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: _isDragOver
-                      ? DcColors.selection
-                      : DcColors.line,
-                  width: _isDragOver ? 2 : 1.5,
-                  style: BorderStyle.solid,
-                ),
-              ),
-              child: _isProcessing
-                  ? const Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: DcColors.selection,
-                        ),
-                      ),
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        Icon(
-                          _isDragOver ? TablerIcons.scan : TablerIcons.qrcode,
-                          size: 32,
+          DcDialogTitleBar(title: 'Add 2FA Code', onClose: widget.onClose),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  // Drop zone
+                  DropTarget(
+                    onDragEntered: (_) => setState(() => _isDragOver = true),
+                    onDragExited: (_) => setState(() => _isDragOver = false),
+                    onDragDone: (detail) {
+                      setState(() => _isDragOver = false);
+                      if (detail.files.isNotEmpty) {
+                        _handleFilePath(detail.files.first.path);
+                      }
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: double.infinity,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: _isDragOver
+                            ? DcColors.lightSelectionFill
+                            : DcColors.lightInset,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
                           color: _isDragOver
                               ? DcColors.selection
-                              : DcColors.selection,
+                              : DcColors.lightLineStrong,
+                          width: _isDragOver ? 2 : 1.5,
                         ),
-                        const SizedBox(height: 10),
-                        Text(
-                          _isDragOver
-                              ? 'Drop to scan QR code'
-                              : 'Drop a QR code image here',
-                          style: _text(
-                            13,
-                            _isDragOver
-                                ? DcColors.selection
-                                : DcColors.muted,
-                            fontWeight: FontWeight.w500,
+                      ),
+                      child: _isProcessing
+                          ? const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: DcColors.selection,
+                                ),
+                              ),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                const Icon(
+                                  TablerIcons.qrcode,
+                                  size: 32,
+                                  color: DcColors.selection,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  _isDragOver
+                                      ? 'Drop to scan QR code'
+                                      : 'Drop a QR code image here',
+                                  style: _text(
+                                    13,
+                                    _isDragOver
+                                        ? DcColors.selection
+                                        : DcColors.sidebarMuted,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    _ScanActionButton(
+                                      icon: TablerIcons.folder_open,
+                                      label: 'Browse Image',
+                                      onTap: _pickFile,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _ScanActionButton(
+                                      icon: TablerIcons.device_desktop,
+                                      label: 'Scan Screen',
+                                      onTap: _scanScreen,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Divider "or"
+                  Row(
+                    children: <Widget>[
+                      const Expanded(
+                          child: Divider(color: DcColors.sidebarLine)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'or enter setup key manually',
+                          style: _text(12, DcColors.sidebarMuted,
+                              fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      const Expanded(
+                          child: Divider(color: DcColors.sidebarLine)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Manual input
+                  TextField(
+                    controller: _manualCtrl,
+                    onChanged: (_) => setState(() => _error = null),
+                    onSubmitted: (_) => _tryManualInput(),
+                    style: _text(13, DcColors.sidebarText,
+                        fontWeight: FontWeight.w500),
+                    decoration: InputDecoration(
+                      hintText: 'otpauth://totp/... or TOTP secret (Base32)',
+                      hintStyle: _text(
+                        13,
+                        DcColors.sidebarMuted.withValues(alpha: 0.75),
+                        fontWeight: FontWeight.w400,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      filled: true,
+                      fillColor: DcColors.lightInset,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                            const BorderSide(color: DcColors.lightLineStrong),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                            const BorderSide(color: DcColors.selection),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: DcColors.redOnLight),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: DcColors.redOnLight),
+                      ),
+                    ),
+                  ),
+
+                  if (_error != null) ...<Widget>[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: <Widget>[
+                        const Icon(TablerIcons.alert_circle,
+                            size: 13, color: DcColors.redOnLight),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            _error!,
+                            style: _text(12, DcColors.redOnLight,
+                                fontWeight: FontWeight.w500),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            _ScanActionButton(
-                              icon: TablerIcons.folder_open,
-                              label: 'Browse Image',
-                              onTap: _pickFile,
-                            ),
-                            const SizedBox(width: 8),
-                            _ScanActionButton(
-                              icon: TablerIcons.device_desktop,
-                              label: 'Scan Screen',
-                              onTap: _scanScreen,
-                            ),
-                          ],
                         ),
                       ],
                     ),
-            ),
-          ),
+                  ],
 
-          const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-          // Divider "or"
-          Row(
-            children: <Widget>[
-              const Expanded(child: Divider(color: DcColors.line)),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'or enter setup key manually',
-                  style: _text(12, DcColors.muted,
-                      fontWeight: FontWeight.w500),
-                ),
-              ),
-              const Expanded(child: Divider(color: DcColors.line)),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Manual input
-          TextField(
-            controller: _manualCtrl,
-            onChanged: (_) => setState(() => _error = null),
-            onSubmitted: (_) => _tryManualInput(),
-            style:
-                _text(13, DcColors.text, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              hintText: 'otpauth://totp/... or TOTP secret (Base32)',
-              hintStyle: _text(13, DcColors.selection,
-                  fontWeight: FontWeight.w400),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              filled: true,
-              fillColor: DcColors.panel,
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: DcColors.line),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: DcColors.selection),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: DcColors.red),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: DcColors.red),
-              ),
-            ),
-          ),
-
-          if (_error != null) ...<Widget>[
-            const SizedBox(height: 10),
-            Row(
-              children: <Widget>[
-                const Icon(TablerIcons.alert_circle,
-                    size: 13, color: DcColors.red),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    _error!,
-                    style: _text(12, DcColors.red,
-                        fontWeight: FontWeight.w500),
+                  // Footer buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: <Widget>[
+                      _ScanGhostButton(
+                          label: 'Cancel', onTap: widget.onClose),
+                      const SizedBox(width: 10),
+                      _ScanPrimaryButton(
+                        label: 'Continue',
+                        icon: TablerIcons.arrow_right,
+                        enabled: canContinue,
+                        onTap: _tryManualInput,
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ],
-
-          const SizedBox(height: 20),
-
-          // Footer buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: <Widget>[
-              _ScanGhostButton(label: 'Cancel', onTap: widget.onClose),
-              const SizedBox(width: 10),
-              _ScanPrimaryButton(
-                label: 'Continue',
-                icon: TablerIcons.arrow_right,
-                enabled: canContinue,
-                onTap: _tryManualInput,
+                ],
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -436,207 +437,186 @@ class _ScanTotpOverlayState extends State<_ScanTotpOverlay> {
     final progress = seconds / 30.0;
     final countdownColor = _totpCountdownColor(seconds);
 
-    return Container(
+    return _modalShell(
       width: 480,
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-      decoration: BoxDecoration(
-        color: DcColors.panel,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: DcColors.line),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: DcColors.shadow,
-            blurRadius: 44,
-            offset: Offset(0, 20),
-          ),
-        ],
-      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          // Header
-          Row(
-            children: <Widget>[
-              InkWell(
-                onTap: () {
-                  _timer?.cancel();
-                  setState(() {
-                    _step = _ScanTotpStep.input;
-                    _error = null;
-                  });
-                },
-                borderRadius: BorderRadius.circular(999),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
-                  child: Icon(TablerIcons.arrow_left,
-                      size: 16, color: DcColors.muted),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Add 2FA Code',
-                  style: _text(17, DcColors.text,
-                      fontWeight: FontWeight.w700),
-                ),
-              ),
-              InkWell(
-                onTap: widget.onClose,
-                borderRadius: BorderRadius.circular(999),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
-                  child:
-                      Icon(TablerIcons.x, size: 16, color: DcColors.muted),
-                ),
-              ),
-            ],
+          DcDialogTitleBar(
+            title: 'Add 2FA Code',
+            onBack: () {
+              _timer?.cancel();
+              setState(() {
+                _step = _ScanTotpStep.input;
+                _error = null;
+              });
+            },
+            onClose: widget.onClose,
           ),
-          const SizedBox(height: 24),
-
-          // Success banner
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: DcColors.rowAlternate,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: const Color(0x6647C7B8)),
-            ),
-            child: Row(
-              children: <Widget>[
-                const Icon(TablerIcons.circle_check,
-                    size: 16, color: DcColors.teal),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '2FA code ready to add',
-                    style: _text(13, DcColors.teal,
-                        fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Issuer info
-          if (info.issuer.isNotEmpty) ...<Widget>[
-            Text(
-              info.issuer,
-              style: _text(15, DcColors.text,
-                  fontWeight: FontWeight.w700),
-            ),
-            if (info.account.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 2),
-              Text(
-                info.account,
-                style: _text(13, DcColors.muted,
-                    fontWeight: FontWeight.w500),
-              ),
-            ],
-            const SizedBox(height: 16),
-          ],
-
-          // TOTP Code card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-            decoration: BoxDecoration(
-              color: DcColors.panel,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: DcColors.line),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Current TOTP Code',
-                  style: _text(11, DcColors.muted,
-                      fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: <Widget>[
-                    Text(
-                      formattedCode,
-                      style: _text(
-                        28,
-                        DcColors.text,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2,
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  // Success banner
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: DcColors.lightInset,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: DcColors.tealOnLight.withValues(alpha: 0.35),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    _AppTooltip(
-                      message: 'Copy code',
-                      child: InkWell(
-                        onTap: () async {
-                          await Clipboard.setData(ClipboardData(text: code));
-                          widget.onShowToast('TOTP code copied to clipboard');
-                        },
-                        borderRadius: BorderRadius.circular(999),
-                        child: const Padding(
-                          padding: EdgeInsets.all(4),
-                          child: Icon(
-                            TablerIcons.copy,
-                            size: 16,
-                            color: DcColors.muted,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    child: Row(
                       children: <Widget>[
-                        Text(
-                          '${seconds}s',
-                          style: _text(16, countdownColor,
-                              fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 6),
-                        SizedBox(
-                          width: 80,
-                          height: 4,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              backgroundColor: DcColors.rowAlternate,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(countdownColor),
-                            ),
+                        const Icon(TablerIcons.circle_check,
+                            size: 16, color: DcColors.tealOnLight),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '2FA code ready to add',
+                            style: _text(13, DcColors.tealOnLight,
+                                fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Issuer info
+                  if (info.issuer.isNotEmpty) ...<Widget>[
+                    Text(
+                      info.issuer,
+                      style: _text(15, DcColors.sidebarText,
+                          fontWeight: FontWeight.w700),
+                    ),
+                    if (info.account.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 2),
+                      Text(
+                        info.account,
+                        style: _text(13, DcColors.sidebarMuted,
+                            fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
                   ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
 
-          Text(
-            'The code refreshes every 30 seconds.',
-            style:
-                _text(12, DcColors.muted, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 24),
+                  // TOTP Code card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 18),
+                    decoration: BoxDecoration(
+                      color: DcColors.lightInset,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: DcColors.sidebarLine),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Current TOTP Code',
+                          style: _text(11, DcColors.sidebarMuted,
+                              fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: <Widget>[
+                            Text(
+                              formattedCode,
+                              style: _text(
+                                28,
+                                DcColors.sidebarText,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            _AppTooltip(
+                              message: 'Copy code',
+                              child: InkWell(
+                                onTap: () async {
+                                  await Clipboard.setData(
+                                      ClipboardData(text: code));
+                                  widget.onShowToast(
+                                      'TOTP code copied to clipboard');
+                                },
+                                borderRadius: BorderRadius.circular(999),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(
+                                    TablerIcons.copy,
+                                    size: 16,
+                                    color: DcColors.sidebarMuted,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: <Widget>[
+                                Text(
+                                  '${seconds}s',
+                                  style: _text(16, countdownColor,
+                                      fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(height: 6),
+                                SizedBox(
+                                  width: 80,
+                                  height: 4,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(999),
+                                    child: LinearProgressIndicator(
+                                      value: progress,
+                                      backgroundColor:
+                                          DcColors.sidebarLine,
+                                      valueColor:
+                                          AlwaysStoppedAnimation<Color>(
+                                              countdownColor),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
-          // Footer
-          Row(
-            children: <Widget>[
-              _ScanGhostButton(label: 'Dismiss', onTap: widget.onClose),
-              const Spacer(),
-              _ScanPrimaryButton(
-                label: 'Confirm Add 2FA',
-                icon: TablerIcons.check,
-                enabled: true,
-                onTap: () => widget.onTotpConfirmed(url),
+                  Text(
+                    'The code refreshes every 30 seconds.',
+                    style: _text(12, DcColors.sidebarMuted,
+                        fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Footer
+                  Row(
+                    children: <Widget>[
+                      _ScanGhostButton(
+                          label: 'Dismiss', onTap: widget.onClose),
+                      const Spacer(),
+                      _ScanPrimaryButton(
+                        label: 'Confirm Add 2FA',
+                        icon: TablerIcons.check,
+                        enabled: true,
+                        onTap: () => widget.onTotpConfirmed(url),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -675,11 +655,10 @@ class _ScanActionButtonState extends State<_ScanActionButton> {
           height: 32,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: _hovered ? DcColors.rowAlternate : DcColors.panel,
+            color: _hovered ? DcColors.lightSelectionFill : DcColors.lightSurface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color:
-                  _hovered ? DcColors.selection : DcColors.line,
+              color: _hovered ? DcColors.selection : DcColors.lightLineStrong,
             ),
           ),
           child: Row(
@@ -690,14 +669,14 @@ class _ScanActionButtonState extends State<_ScanActionButton> {
                 size: 13,
                 color: _hovered
                     ? DcColors.selection
-                    : DcColors.muted,
+                    : DcColors.sidebarMuted,
               ),
               const SizedBox(width: 6),
               Text(
                 widget.label,
                 style: _text(
                   12,
-                  _hovered ? DcColors.selection : DcColors.muted,
+                  _hovered ? DcColors.selection : DcColors.sidebarMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -738,15 +717,15 @@ class _ScanGhostButtonState extends State<_ScanGhostButton> {
           height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: _hovered ? DcColors.rowAlternate : Colors.transparent,
+            color: _hovered ? DcColors.lightInset : DcColors.lightSurface,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: DcColors.line),
+            border: Border.all(color: DcColors.lightLineStrong),
           ),
           alignment: Alignment.center,
           child: Text(
             widget.label,
             style:
-                _text(13, DcColors.text, fontWeight: FontWeight.w600),
+                _text(13, DcColors.sidebarMuted, fontWeight: FontWeight.w600),
           ),
         ),
       ),

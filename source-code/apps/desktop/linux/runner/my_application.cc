@@ -122,7 +122,9 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_title(window, "LumenPass - Password Manager");
   }
 
-  gtk_window_set_default_size(window, 1280, 800);
+  // Single canonical shell size, matched to macOS and Windows. Flows are
+  // full-page routes inside this window rather than resizing dialogs.
+  gtk_window_set_default_size(window, 1200, 760);
   my_application_apply_window_icon(window);
 
   g_signal_connect(window, "delete-event",

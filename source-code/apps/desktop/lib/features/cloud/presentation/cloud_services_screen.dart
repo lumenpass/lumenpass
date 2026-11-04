@@ -6,10 +6,8 @@ import '../../../core/services/backup_service.dart';
 
 import '../../../presentation/theme/app_theme.dart';
 
-import '../../unlock/presentation/s3_config_dialog.dart';
-import '../../unlock/presentation/sftp_config_dialog.dart';
+import '../../unlock/presentation/provider_config_route.dart';
 import '../../unlock/presentation/storage_source_list.dart';
-import '../../unlock/presentation/webdav_config_dialog.dart';
 
 import '../application/cloud_disconnect.dart';
 import '../application/cloud_service_provider.dart';
@@ -211,29 +209,19 @@ class _CloudServicesScreenState extends ConsumerState<CloudServicesScreen> {
           await BackupService.instance.connectOneDrive();
           break;
         case CloudServiceProvider.webdav:
-          await showDialog<String?>(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => WebDavConfigDialog(
-              initialConfig: BackupService.instance.currentWebDavConfig,
-            ),
+          await pushWebDavConfigPage(
+            context,
+            initialConfig: BackupService.instance.currentWebDavConfig,
           );
           break;
         case CloudServiceProvider.sftp:
-          await showDialog<String?>(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => SftpConfigDialog(
-              initialConfig: BackupService.instance.currentSftpConfig,
-            ),
+          await pushSftpConfigPage(
+            context,
+            initialConfig: BackupService.instance.currentSftpConfig,
           );
           break;
         case CloudServiceProvider.s3:
-          await showDialog<String?>(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => S3ConfigDialog(),
-          );
+          await pushS3ConfigPage(context);
           break;
       }
     } catch (e) {
@@ -332,7 +320,6 @@ class _CloudServicesScreenState extends ConsumerState<CloudServicesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               _buildHeader(),
-              const Divider(height: 1, color: _kHeaderLine),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
@@ -430,45 +417,52 @@ class _CloudServicesScreenState extends ConsumerState<CloudServicesScreen> {
     );
   }
 
+  /// Single-row 46 px header that mirrors the vault title bar: the traffic
+  /// lights sit left of the content, the tagline runs inline next to the
+  /// title (absorbing the trailing space), and the back control anchors the
+  /// trailing edge so the leading block stays flush with the title bar.
   Widget _buildHeader() {
-    final double topPadding =
-        Theme.of(context).platform == TargetPlatform.macOS ? 28 : 14;
+    final bool isMacOS = Theme.of(context).platform == TargetPlatform.macOS;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(14, topPadding, 20, 13),
+      height: DcMetrics.headerHeight,
+      padding: EdgeInsets.only(left: isMacOS ? 94 : 16, right: 12),
       decoration: const BoxDecoration(
         color: _kHeaderBg,
         border: Border(bottom: BorderSide(color: _kHeaderLine)),
       ),
       child: Row(
         children: <Widget>[
-          _BackButton(onTap: () => Navigator.of(context).maybePop()),
-          const SizedBox(width: 6),
           Container(
-            width: 34,
-            height: 34,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               color: _kActionDark,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Icon(TablerIcons.cloud, size: 18, color: Colors.white),
+            child: const Icon(TablerIcons.cloud, size: 16, color: Colors.white),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+          Text(
+            'Cloud Services',
+            maxLines: 1,
+            softWrap: false,
+            style: _serif(15, _kHeaderTitle),
+          ),
+          const SizedBox(width: 8),
+          Text('·', style: _t(13, _kHeaderLabel)),
+          const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Cloud Services',
-                  style: _serif(18, _kHeaderTitle),
-                ),
-                Text(
-                  'Manage where LumenPass syncs your vaults',
-                  style: _t(12, _kHeaderLabel),
-                ),
-              ],
+            child: Text(
+              'Manage where LumenPass syncs your vaults',
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: _t(12, _kHeaderLabel),
             ),
           ),
+          const SizedBox(width: 12),
+          _BackButton(onTap: () => Navigator.of(context).maybePop()),
         ],
       ),
     );
@@ -1345,8 +1339,8 @@ class _BackButtonState extends State<_BackButton> {
           onTap: widget.onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            width: 36,
-            height: 36,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               color: _hovered ? _kHeaderControlHover : _kHeaderControl,
               shape: BoxShape.circle,
@@ -1354,7 +1348,7 @@ class _BackButtonState extends State<_BackButton> {
             ),
             child: const Icon(
               TablerIcons.arrow_left,
-              size: 18,
+              size: 16,
               color: _kHeaderTitle,
             ),
           ),

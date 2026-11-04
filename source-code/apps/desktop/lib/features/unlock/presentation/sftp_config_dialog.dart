@@ -3,33 +3,53 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
+import '../../../core/services/appearance_preferences.dart';
 import '../../../core/services/backup_service.dart';
 import '../../../core/services/bookmark_service.dart';
 import '../../../core/services/sftp_service.dart';
 
 import '../../../presentation/theme/app_theme.dart';
 import '../../../presentation/theme/drive_clue_tokens.dart';
+import '../../../presentation/widgets/drive_clue/dc_flow_page.dart';
 
-const Color _kCanvas = DcColors.panel;
-const Color _kBorderSoft = DcColors.line;
-const Color _kBorderRow = DcColors.line;
-const Color _kTitle = DcColors.text;
-const Color _kLabel = DcColors.muted;
-const Color _kIcon = DcColors.faint;
+// ── Light palette (sidebar-toned, matches the Cloud Services page) ─────────
+const Color _kSurface = DcColors.lightSurface;
+const Color _kSurfaceMuted = DcColors.lightInset;
+const Color _kBorderSoft = DcColors.sidebarLine;
+const Color _kBorderRow = DcColors.lightLineStrong;
+const Color _kTitle = DcColors.sidebarText;
+const Color _kLabel = DcColors.sidebarMuted;
+const Color _kIcon = DcColors.sidebarMuted;
 const Color _kBlue = DcColors.selection;
+const Color _kDanger = DcColors.redOnLight;
+const Color _kSuccess = DcColors.tealOnLight;
 
 TextStyle _uText(
   double size,
   Color color, {
   FontWeight fontWeight = FontWeight.w400,
   double? letterSpacing,
+  double? height,
 }) {
   return TextStyle(
     fontSize: size,
     color: color,
     fontWeight: fontWeight,
-    fontFamily: 'Ubuntu Sans',
+    fontFamily: currentFontFamily,
     letterSpacing: letterSpacing,
+    height: height,
+  );
+}
+
+/// Page-heading style used by the inner pages: tight tracking, heavy weight.
+TextStyle _uHeading(double size, Color color, {double? height}) {
+  return TextStyle(
+    fontSize: size,
+    color: color,
+    fontWeight: FontWeight.w700,
+    fontFamily: currentFontFamily,
+    letterSpacing: -0.3,
+    height: height,
   );
 }
 
@@ -244,191 +264,188 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final bool editing = widget.initialConfig != null;
     return Theme(
       data: AppTheme.driveClue(),
-      child: Dialog(
-        backgroundColor: DcColors.panel,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-        child: SizedBox(
-          width: 440,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              _buildHeader(),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      _field(
-                        label: 'Host',
-                        controller: _hostController,
-                        hint: 'sftp.example.com',
-                        errorKey: 'host',
-                        icon: TablerIcons.server,
-                        invalidatesConnection: true,
+      child: DcFlowPage(
+        title: editing ? 'Reconnect SFTP' : 'Connect to SFTP',
+        subtitle: editing
+            ? 'Update the server details and credentials for this vault'
+            : 'Enter your server details and credentials',
+        icon: TablerIcons.cloud_upload,
+        iconBackground: _kBlue,
+        onBack: _busy ? null : () => Navigator.of(context).pop(),
+        body: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                _buildPageHeading(),
+                const SizedBox(height: 16),
+                _field(
+                  label: 'Host',
+                  controller: _hostController,
+                  hint: 'sftp.example.com',
+                  errorKey: 'host',
+                  icon: TablerIcons.server,
+                  invalidatesConnection: true,
+                ),
+                const SizedBox(height: 12),
+                _field(
+                  label: 'Port',
+                  controller: _portController,
+                  hint: '22',
+                  errorKey: 'port',
+                  icon: TablerIcons.plug,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  invalidatesConnection: true,
+                ),
+                const SizedBox(height: 12),
+                _field(
+                  label: 'Username',
+                  controller: _usernameController,
+                  hint: 'Your SFTP user name',
+                  errorKey: 'username',
+                  icon: TablerIcons.user,
+                  invalidatesConnection: true,
+                ),
+                const SizedBox(height: 14),
+                _buildAuthMethod(),
+                const SizedBox(height: 12),
+                if (_authMethod == SftpAuthMethod.password)
+                  _field(
+                    label: 'Password',
+                    controller: _passwordController,
+                    hint: 'Your SFTP password',
+                    errorKey: 'password',
+                    icon: TablerIcons.lock,
+                    obscure: _obscurePassword,
+                    invalidatesConnection: true,
+                    suffix: IconButton(
+                      onPressed: () => setState(
+                        () => _obscurePassword = !_obscurePassword,
                       ),
-                      const SizedBox(height: 10),
-                      _field(
-                        label: 'Port',
-                        controller: _portController,
-                        hint: '22',
-                        errorKey: 'port',
-                        icon: TablerIcons.plug,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: <TextInputFormatter>[
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        invalidatesConnection: true,
+                      icon: Icon(
+                        _obscurePassword
+                            ? TablerIcons.eye
+                            : TablerIcons.eye_off,
+                        size: 15,
+                        color: _kIcon,
                       ),
-                      const SizedBox(height: 10),
-                      _field(
-                        label: 'Username',
-                        controller: _usernameController,
-                        hint: 'Your SFTP user name',
-                        errorKey: 'username',
-                        icon: TablerIcons.user,
-                        invalidatesConnection: true,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildAuthMethod(),
-                      const SizedBox(height: 10),
-                      if (_authMethod == SftpAuthMethod.password)
-                        _field(
-                          label: 'Password',
-                          controller: _passwordController,
-                          hint: 'Your SFTP password',
-                          errorKey: 'password',
-                          icon: TablerIcons.lock,
-                          obscure: _obscurePassword,
-                          invalidatesConnection: true,
-                          suffix: IconButton(
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
-                            icon: Icon(
-                              _obscurePassword
-                                  ? TablerIcons.eye
-                                  : TablerIcons.eye_off,
-                              size: 15,
-                              color: _kIcon,
-                            ),
-                          ),
-                        )
-                      else
-                        _buildKeyFilePicker(),
-                      const SizedBox(height: 12),
-                      _buildTransferMode(),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Root path',
-                        style: _uText(
-                          12,
-                          _connectionVerified ? _kTitle : _kIcon,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Expanded(
-                            child: _field(
-                              label: null,
-                              controller: _rootPathController,
-                              hint: _connectionVerified
-                                  ? 'Choose a path with Browse'
-                                  : '/',
-                              errorKey: 'rootPath',
-                              icon: TablerIcons.folder,
-                              enabled: _connectionVerified,
-                              readOnly: true,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          _BrowseButton(
-                            enabled: _connectionVerified && !_busy,
-                            onPressed: _browseRootPath,
-                          ),
-                        ],
-                      ),
-                      if (!_connectionVerified) ...<Widget>[
-                        const SizedBox(height: 6),
-                        Row(
-                          children: <Widget>[
-                            const Icon(
-                              TablerIcons.lock,
-                              size: 12,
-                              color: _kIcon,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'Test the connection to choose a path.',
-                                style: _uText(10, _kLabel),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      if (_testMessage != null) ...<Widget>[
-                        const SizedBox(height: 12),
-                        _buildTestResult(),
-                      ],
-                      const SizedBox(height: 6),
-                    ],
+                    ),
+                  )
+                else
+                  _buildKeyFilePicker(),
+                const SizedBox(height: 14),
+                _buildTransferMode(),
+                const SizedBox(height: 14),
+                Text(
+                  'Root path',
+                  style: _uText(
+                    12,
+                    _connectionVerified ? _kTitle : _kIcon,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-              _buildFooter(),
-            ],
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(
+                      child: _field(
+                        label: null,
+                        controller: _rootPathController,
+                        hint: _connectionVerified
+                            ? 'Choose a path with Browse'
+                            : '/',
+                        errorKey: 'rootPath',
+                        icon: TablerIcons.folder,
+                        enabled: _connectionVerified,
+                        readOnly: true,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _BrowseButton(
+                      enabled: _connectionVerified && !_busy,
+                      onPressed: _browseRootPath,
+                    ),
+                  ],
+                ),
+                if (!_connectionVerified) ...<Widget>[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: <Widget>[
+                      const Icon(TablerIcons.lock, size: 12, color: _kIcon),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Test the connection to choose a path.',
+                          style: _uText(10, _kLabel),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (_testMessage != null) ...<Widget>[
+                  const SizedBox(height: 12),
+                  _buildTestResult(),
+                ],
+                const SizedBox(height: 6),
+              ],
+            ),
           ),
         ),
+        footer: _buildFooterRow(),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _kBorderSoft)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: DcColors.selectionSoft,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Image.asset('assets/images/sftp.png', width: 16, height: 16),
+  /// Inner-page style heading: branded icon tile, heavy title, muted subtitle.
+  Widget _buildPageHeading() {
+    final editing = widget.initialConfig != null;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        Container(
+          width: 46,
+          height: 46,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: _kSurfaceMuted,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: _kBorderSoft),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Connect to SFTP',
-                  style: _uText(14, _kTitle, fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  'Enter your server details and credentials.',
-                  style: _uText(11, _kLabel),
-                ),
-              ],
-            ),
+          child: Image.asset('assets/images/sftp.png', width: 22, height: 22),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                editing ? 'Reconnect SFTP' : 'Connect to SFTP',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: _uHeading(19, _kTitle, height: 1.15),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                editing
+                    ? 'Update the server details and credentials for this vault.'
+                    : 'Enter your server details and credentials.',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: _uText(12, _kLabel, fontWeight: FontWeight.w500),
+              ),
+            ],
           ),
-          GestureDetector(
-            onTap: _busy ? null : () => Navigator.of(context).pop(),
-            child: const Icon(TablerIcons.x, size: 16, color: _kIcon),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -478,10 +495,10 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: _kCanvas,
+            color: _kSurfaceMuted,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: error != null ? DcColors.red : _kBorderRow,
+              color: error != null ? _kDanger : _kBorderRow,
             ),
           ),
           child: Row(
@@ -504,9 +521,9 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
                 icon: const Icon(TablerIcons.file_search, size: 14),
                 label: const Text('Choose'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: DcColors.text,
-                  side: const BorderSide(color: DcColors.lineStrong),
-                  backgroundColor: DcColors.panel,
+                  foregroundColor: _kTitle,
+                  side: const BorderSide(color: _kBorderRow),
+                  backgroundColor: _kSurface,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -515,7 +532,7 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   textStyle: _uText(
                     12,
-                    DcColors.text,
+                    _kTitle,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -525,7 +542,7 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
         ),
         if (error != null) ...<Widget>[
           const SizedBox(height: 4),
-          Text(error, style: _uText(10, DcColors.red)),
+          Text(error, style: _uText(10, _kDanger)),
         ],
       ],
     );
@@ -589,7 +606,7 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
             hintText: hint,
             hintStyle: _uText(13, _kIcon),
             filled: true,
-            fillColor: enabled ? _kCanvas : DcColors.row,
+            fillColor: _kSurfaceMuted,
             isDense: true,
             prefixIcon: Icon(icon, size: 16, color: _kIcon),
             suffixIcon: suffix,
@@ -598,13 +615,13 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? DcColors.red : _kBorderRow,
+                color: error != null ? _kDanger : _kBorderRow,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? DcColors.red : _kBorderRow,
+                color: error != null ? _kDanger : _kBorderRow,
               ),
             ),
             disabledBorder: OutlineInputBorder(
@@ -614,7 +631,7 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: error != null ? DcColors.red : _kBlue,
+                color: error != null ? _kDanger : _kBlue,
                 width: 1.5,
               ),
             ),
@@ -622,7 +639,7 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
         ),
         if (error != null) ...<Widget>[
           const SizedBox(height: 4),
-          Text(error, style: _uText(10, DcColors.red)),
+          Text(error, style: _uText(10, _kDanger)),
         ],
       ],
     );
@@ -630,15 +647,13 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
 
   Widget _buildTestResult() {
     final bool inProgress = _busy;
-    final Color color = inProgress
-        ? _kBlue
-        : (_testOk ? DcColors.green : DcColors.red);
+    final Color color = inProgress ? _kBlue : (_testOk ? _kSuccess : _kDanger);
     final Color bg = inProgress
-        ? DcColors.selectionSoft
-        : (_testOk ? DcColors.greenSoft : DcColors.redSoft);
+        ? DcColors.lightSelectionFill
+        : (_testOk ? DcColors.tealSoft : DcColors.redSoft);
     final Color border = inProgress
         ? DcColors.selectionLine
-        : (_testOk ? DcColors.greenLine : DcColors.redLine);
+        : (_testOk ? DcColors.tealLine : DcColors.redLine);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -666,86 +681,79 @@ class _SftpConfigDialogState extends State<SftpConfigDialog> {
     );
   }
 
-  Widget _buildFooter() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: _kBorderSoft)),
-      ),
-      child: Row(
-        children: <Widget>[
-          OutlinedButton.icon(
-            onPressed: _busy ? null : _test,
-            icon: _busy
-                ? const SizedBox.square(
-                    dimension: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(TablerIcons.plug_connected, size: 15),
-            label: const Text('Test'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: DcColors.text,
-              side: const BorderSide(color: DcColors.lineStrong),
-              backgroundColor: DcColors.panel,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              minimumSize: const Size(0, 38),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: _uText(
-                12,
-                DcColors.text,
-                fontWeight: FontWeight.w600,
-              ),
+  Widget _buildFooterRow() {
+    return Row(
+      children: <Widget>[
+        OutlinedButton.icon(
+          onPressed: _busy ? null : _test,
+          icon: _busy
+              ? const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(TablerIcons.plug_connected, size: 15),
+          label: const Text('Test'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _kTitle,
+            disabledForegroundColor: _kIcon,
+            side: const BorderSide(color: _kBorderRow),
+            backgroundColor: _kSurfaceMuted,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            minimumSize: const Size(0, 38),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: _uText(12, _kTitle, fontWeight: FontWeight.w600),
           ),
-          const Spacer(),
-          OutlinedButton(
-            onPressed: _busy ? null : () => Navigator.of(context).pop(),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _kLabel,
-              side: const BorderSide(color: _kBorderSoft),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              minimumSize: const Size(0, 38),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
+        ),
+        const Spacer(),
+        OutlinedButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _kLabel,
+            disabledForegroundColor: _kIcon,
+            side: const BorderSide(color: _kBorderRow),
+            backgroundColor: _kSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text('Cancel'),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            minimumSize: const Size(0, 38),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed:
-                (_busy || !_connectionVerified || !_hasPath) ? null : _connect,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _kBlue,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: DcColors.selectionLine,
-              disabledForegroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              minimumSize: const Size(0, 38),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
+          child: const Text('Cancel'),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed:
+              (_busy || !_connectionVerified || !_hasPath) ? null : _connect,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kBlue,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: DcColors.lightLineStrong,
+            disabledForegroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: _busy
-                ? const SizedBox.square(
-                    dimension: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text('Connect'),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            minimumSize: const Size(0, 38),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
           ),
-        ],
-      ),
+          child: _busy
+              ? const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Connect'),
+        ),
+      ],
     );
   }
 }
@@ -780,7 +788,7 @@ class _SegmentedSetting<T> extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: _kCanvas,
+            color: _kSurfaceMuted,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: _kBorderRow),
           ),
@@ -795,12 +803,17 @@ class _SegmentedSetting<T> extends StatelessWidget {
                       alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
-                        color: option.value == value ? Colors.white : _kCanvas,
+                        color: option.value == value
+                            ? _kSurface
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(6),
+                        border: option.value == value
+                            ? Border.all(color: _kBorderRow)
+                            : null,
                         boxShadow: option.value == value
                             ? const <BoxShadow>[
                                 BoxShadow(
-                                  color: DcColors.shadowSoft,
+                                  color: DcColors.lightCardShadow,
                                   blurRadius: 6,
                                   offset: Offset(0, 1),
                                 ),
@@ -835,27 +848,27 @@ class _BrowseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 44,
+      height: 46,
       child: OutlinedButton.icon(
         onPressed: enabled ? onPressed : null,
         icon: const Icon(TablerIcons.folder_search, size: 15),
         label: const Text('Browse'),
         style: OutlinedButton.styleFrom(
-          foregroundColor: DcColors.text,
+          foregroundColor: _kTitle,
           disabledForegroundColor: _kIcon,
           side: BorderSide(
-            color: enabled ? DcColors.lineStrong : _kBorderRow,
+            color: enabled ? _kBorderRow : _kBorderSoft,
           ),
-          backgroundColor: DcColors.panel,
+          backgroundColor: _kSurfaceMuted,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 14),
-          minimumSize: const Size(0, 44),
+          minimumSize: const Size(0, 46),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           textStyle: _uText(
             12,
-            DcColors.text,
+            _kTitle,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -949,20 +962,30 @@ class _SftpFolderPickerDialogState extends State<_SftpFolderPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final String current = _breadcrumb.isEmpty ? 'Root' : _breadcrumb.last.name;
     return Theme(
       data: AppTheme.driveClue(),
-      child: Dialog(
-        backgroundColor: DcColors.panel,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-        child: SizedBox(
-          width: 400,
+      child: DcFlowPage(
+        title: 'Select SFTP Folder',
+        subtitle: current,
+        icon: TablerIcons.folder,
+        onBack: _breadcrumb.isEmpty
+            ? () => Navigator.of(context).pop()
+            : () {
+                setState(() => _breadcrumb.removeLast());
+                _loadFolders();
+              },
+        scrollable: false,
+        inset: false,
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        body: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _buildHeader(),
+              _buildFolderHeading(),
               if (_breadcrumb.isNotEmpty) _buildBreadcrumb(),
-              SizedBox(
-                height: 260,
+              Expanded(
                 child: _loading
                     ? const Center(child: CircularProgressIndicator())
                     : _error != null
@@ -971,7 +994,7 @@ class _SftpFolderPickerDialogState extends State<_SftpFolderPickerDialog> {
                               padding: const EdgeInsets.all(16),
                               child: Text(
                                 _error!,
-                                style: _uText(12, DcColors.red),
+                                style: _uText(12, _kDanger),
                                 textAlign: TextAlign.center,
                               ),
                             ),
@@ -979,23 +1002,72 @@ class _SftpFolderPickerDialogState extends State<_SftpFolderPickerDialog> {
                         : _buildFolderList(),
               ),
               if (_showNewFolder) _buildNewFolderInput(),
-              _buildPickerFooter(),
             ],
           ),
         ),
+        footer: _buildPickerFooterRow(),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  /// Inner-page style heading showing where the browse currently points.
+  Widget _buildFolderHeading() {
+    final current = _breadcrumb.isEmpty ? 'Root' : _breadcrumb.last.name;
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: _kBorderSoft)),
       ),
       child: Row(
         children: <Widget>[
-          if (_breadcrumb.isNotEmpty)
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _kSurfaceMuted,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _kBorderSoft),
+            ),
+            child: const Icon(TablerIcons.folder, size: 19, color: _kBlue),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  current,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _uHeading(16, _kTitle, height: 1.2),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Choose the folder to store this vault in.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _uText(11, _kLabel, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBreadcrumb() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _kBorderSoft)),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: <Widget>[
             GestureDetector(
               onTap: () {
                 setState(() => _breadcrumb.removeLast());
@@ -1006,48 +1078,16 @@ class _SftpFolderPickerDialogState extends State<_SftpFolderPickerDialog> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    const Icon(TablerIcons.arrow_left, size: 14, color: _kBlue),
+                    const Icon(TablerIcons.arrow_left, size: 13, color: _kBlue),
                     const SizedBox(width: 4),
                     Text(
                       'Back',
-                      style: _uText(11, _kBlue, fontWeight: FontWeight.w500),
+                      style: _uText(11, _kBlue, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
-            )
-          else ...<Widget>[
-            Image.asset('assets/images/sftp.png', width: 16, height: 16),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: Text(
-              _breadcrumb.isEmpty
-                  ? 'Select SFTP Folder'
-                  : _breadcrumb.last.name,
-              style: _uText(13, _kTitle, fontWeight: FontWeight.w700),
-              overflow: TextOverflow.ellipsis,
             ),
-          ),
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: const Icon(TablerIcons.x, size: 16, color: _kIcon),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBreadcrumb() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _kBorderSoft)),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: <Widget>[
             GestureDetector(
               onTap: () {
                 setState(() => _breadcrumb.clear());
@@ -1110,7 +1150,7 @@ class _SftpFolderPickerDialogState extends State<_SftpFolderPickerDialog> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: const BoxDecoration(
-        color: DcColors.rowAlternate,
+        color: _kSurfaceMuted,
         border: Border(top: BorderSide(color: _kBorderSoft)),
       ),
       child: Row(
@@ -1129,7 +1169,7 @@ class _SftpFolderPickerDialogState extends State<_SftpFolderPickerDialog> {
                 hintText: 'New folder name',
                 hintStyle: _uText(12, _kIcon),
                 filled: true,
-                fillColor: DcColors.well,
+                fillColor: _kSurface,
                 isDense: true,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
@@ -1169,7 +1209,7 @@ class _SftpFolderPickerDialogState extends State<_SftpFolderPickerDialog> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _kBlue,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: DcColors.selectionLine,
+                disabledBackgroundColor: DcColors.lightLineStrong,
                 disabledForegroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -1189,50 +1229,59 @@ class _SftpFolderPickerDialogState extends State<_SftpFolderPickerDialog> {
     );
   }
 
-  Widget _buildPickerFooter() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: _kBorderSoft)),
-      ),
-      child: Row(
-        children: <Widget>[
-          TextButton.icon(
-            onPressed: () => setState(() {
-              _showNewFolder = !_showNewFolder;
-              if (!_showNewFolder) _newFolderController.clear();
-            }),
-            icon: Icon(
-              _showNewFolder ? TablerIcons.x : TablerIcons.folder_plus,
-              size: 13,
-              color: _kBlue,
-            ),
-            label: Text(
-              _showNewFolder ? 'Cancel' : 'New Folder',
-              style: _uText(11, _kBlue, fontWeight: FontWeight.w500),
-            ),
+  Widget _buildPickerFooterRow() {
+    return Row(
+      children: <Widget>[
+        TextButton.icon(
+          onPressed: () => setState(() {
+            _showNewFolder = !_showNewFolder;
+            if (!_showNewFolder) _newFolderController.clear();
+          }),
+          icon: Icon(
+            _showNewFolder ? TablerIcons.x : TablerIcons.folder_plus,
+            size: 13,
+            color: _kBlue,
           ),
-          const Spacer(),
-          OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+          label: Text(
+            _showNewFolder ? 'Cancel' : 'New Folder',
+            style: _uText(11, _kBlue, fontWeight: FontWeight.w500),
           ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(_currentPath),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _kBlue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              minimumSize: const Size(0, 36),
+        ),
+        const Spacer(),
+        OutlinedButton(
+          onPressed: () => Navigator.of(context).pop(),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _kLabel,
+            side: const BorderSide(color: _kBorderRow),
+            backgroundColor: _kSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text('Select Path'),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            minimumSize: const Size(0, 36),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
           ),
-        ],
-      ),
+          child: const Text('Cancel'),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: () => Navigator.of(context).pop(_currentPath),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kBlue,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            minimumSize: const Size(0, 36),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
+          ),
+          child: const Text('Select Path'),
+        ),
+      ],
     );
   }
 }
@@ -1260,9 +1309,9 @@ class _SftpFolderTileState extends State<_SftpFolderTile> {
         onTap: widget.onNavigate,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 80),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           decoration: BoxDecoration(
-            color: _hovered ? DcColors.selectionSoft : DcColors.rowAlternate,
+            color: _hovered ? DcColors.lightSelectionFill : _kSurface,
             border: const Border(bottom: BorderSide(color: _kBorderSoft)),
           ),
           child: Row(
@@ -1276,11 +1325,16 @@ class _SftpFolderTileState extends State<_SftpFolderTile> {
               Expanded(
                 child: Text(
                   widget.folder.name,
-                  style: _uText(12, _kTitle, fontWeight: FontWeight.w500),
+                  style: _uText(12, _hovered ? _kBlue : _kTitle,
+                      fontWeight: FontWeight.w500),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Icon(TablerIcons.chevron_right, size: 14, color: _kIcon),
+              Icon(
+                TablerIcons.chevron_right,
+                size: 14,
+                color: _hovered ? _kBlue : _kIcon,
+              ),
             ],
           ),
         ),

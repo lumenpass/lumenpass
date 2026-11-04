@@ -20,44 +20,65 @@ class BookmarkService {
 
   // ── Pickers ────────────────────────────────────────────────────────────────
 
-  /// Opens a native NSOpenPanel for .kdbx files.
+  /// Opens a native NSOpenPanel for a single .kdbx file.
   /// Returns `{path, bookmark}` or null if cancelled.
   Future<({String path, String bookmark})?> pickFileWithBookmark() async {
+    final picked = await pickFilesWithBookmarks();
+    if (picked.isEmpty) return null;
+    return picked.first;
+  }
+
+  /// Opens a native NSOpenPanel for one or more .kdbx/.kdb files.
+  /// Returns a record per picked file; empty if cancelled.
+  Future<List<({String path, String bookmark})>>
+      pickFilesWithBookmarks() async {
     if (!Platform.isMacOS) {
       try {
         final result = await FilePicker.platform.pickFiles(
-          dialogTitle: 'Open KeePass Database',
+          dialogTitle: 'Open KeePass Databases',
           lockParentWindow: true,
           type: FileType.custom,
           allowedExtensions: const <String>['kdbx', 'kdb'],
           withData: false,
+          allowMultiple: true,
         );
-        final path = result?.files.single.path;
-        if (path == null || path.isEmpty) {
-          return null;
+        final files = result?.files;
+        if (files == null) return const [];
+        final picked = <({String path, String bookmark})>[];
+        for (final file in files) {
+          final path = file.path;
+          if (path == null || path.isEmpty) continue;
+          picked.add((path: path, bookmark: path));
         }
-        return (path: path, bookmark: path);
+        return picked;
       } on MissingPluginException catch (e) {
-        _log('pickFileWithBookmark failed: ${e.message}');
-        return null;
+        _log('pickFilesWithBookmarks failed: ${e.message}');
+        return const [];
       } catch (e) {
-        _log('pickFileWithBookmark failed: $e');
-        return null;
+        _log('pickFilesWithBookmarks failed: $e');
+        return const [];
       }
     }
     try {
-      final result = await _channel.invokeMapMethod<String, dynamic>(
-        'pickFileWithBookmark',
+      final result = await _channel.invokeListMethod<Map<Object?, dynamic>>(
+        'pickFilesWithBookmarks',
       );
-      if (result == null) return null;
-      final path = result['path'] as String? ?? '';
-      final bookmark = result['bookmark'] as String? ?? '';
-      if (path.isEmpty) return null;
-      if (bookmark.isNotEmpty) _activePaths.add(path);
-      return (path: path, bookmark: bookmark);
+      if (result == null) return const [];
+      final picked = <({String path, String bookmark})>[];
+      for (final item in result) {
+        final path = item['path'] as String? ?? '';
+        final bookmark = item['bookmark'] as String? ?? '';
+        if (path.isEmpty) continue;
+        if (bookmark.isNotEmpty) _activePaths.add(path);
+        picked.add((path: path, bookmark: bookmark));
+      }
+      return picked;
     } on PlatformException catch (e) {
-      _log('pickFileWithBookmark failed: ${e.message}');
-      return null;
+      _log('pickFilesWithBookmarks failed: ${e.message}');
+      return const [];
+    } catch (e) {
+      _log('pickFilesWithBookmarks failed: $e');
+      return const [];
     }
   }
 

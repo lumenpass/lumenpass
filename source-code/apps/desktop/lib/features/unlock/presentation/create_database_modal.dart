@@ -17,11 +17,10 @@ import '../../../core/services/s3_service.dart';
 
 import '../../../features/unlock/application/database_registry.dart';
 import '../../../presentation/theme/app_theme.dart';
-import 'sftp_config_dialog.dart';
-import 'webdav_config_dialog.dart';
-import 's3_config_dialog.dart';
+import 'provider_config_route.dart';
 import 'storage_source_list.dart';
 import '../../../presentation/theme/drive_clue_tokens.dart';
+import '../../../presentation/widgets/drive_clue/dc_flow_page.dart';
 
 // ── Light palette (matches the unlock screen sidebar) ─────────────────────────────────────────────────────────
 const Color _kCanvas = DcColors.sidebar;
@@ -34,18 +33,10 @@ const Color _kIcon = DcColors.sidebarMuted;
 const Color _kBlue = DcColors.selection;
 const Color _kInkBorder = DcColors.lightLineStrong;
 const Color _kMint = DcColors.selection;
-const Color _kMintSoft = DcColors.lightSelectionFill;
 const Color _kPeach = DcColors.sidebar;
-const Color _kYellow = DcColors.selectionSoft;
+const Color _kYellow = DcColors.lightSelectionFill;
 
 // ── Dark header palette (matches the vault title bar) ─────────────────────────
-const Color _kHeaderBg = DcColors.background;
-const Color _kHeaderLine = DcColors.shellDivider;
-const Color _kHeaderTitle = DcColors.text;
-const Color _kHeaderLabel = DcColors.muted;
-const Color _kHeaderControl = DcColors.panel;
-const Color _kHeaderControlLine = DcColors.lineStrong;
-const Color _kHeaderAccent = DcColors.link;
 
 TextStyle _uText(
   double size,
@@ -62,46 +53,20 @@ TextStyle _uText(
   );
 }
 
-TextStyle _serifText(
-  double size,
-  Color color, {
-  FontWeight fontWeight = FontWeight.w700,
-  double? height,
-}) {
-  return TextStyle(
-    fontSize: size,
-    color: color,
-    fontWeight: fontWeight,
-    fontFamily: 'Ubuntu Sans',
-    height: height,
-  );
-}
-
-InputDecoration _fieldDecoration({
-  required String hint,
-  required IconData prefixIcon,
-  Widget? suffix,
-}) {
+/// Borderless input decoration for fields that live inside a [_FormCard]
+/// row: the card supplies the frame and the row's leading icon, so the
+/// input itself stays flat — same reading as the vault detail rows.
+InputDecoration _cardFieldDecoration({required String hint, Widget? suffix}) {
   return InputDecoration(
     hintText: hint,
     hintStyle: _uText(13, _kIcon),
     filled: true,
     fillColor: _kPaperBright,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: _kBorderRow),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: _kBorderRow),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: _kBlue, width: 1.5),
-    ),
-    prefixIcon: Icon(prefixIcon, size: 17, color: _kIcon),
-    prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+    border: InputBorder.none,
+    enabledBorder: InputBorder.none,
+    focusedBorder: InputBorder.none,
     suffixIcon: suffix,
   );
 }
@@ -291,72 +256,59 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
 
   @override
   Widget build(BuildContext context) {
+    final bool onProviderStep = _step == _WizardStep.provider;
     return Theme(
       data: AppTheme.driveClueLight(),
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 80, vertical: 40),
-        child: Container(
-          decoration: BoxDecoration(
-            color: _kCanvas,
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(color: _kBorderSoft),
-            boxShadow: const <BoxShadow>[
-              BoxShadow(
-                color: DcColors.shadow,
-                blurRadius: 28,
-                offset: Offset(0, 10),
+      child: DcFlowPage(
+        title: onProviderStep
+            ? 'Choose a Storage Destination'
+            : 'Create New Database',
+        subtitle: onProviderStep
+            ? 'Step 1 of 2 · Pick where your vault will live'
+            : 'Step 2 of 2 · Enter a nickname and security options',
+        icon: TablerIcons.database_plus,
+        iconBackground: _kBlue,
+        onBack: _isCreating ? null : () => Navigator.of(context).pop(),
+        trailing: DcFlowStepDots(total: 2, current: _step.index),
+        inset: false,
+        scrollable: false,
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+        body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 260),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) {
+            final bool incoming = child.key == ValueKey<_WizardStep>(_step);
+            // Incoming step enters from the direction of travel; the
+            // outgoing step leaves the opposite way.
+            final double sign = _goingForward ? 1.0 : -1.0;
+            final Offset beginOffset =
+                incoming ? Offset(sign * 0.06, 0) : Offset(-sign * 0.06, 0);
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: beginOffset,
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              _buildHeader(),
-              Flexible(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 260),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) {
-                    final bool incoming =
-                        child.key == ValueKey<_WizardStep>(_step);
-                    // Incoming step enters from the direction of travel; the
-                    // outgoing step leaves the opposite way.
-                    final double sign = _goingForward ? 1.0 : -1.0;
-                    final Offset beginOffset = incoming
-                        ? Offset(sign * 0.06, 0)
-                        : Offset(-sign * 0.06, 0);
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: beginOffset,
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      ),
-                    );
-                  },
-                  layoutBuilder: (currentChild, previousChildren) {
-                    return Stack(
-                      alignment: Alignment.topCenter,
-                      children: <Widget>[
-                        ...previousChildren,
-                        if (currentChild != null) currentChild,
-                      ],
-                    );
-                  },
-                  child: _step == _WizardStep.provider
-                      ? _buildProviderStep()
-                      : _buildDetailsStep(),
-                ),
-              ),
-              _buildFooter(),
-            ],
-          ),
+            );
+          },
+          layoutBuilder: (currentChild, previousChildren) {
+            return Stack(
+              alignment: Alignment.topCenter,
+              children: <Widget>[
+                ...previousChildren,
+                if (currentChild != null) currentChild,
+              ],
+            );
+          },
+          child: _step == _WizardStep.provider
+              ? _buildProviderStep()
+              : _buildDetailsStep(),
         ),
+        footer: _buildFooter(),
       ),
     );
   }
@@ -407,15 +359,21 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
     return SingleChildScrollView(
       key: const ValueKey<_WizardStep>(_WizardStep.provider),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          _buildStorageSection(),
-          if (_errorMessage != null) ...<Widget>[
-            const SizedBox(height: 16),
-            _buildError(),
-          ],
-        ],
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _buildStorageSection(),
+              if (_errorMessage != null) ...<Widget>[
+                const SizedBox(height: 16),
+                _buildError(),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -424,25 +382,31 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
     return SingleChildScrollView(
       key: const ValueKey<_WizardStep>(_WizardStep.details),
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          _buildSelectedDestination(),
-          const SizedBox(height: 16),
-          if (_errorMessage != null) ...<Widget>[
-            _buildError(),
-            const SizedBox(height: 16),
-          ],
-          _buildNameSection(),
-          const SizedBox(height: 16),
-          _buildPasswordSection(),
-          if (_showAdvanced) ...<Widget>[
-            const SizedBox(height: 12),
-            _buildKeyFileSection(),
-            const SizedBox(height: 12),
-            _buildFormatSection(),
-          ],
-        ],
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _buildSelectedDestination(),
+              const SizedBox(height: 16),
+              if (_errorMessage != null) ...<Widget>[
+                _buildError(),
+                const SizedBox(height: 16),
+              ],
+              _buildNameSection(),
+              const SizedBox(height: 16),
+              _buildPasswordSection(),
+              if (_showAdvanced) ...<Widget>[
+                const SizedBox(height: 12),
+                _buildKeyFileSection(),
+                const SizedBox(height: 12),
+                _buildFormatSection(),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -485,136 +449,57 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
         break;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: _kMintSoft,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _kInkBorder),
-      ),
-      child: Row(
-        children: <Widget>[
-          const Icon(TablerIcons.circle_check, size: 16, color: _kMint),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(
-                  'Storing in $providerLabel',
-                  style: _uText(12, _kTitle, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  detail,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _uText(11, _kLabel),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: _goToProvider,
-              child: Text(
-                'Change',
-                style: _uText(11, _kBlue, fontWeight: FontWeight.w700),
+    return _FormCard(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: <Widget>[
+            const Icon(TablerIcons.circle_check, size: 16, color: _kMint),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    'Storing in $providerLabel',
+                    style: _uText(12, _kTitle, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    detail,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _uText(11, _kLabel),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Header ──────────────────────────────────────────────────────────────
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 17, 16, 14),
-      decoration: const BoxDecoration(
-        color: _kHeaderBg,
-        border: Border(bottom: BorderSide(color: _kHeaderLine)),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(7),
-          topRight: Radius.circular(7),
+            const SizedBox(width: 8),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: _goToProvider,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _kPaperBright,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: _kInkBorder),
+                  ),
+                  child: Text(
+                    'Change',
+                    style: _uText(11, _kTitle, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: _kBlue,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Icon(
-              TablerIcons.database_plus,
-              size: 16,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  _step == _WizardStep.provider
-                      ? 'Choose a Storage Destination'
-                      : 'Create New Database',
-                  style: _serifText(17, _kHeaderTitle),
-                ),
-                Text(
-                  _step == _WizardStep.provider
-                      ? 'Step 1 of 2 · Pick where your vault will live.'
-                      : 'Step 2 of 2 · Enter a nickname and configure security options.',
-                  style: _uText(11, _kHeaderLabel),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          _buildStepDots(),
-          const SizedBox(width: 12),
-          MouseRegion(
-            cursor: _isCreating
-                ? SystemMouseCursors.basic
-                : SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: _isCreating ? null : () => Navigator.of(context).pop(),
-              child: Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: _kHeaderControl,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _kHeaderControlLine),
-                ),
-                child:
-                    const Icon(TablerIcons.x, size: 14, color: _kHeaderTitle),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Two pill indicators reflecting the active wizard step.
-  Widget _buildStepDots() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        _StepDot(active: _step == _WizardStep.provider),
-        const SizedBox(width: 5),
-        _StepDot(active: _step == _WizardStep.details),
-      ],
     );
   }
 
@@ -899,12 +784,9 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
   Future<void> _connectWebDav() async {
     setState(() => _isConnectingWebDav = true);
     try {
-      final account = await showDialog<String?>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => WebDavConfigDialog(
-          initialConfig: BackupService.instance.currentWebDavConfig,
-        ),
+      final account = await pushWebDavConfigPage(
+        context,
+        initialConfig: BackupService.instance.currentWebDavConfig,
       );
       if (account != null) {
         setState(() {
@@ -952,12 +834,9 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
   Future<void> _connectSftp() async {
     setState(() => _isConnectingSftp = true);
     try {
-      final account = await showDialog<String?>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => SftpConfigDialog(
-          initialConfig: BackupService.instance.currentSftpConfig,
-        ),
+      final account = await pushSftpConfigPage(
+        context,
+        initialConfig: BackupService.instance.currentSftpConfig,
       );
       if (account != null) {
         setState(() {
@@ -1005,12 +884,9 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
   Future<void> _connectS3() async {
     setState(() => _isConnectingS3 = true);
     try {
-      final account = await showDialog<String?>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => S3ConfigDialog(
-          initialConfig: BackupService.instance.currentS3Config,
-        ),
+      final account = await pushS3ConfigPage(
+        context,
+        initialConfig: BackupService.instance.currentS3Config,
       );
       if (account != null) {
         setState(() {
@@ -1059,26 +935,17 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
   // ── Database name ────────────────────────────────────────────────────────
 
   Widget _buildNameSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'Database Name',
-          style: _uText(12, _kTitle, fontWeight: FontWeight.w600),
+    return _FormCard(
+      child: _FormRow(
+        icon: TablerIcons.database_edit,
+        label: 'Database Name',
+        child: TextField(
+          controller: _nameController,
+          style: _uText(13, _kTitle),
+          onChanged: (_) => setState(() => _errorMessage = null),
+          decoration: _cardFieldDecoration(hint: 'e.g. My Vault'),
         ),
-        const SizedBox(height: 6),
-        _ShadowedInput(
-          child: TextField(
-            controller: _nameController,
-            style: _uText(13, _kTitle),
-            onChanged: (_) => setState(() => _errorMessage = null),
-            decoration: _fieldDecoration(
-              hint: 'e.g. My Vault',
-              prefixIcon: TablerIcons.database_edit,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -1087,30 +954,25 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
   Widget _buildPasswordSection() {
     final bool passwordDisabled = _acceptEmptyPassword;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'Master Password',
-          style: _uText(13, _kTitle, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 6),
-        _LabeledField(
-          label: 'Master Password',
-          child: _ShadowedInput(
+    return _FormCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          _FormRow(
+            icon: TablerIcons.key,
+            label: 'Master Password',
             child: TextField(
               controller: _passwordController,
               enabled: !passwordDisabled,
               obscureText: passwordDisabled ? false : _obscurePassword,
               enableSuggestions: false,
               autocorrect: false,
-              style: _uText(13, passwordDisabled ? _kLabel : _kTitle),
+              style: _uText(13, passwordDisabled ? _kIcon : _kTitle),
               onChanged: (_) => setState(() => _errorMessage = null),
-              decoration: _fieldDecoration(
+              decoration: _cardFieldDecoration(
                 hint: passwordDisabled
                     ? 'Empty password enabled'
                     : 'New Password',
-                prefixIcon: TablerIcons.key,
                 suffix: passwordDisabled
                     ? null
                     : IconButton(
@@ -1128,24 +990,27 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        _LabeledField(
-          label: 'Confirm',
-          child: _ShadowedInput(
+          const Divider(
+            height: 1,
+            thickness: 1,
+            indent: 52,
+            color: _kBorderSoft,
+          ),
+          _FormRow(
+            icon: TablerIcons.lock_check,
+            label: 'Confirm',
             child: TextField(
               controller: _confirmController,
               enabled: !passwordDisabled,
               obscureText: passwordDisabled ? false : _obscureConfirm,
               enableSuggestions: false,
               autocorrect: false,
-              style: _uText(13, passwordDisabled ? _kLabel : _kTitle),
+              style: _uText(13, passwordDisabled ? _kIcon : _kTitle),
               onChanged: (_) => setState(() => _errorMessage = null),
-              decoration: _fieldDecoration(
+              decoration: _cardFieldDecoration(
                 hint: passwordDisabled
                     ? 'Confirmation not required'
                     : 'Confirm New Password',
-                prefixIcon: TablerIcons.lock_check,
                 suffix: passwordDisabled
                     ? null
                     : IconButton(
@@ -1163,155 +1028,186 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 10),
-        _ToggleRow(
-          label: 'Accept Empty Password',
-          value: _acceptEmptyPassword,
-          onChanged: (v) => setState(() {
-            _acceptEmptyPassword = v;
-            _errorMessage = null;
-            if (v) {
-              _passwordController.clear();
-              _confirmController.clear();
-            }
-          }),
-        ),
-        const SizedBox(height: 6),
-        _ToggleRow(
-          label: 'Show Advanced',
-          value: _showAdvanced,
-          onChanged: (v) => setState(() => _showAdvanced = v),
-        ),
-      ],
+          const Divider(
+            height: 1,
+            thickness: 1,
+            indent: 52,
+            color: _kBorderSoft,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: _ToggleRow(
+              label: 'Accept Empty Password',
+              value: _acceptEmptyPassword,
+              onChanged: (v) => setState(() {
+                _acceptEmptyPassword = v;
+                _errorMessage = null;
+                if (v) {
+                  _passwordController.clear();
+                  _confirmController.clear();
+                }
+              }),
+            ),
+          ),
+          const Divider(
+            height: 1,
+            thickness: 1,
+            indent: 52,
+            color: _kBorderSoft,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: _ToggleRow(
+              label: 'Show Advanced',
+              value: _showAdvanced,
+              onChanged: (v) => setState(() => _showAdvanced = v),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   // ── Key file section ─────────────────────────────────────────────────────
 
   Widget _buildKeyFileSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        _ToggleRow(
-          label: 'Use a Key File',
-          value: _useKeyFile,
-          onChanged: (v) => setState(() {
-            _useKeyFile = v;
-            if (!v) _keyFilePath = null;
-          }),
-        ),
-        if (_useKeyFile) ...<Widget>[
-          const SizedBox(height: 8),
-          Row(
-            children: <Widget>[
-              _OutlineButton(
-                label: 'Select...',
-                onPressed: _pickKeyFile,
-              ),
-              const SizedBox(width: 8),
-              _OutlineButton(
-                label: 'Create...',
-                onPressed: _createKeyFile,
-              ),
-            ],
+    return _FormCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: _ToggleRow(
+              label: 'Use a Key File',
+              value: _useKeyFile,
+              onChanged: (v) => setState(() {
+                _useKeyFile = v;
+                if (!v) _keyFilePath = null;
+              }),
+            ),
           ),
-          if (_keyFilePath != null) ...<Widget>[
-            const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: DcColors.lightSurface,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: _kBorderRow),
+          if (_useKeyFile) ...<Widget>[
+            const Divider(
+              height: 1,
+              thickness: 1,
+              indent: 52,
+              color: _kBorderSoft,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
               ),
               child: Row(
                 children: <Widget>[
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: _kPeach,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      TablerIcons.key,
-                      size: 16,
-                      color: _kBlue,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Text(
-                          'Selected key file',
-                          style: _uText(
-                            10,
-                            _kLabel,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _fileName(_keyFilePath!),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: _uText(
-                            12,
-                            _kTitle,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                  _OutlineButton(
+                    label: 'Select...',
+                    onPressed: _pickKeyFile,
                   ),
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => setState(() => _keyFilePath = null),
-                    child: Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: DcColors.lightSurface,
-                        borderRadius: BorderRadius.circular(7),
-                        border: Border.all(color: _kBorderRow),
-                      ),
-                      child: const Icon(
-                        TablerIcons.x,
-                        size: 14,
-                        color: _kIcon,
-                      ),
-                    ),
+                  _OutlineButton(
+                    label: 'Create...',
+                    onPressed: _createKeyFile,
                   ),
                 ],
               ),
             ),
+            if (_keyFilePath != null) ...<Widget>[
+              const Divider(
+                height: 1,
+                thickness: 1,
+                indent: 52,
+                color: _kBorderSoft,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: _kPeach,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        TablerIcons.key,
+                        size: 16,
+                        color: _kBlue,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Text(
+                            'Selected key file',
+                            style: _uText(
+                              10,
+                              _kLabel,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _fileName(_keyFilePath!),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: _uText(
+                              12,
+                              _kTitle,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => setState(() => _keyFilePath = null),
+                      child: Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: DcColors.lightSurface,
+                          borderRadius: BorderRadius.circular(7),
+                          border: Border.all(color: _kBorderRow),
+                        ),
+                        child: const Icon(
+                          TablerIcons.x,
+                          size: 14,
+                          color: _kIcon,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ],
-      ],
+      ),
     );
   }
 
   // ── Database format ──────────────────────────────────────────────────────
 
   Widget _buildFormatSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'Database Format',
-          style: _uText(12, _kTitle, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 6),
-        _FormatDropdown(
+    return _FormCard(
+      child: _FormRow(
+        icon: TablerIcons.database_export,
+        label: 'Database Format',
+        child: _FormatDropdown(
           selected: _format,
           onSelect: (f) => setState(() => _format = f),
+          flat: true,
         ),
-      ],
+      ),
     );
   }
 
@@ -1346,20 +1242,9 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
   // ── Footer ───────────────────────────────────────────────────────────────
 
   Widget _buildFooter() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: const BoxDecoration(
-        color: _kCanvas,
-        border: Border(top: BorderSide(color: _kBorderSoft)),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(7),
-          bottomRight: Radius.circular(7),
-        ),
-      ),
-      child: _step == _WizardStep.provider
-          ? _buildProviderFooter()
-          : _buildDetailsFooter(),
-    );
+    return _step == _WizardStep.provider
+        ? _buildProviderFooter()
+        : _buildDetailsFooter();
   }
 
   Widget _buildProviderFooter() {
@@ -1369,11 +1254,10 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
         OutlinedButton(
           onPressed: _isCreating ? null : () => Navigator.of(context).pop(),
           style: OutlinedButton.styleFrom(
-            foregroundColor: _kTitle,
-            side: const BorderSide(color: _kInkBorder),
-            backgroundColor: _kPaperBright,
+            foregroundColor: _kLabel,
+            side: const BorderSide(color: _kBorderSoft),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(8),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
@@ -1386,12 +1270,11 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
           style: ElevatedButton.styleFrom(
             backgroundColor: _kBlue,
             foregroundColor: Colors.white,
-            disabledBackgroundColor: _kBorderSoft,
-            shadowColor: _kInkBorder,
-            elevation: 2,
+            disabledBackgroundColor: DcColors.selectionLine,
+            elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(8),
             ),
             textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
           ),
@@ -1408,11 +1291,10 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
         OutlinedButton.icon(
           onPressed: _isCreating ? null : _goToProvider,
           style: OutlinedButton.styleFrom(
-            foregroundColor: _kTitle,
-            side: const BorderSide(color: _kInkBorder),
-            backgroundColor: _kPaperBright,
+            foregroundColor: _kLabel,
+            side: const BorderSide(color: _kBorderSoft),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(8),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
@@ -1426,12 +1308,11 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
           style: ElevatedButton.styleFrom(
             backgroundColor: _kBlue,
             foregroundColor: Colors.white,
-            disabledBackgroundColor: _kBorderSoft,
-            shadowColor: _kInkBorder,
-            elevation: 2,
+            disabledBackgroundColor: DcColors.selectionLine,
+            elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(8),
             ),
             textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
           ),
@@ -1752,69 +1633,72 @@ class _CreateDatabaseModalState extends ConsumerState<CreateDatabaseModal> {
 
 // ── Reusable sub-widgets ─────────────────────────────────────────────────────
 
-class _ShadowedInput extends StatelessWidget {
-  const _ShadowedInput({required this.child});
+/// White grouped card for form sections, matching the vault item detail
+/// panel's cards: white surface, radius 10, hairline border, soft shadow.
+class _FormCard extends StatelessWidget {
+  const _FormCard({required this.child});
 
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    return Container(
+      width: double.infinity,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        color: _kPaperBright,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _kBorderSoft),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: DcColors.shadow,
-            blurRadius: 2,
-            offset: Offset(0, 1),
-          ),
-          BoxShadow(
-            color: DcColors.shadowSoft,
+            color: DcColors.lightCardShadow,
             blurRadius: 10,
-            spreadRadius: -2,
-            offset: Offset(0, 4),
+            offset: Offset(0, 3),
           ),
         ],
       ),
-      child: CustomPaint(
-        foregroundPainter: const _InputInnerShadowPainter(),
-        child: child,
-      ),
+      child: child,
     );
   }
 }
 
-class _InputInnerShadowPainter extends CustomPainter {
-  const _InputInnerShadowPainter();
+/// One row of a [_FormCard]: a muted icon and small label on the left
+/// (like the vault detail rows' label column) with the input filling the
+/// rest. Inside an input card the TextField's own border is dropped so the
+/// row reads as part of the card rather than a nested box.
+class _FormRow extends StatelessWidget {
+  const _FormRow({
+    required this.icon,
+    required this.label,
+    required this.child,
+  });
+
+  final IconData icon;
+  final String label;
+  final Widget child;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final fieldBounds = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      const Radius.circular(8),
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Icon(icon, size: 16, color: _kIcon),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: _uText(12, _kLabel, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: child),
+        ],
+      ),
     );
-    final outside = Path()
-      ..addRect(
-        Rect.fromLTRB(-12, -12, size.width + 12, size.height + 12),
-      );
-    final inset = Path()
-      ..addRRect(fieldBounds.deflate(0.5).shift(const Offset(0, 0.75)));
-    final innerEdge = Path.combine(PathOperation.difference, outside, inset);
-
-    canvas
-      ..save()
-      ..clipRRect(fieldBounds)
-      ..drawPath(
-        innerEdge,
-        Paint()
-          ..color = DcColors.shadowSoft
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
-      )
-      ..restore();
   }
-
-  @override
-  bool shouldRepaint(covariant _InputInnerShadowPainter oldDelegate) => false;
 }
 
 // ── Cloud folder picker ───────────────────────────────────────────────────────
@@ -2005,21 +1889,40 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final String title = widget.cloudType == _CloudType.googleDrive
+        ? 'Select Google Drive Folder'
+        : widget.cloudType == _CloudType.dropbox
+            ? 'Select Dropbox Folder'
+            : widget.cloudType == _CloudType.oneDrive
+                ? 'Select OneDrive Folder'
+                : widget.cloudType == _CloudType.webDav
+                    ? 'Select WebDAV Folder'
+                    : widget.cloudType == _CloudType.sftp
+                        ? 'Select SFTP Folder'
+                        : 'Select Amazon S3 Folder';
+    final String current = _breadcrumb.isEmpty ? 'Root' : _breadcrumb.last.name;
     return Theme(
       data: AppTheme.driveClueLight(),
-      child: Dialog(
-        backgroundColor: DcColors.sidebar,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          width: 400,
+      child: DcFlowPage(
+        title: title,
+        subtitle: current,
+        icon: TablerIcons.folder,
+        onBack: _breadcrumb.isEmpty
+            ? () => Navigator.of(context).pop()
+            : () {
+                setState(() => _breadcrumb.removeLast());
+                _loadFolders();
+              },
+        scrollable: false,
+        inset: false,
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        body: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _buildHeader(),
               if (_breadcrumb.isNotEmpty) _buildBreadcrumb(),
-              SizedBox(
-                height: 260,
+              Expanded(
                 child: _loading
                     ? const Center(child: CircularProgressIndicator())
                     : _error != null
@@ -2036,91 +1939,10 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
                         : _buildFolderList(),
               ),
               if (_showNewFolder) _buildNewFolderInput(),
-              _buildDialogFooter(),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    final title = widget.cloudType == _CloudType.googleDrive
-        ? 'Select Google Drive Folder'
-        : widget.cloudType == _CloudType.dropbox
-            ? 'Select Dropbox Folder'
-            : widget.cloudType == _CloudType.oneDrive
-                ? 'Select OneDrive Folder'
-                : widget.cloudType == _CloudType.webDav
-                    ? 'Select WebDAV Folder'
-                    : widget.cloudType == _CloudType.sftp
-                        ? 'Select SFTP Folder'
-                        : 'Select Amazon S3 Folder';
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
-      decoration: const BoxDecoration(
-        color: _kHeaderBg,
-        border: Border(bottom: BorderSide(color: _kHeaderLine)),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(7),
-          topRight: Radius.circular(7),
-        ),
-      ),
-      child: Row(
-        children: <Widget>[
-          if (_breadcrumb.isNotEmpty)
-            GestureDetector(
-              onTap: () {
-                setState(() => _breadcrumb.removeLast());
-                _loadFolders();
-              },
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const Icon(TablerIcons.arrow_left,
-                        size: 14, color: _kHeaderAccent),
-                    const SizedBox(width: 4),
-                    Text('Back',
-                        style: _uText(11, _kHeaderAccent,
-                            fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              ),
-            )
-          else ...<Widget>[
-            widget.cloudType == _CloudType.webDav
-                ? Image.asset('assets/images/webdav.png', width: 16, height: 16)
-                : widget.cloudType == _CloudType.sftp
-                    ? Image.asset('assets/images/sftp.png',
-                        width: 16, height: 16)
-                    : widget.cloudType == _CloudType.s3
-                        ? Image.asset('assets/images/aws-s3-icon.png',
-                            width: 16, height: 16)
-                        : Icon(
-                            widget.cloudType == _CloudType.googleDrive
-                                ? TablerIcons.brand_google_drive
-                                : widget.cloudType == _CloudType.oneDrive
-                                    ? TablerIcons.brand_onedrive
-                                    : TablerIcons.cloud,
-                            size: 16,
-                            color: _kHeaderAccent,
-                          ),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: Text(
-              _breadcrumb.isEmpty ? title : _breadcrumb.last.name,
-              style: _uText(13, _kHeaderTitle, fontWeight: FontWeight.w700),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: const Icon(TablerIcons.x, size: 16, color: _kHeaderLabel),
-          ),
-        ],
+        footer: _buildDialogFooterRow(),
       ),
     );
   }
@@ -2298,75 +2120,67 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
     );
   }
 
-  Widget _buildDialogFooter() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: _kBorderSoft)),
-      ),
-      child: Row(
-        children: <Widget>[
-          TextButton.icon(
-            onPressed: () => setState(() {
-              _showNewFolder = !_showNewFolder;
-              if (!_showNewFolder) _newFolderController.clear();
-            }),
-            icon: Icon(
-              _showNewFolder ? TablerIcons.x : TablerIcons.folder_plus,
-              size: 13,
-              color: _kBlue,
-            ),
-            label: Text(
-              _showNewFolder ? 'Cancel' : 'New Folder',
-              style: _uText(11, _kBlue, fontWeight: FontWeight.w500),
-            ),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            ),
+  Widget _buildDialogFooterRow() {
+    return Row(
+      children: <Widget>[
+        TextButton.icon(
+          onPressed: () => setState(() {
+            _showNewFolder = !_showNewFolder;
+            if (!_showNewFolder) _newFolderController.clear();
+          }),
+          icon: Icon(
+            _showNewFolder ? TablerIcons.x : TablerIcons.folder_plus,
+            size: 13,
+            color: _kBlue,
           ),
-          const Spacer(),
-          OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: DcColors.sidebarText,
-              side: const BorderSide(color: DcColors.lightLineStrong),
-              backgroundColor: DcColors.sidebar,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-              minimumSize: const Size(0, 36),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-            child: const Text('Cancel'),
+          label: Text(
+            _showNewFolder ? 'Cancel' : 'New Folder',
+            style: _uText(11, _kBlue, fontWeight: FontWeight.w500),
           ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () {
-              final selected = _breadcrumb.isEmpty
-                  ? const CloudFolder(id: '', name: '/ (root)', path: '/')
-                  : _breadcrumb.last;
-              Navigator.of(context).pop(selected);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _kBlue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-              minimumSize: const Size(0, 36),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white),
-            ),
-            child: const Text('Select Path'),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           ),
-        ],
-      ),
+        ),
+        const Spacer(),
+        OutlinedButton(
+          onPressed: () => Navigator.of(context).pop(),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: DcColors.sidebarText,
+            side: const BorderSide(color: DcColors.lightLineStrong),
+            backgroundColor: DcColors.sidebar,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            minimumSize: const Size(0, 36),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle:
+                const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          ),
+          child: const Text('Cancel'),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: () {
+            final selected = _breadcrumb.isEmpty
+                ? const CloudFolder(id: '', name: '/ (root)', path: '/')
+                : _breadcrumb.last;
+            Navigator.of(context).pop(selected);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kBlue,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            minimumSize: const Size(0, 36),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white),
+          ),
+          child: const Text('Select Path'),
+        ),
+      ],
     );
   }
 }
@@ -2430,27 +2244,6 @@ class _FolderListTileState extends State<_FolderListTile> {
   }
 }
 
-class _StepDot extends StatelessWidget {
-  const _StepDot({required this.active});
-
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      width: active ? 18 : 7,
-      height: 7,
-      decoration: BoxDecoration(
-        color: active ? _kBlue : _kHeaderControl,
-        border: Border.all(color: _kHeaderControlLine),
-        borderRadius: BorderRadius.circular(4),
-      ),
-    );
-  }
-}
-
 class _ToggleRow extends StatelessWidget {
   const _ToggleRow({
     required this.label,
@@ -2476,30 +2269,6 @@ class _ToggleRow extends StatelessWidget {
         ),
         const SizedBox(width: 2),
         Text(label, style: _uText(12, _kTitle, fontWeight: FontWeight.w500)),
-      ],
-    );
-  }
-}
-
-class _LabeledField extends StatelessWidget {
-  const _LabeledField({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: <Widget>[
-        SizedBox(
-          width: 110,
-          child: Text(
-            label,
-            style: _uText(12, _kLabel, fontWeight: FontWeight.w500),
-          ),
-        ),
-        Expanded(child: child),
       ],
     );
   }
@@ -2538,21 +2307,30 @@ class _FormatDropdown extends StatelessWidget {
   const _FormatDropdown({
     required this.selected,
     required this.onSelect,
+    this.flat = false,
   });
 
   final _DbFormat selected;
   final ValueChanged<_DbFormat> onSelect;
 
+  /// When true the dropdown drops its own border and padding so it can sit
+  /// directly inside a [_FormCard] row.
+  final bool flat;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 56),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: DcColors.lightSurface,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _kBorderRow),
-      ),
+      constraints: BoxConstraints(minHeight: flat ? 0 : 56),
+      padding: flat
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: flat
+          ? null
+          : BoxDecoration(
+              color: DcColors.lightSurface,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: _kBorderRow),
+            ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<_DbFormat>(
           value: selected,

@@ -116,7 +116,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   }
 
   Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
+  // Single canonical shell size. Every flow (create/open/duplicate vault,
+  // provider config, cloud services) is a full-page route inside this window
+  // rather than a modal dialog that resizes the frame, so this is the only
+  // place the app's size is declared.
+  Win32Window::Size size(1200, 760);
   if (!window.Create(L"LumenPass - Password Manager", origin, size)) {
     return EXIT_FAILURE;
   }

@@ -18,6 +18,8 @@ import 'core/services/tray_service.dart';
 import 'core/repository/kdbx_repository_provider.dart';
 
 import 'features/cloud/presentation/cloud_services_screen.dart';
+import 'features/settings/application/settings_host_bridge.dart';
+import 'features/settings/presentation/settings_window.dart';
 import 'features/unlock/presentation/unlock_screen.dart';
 import 'features/vault/presentation/vault_screen.dart';
 import 'presentation/theme/app_theme.dart';
@@ -34,6 +36,13 @@ Future<void> main(List<String> args) async {
   if (args.contains('--quick-search-panel')) {
     return quickSearchMain();
   }
+  // The detached Settings window also runs this `main()` with a sentinel
+  // argument on platforms that cannot launch a custom Dart entrypoint
+  // directly (Linux/Windows). Register it before anything else boots so those
+  // platforms get identical behaviour to macOS's `settingsMain()` entrypoint.
+  if (args.contains('--settings-window')) {
+    return settingsMain();
+  }
   HttpOverrides.global = PinningHttpOverrides();
   if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
     sqfliteFfiInit();
@@ -47,6 +56,9 @@ Future<void> main(List<String> args) async {
   await loadAppearancePreferences(_container);
   await loadVaultPreferences(_container);
   await loadGeneralPreferences(_container);
+  // The detached Settings window is a separate isolate: it cannot read these
+  // providers, so it drives them through this bridge instead.
+  SettingsHostBridge.register(_container);
   initCloudSyncService(_container);
   await BackupService.instance.init(_container);
   runApp(UncontrolledProviderScope(
@@ -69,6 +81,23 @@ Future<void> quickSearchMain() async {
   WidgetsFlutterBinding.ensureInitialized();
   HttpOverrides.global = PinningHttpOverrides();
   runApp(const QuickSearchWindow());
+}
+
+/// Entry point for the **detached Settings window** (second Flutter engine).
+///
+/// Mirrors [quickSearchMain]: a second engine hosted by a real native window
+/// (see `SettingsWindowController` in `macos/Runner/SettingsWindow.swift`).
+/// It deliberately boots none of the main-app services — no tray, no cloud
+/// sync, no backup — because it must never touch the decrypted vault.
+///
+/// All settings it displays arrive as a JSON snapshot from the main engine
+/// over `lumenpass/settings_host`, and every change is sent back as an intent
+/// that the main engine applies. See [SettingsHostBridge].
+@pragma('vm:entry-point')
+Future<void> settingsMain() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = PinningHttpOverrides();
+  runApp(const SettingsWindow());
 }
 
 /// Root application shell with the shared Riverpod scope and theme.

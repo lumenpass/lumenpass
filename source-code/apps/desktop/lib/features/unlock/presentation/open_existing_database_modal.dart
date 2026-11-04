@@ -16,11 +16,10 @@ import '../../../presentation/theme/app_theme.dart';
 import '../../cloud/application/cloud_disconnect.dart';
 import '../../cloud/application/cloud_service_provider.dart';
 import '../application/database_registry.dart';
-import 'sftp_config_dialog.dart';
-import 'webdav_config_dialog.dart';
-import 's3_config_dialog.dart';
+import 'provider_config_route.dart';
 import 'storage_source_list.dart';
 import '../../../presentation/theme/drive_clue_tokens.dart';
+import '../../../presentation/widgets/drive_clue/dc_flow_page.dart';
 
 const Color _kCanvas = DcColors.sidebar;
 const Color _kPaperBright = DcColors.lightSurface;
@@ -31,16 +30,7 @@ const Color _kIcon = DcColors.sidebarMuted;
 const Color _kBlue = DcColors.selection;
 const Color _kInkBorder = DcColors.lightLineStrong;
 const Color _kMintSoft = DcColors.lightSelectionFill;
-const Color _kYellow = DcColors.selectionSoft;
-
-// ── Dark header palette (matches the vault title bar) ─────────────────────────
-const Color _kHeaderBg = DcColors.background;
-const Color _kHeaderLine = DcColors.shellDivider;
-const Color _kHeaderTitle = DcColors.text;
-const Color _kHeaderLabel = DcColors.muted;
-const Color _kHeaderControl = DcColors.panel;
-const Color _kHeaderControlLine = DcColors.lineStrong;
-const Color _kHeaderAccent = DcColors.link;
+const Color _kYellow = DcColors.lightSelectionFill;
 
 TextStyle _uText(
   double size,
@@ -54,19 +44,6 @@ TextStyle _uText(
     fontWeight: fontWeight,
     fontFamily: 'Ubuntu Sans',
     letterSpacing: letterSpacing,
-  );
-}
-
-TextStyle _serifText(
-  double size,
-  Color color, {
-  FontWeight fontWeight = FontWeight.w700,
-}) {
-  return TextStyle(
-    fontSize: size,
-    color: color,
-    fontWeight: fontWeight,
-    fontFamily: 'Ubuntu Sans',
   );
 }
 
@@ -88,6 +65,7 @@ class _OpenExistingDatabaseModalState
     extends ConsumerState<OpenExistingDatabaseModal> {
   _StorageType _storage = _StorageType.local;
   _SelectedDatabaseFile? _selectedFile;
+  List<_SelectedDatabaseFile> _localFiles = const <_SelectedDatabaseFile>[];
   bool _isOpening = false;
   String? _errorMessage;
 
@@ -146,120 +124,51 @@ class _OpenExistingDatabaseModalState
     final selectedFile = _selectedFile;
     final validationMessage =
         selectedFile == null ? null : _selectionError(selectedFile);
+    String? combinedValidationMessage = validationMessage;
+    for (final localFile in _localFiles) {
+      final blocking = _blockingSelectionError(localFile);
+      if (blocking != null) {
+        combinedValidationMessage = blocking;
+        break;
+      }
+    }
 
     return Theme(
       data: AppTheme.driveClueLight(),
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 80, vertical: 40),
-        child: Container(
-          decoration: BoxDecoration(
-            color: _kCanvas,
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(color: _kBorderSoft),
-            boxShadow: const <BoxShadow>[
-              BoxShadow(
-                color: DcColors.shadow,
-                blurRadius: 28,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
+      child: DcFlowPage(
+        title: 'Open Existing Database',
+        subtitle: 'Pick a database file from local storage or a cloud provider',
+        icon: TablerIcons.folder_open,
+        iconBackground: _kBlue,
+        onBack: _isOpening ? null : () => Navigator.of(context).pop(),
+        inset: false,
+        scrollable: false,
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _buildHeader(),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      _buildStorageSection(),
-                      if (selectedFile != null) ...<Widget>[
-                        const SizedBox(height: 16),
-                        _buildSelectedFileCard(selectedFile),
-                      ],
-                      if (_errorMessage != null ||
-                          validationMessage != null) ...<Widget>[
-                        const SizedBox(height: 12),
-                        _buildError(validationMessage ?? _errorMessage!),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              _buildFooter(canSubmit: validationMessage == null),
+              _buildStorageSection(),
+              if (selectedFile != null && _localFiles.isEmpty) ...<Widget>[
+                const SizedBox(height: 16),
+                _buildSelectedFileCard(selectedFile),
+              ],
+              if (_localFiles.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 16),
+                _buildLocalFilesCard(),
+              ],
+              if (_errorMessage != null ||
+                  combinedValidationMessage != null) ...<Widget>[
+                const SizedBox(height: 12),
+                _buildError(combinedValidationMessage ?? _errorMessage!),
+              ],
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 17, 16, 14),
-      decoration: const BoxDecoration(
-        color: _kHeaderBg,
-        border: Border(bottom: BorderSide(color: _kHeaderLine)),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(7),
-          topRight: Radius.circular(7),
+        footer: _buildFooterRow(
+          canSubmit: combinedValidationMessage == null,
         ),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: _kBlue,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Icon(
-              TablerIcons.folder_open,
-              size: 16,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Open Existing Database',
-                  style: _serifText(17, _kHeaderTitle),
-                ),
-                Text(
-                  'Choose a database file from local storage, Google Drive, Dropbox, OneDrive, WebDAV, or SFTP.',
-                  style: _uText(11, _kHeaderLabel),
-                ),
-              ],
-            ),
-          ),
-          MouseRegion(
-            cursor: _isOpening
-                ? SystemMouseCursors.basic
-                : SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: _isOpening ? null : () => Navigator.of(context).pop(),
-              child: Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: _kHeaderControl,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _kHeaderControlLine),
-                ),
-                child:
-                    const Icon(TablerIcons.x, size: 14, color: _kHeaderTitle),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -304,7 +213,7 @@ class _OpenExistingDatabaseModalState
       );
     }
 
-    final bool localPicked = selectedFile?.storage == _StorageType.local;
+    final bool localPicked = _localFiles.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -318,11 +227,13 @@ class _OpenExistingDatabaseModalState
               brandColor: StorageBrandColors.local,
               title: 'This Mac',
               detail: localPicked
-                  ? _shortenPath(selectedFile!.displayPath)
+                  ? (_localFiles.length == 1
+                      ? _shortenPath(_localFiles.first.displayPath)
+                      : '${_localFiles.length} databases selected')
                   : 'Choose a database file on this Mac',
               ready: true,
               selected: _storage == _StorageType.local,
-              actionLabel: localPicked ? 'Change file' : 'Browse',
+              actionLabel: localPicked ? 'Change files' : 'Browse',
               onAction: _pickLocalFile,
               onSelect: () => _selectStorage(_StorageType.local),
             ),
@@ -457,6 +368,149 @@ class _OpenExistingDatabaseModalState
     );
   }
 
+  Widget _buildLocalFilesCard() {
+    final int newCount =
+        _localFiles.where((file) => !_isRegistered(file)).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Text(
+              _localFiles.length == 1
+                  ? 'Selected Database'
+                  : 'Selected Databases (${_localFiles.length})',
+              style: _uText(12, _kTitle, fontWeight: FontWeight.w600),
+            ),
+            if (newCount > 0 && newCount < _localFiles.length) ...<Widget>[
+              const SizedBox(width: 8),
+              Text(
+                '$newCount new',
+                style: _uText(11, _kLabel),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: _kMintSoft,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: _kInkBorder),
+          ),
+          child: Column(
+            children: <Widget>[
+              for (int i = 0; i < _localFiles.length; i++) ...<Widget>[
+                if (i > 0) const SizedBox(height: 4),
+                _buildLocalFileRow(_localFiles[i]),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocalFileRow(_SelectedDatabaseFile file) {
+    final String? warning = _localFileWarning(file);
+    final bool unavailable = warning != null;
+    final Color contentColor = unavailable ? _kLabel : _kTitle;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: unavailable ? DcColors.lightInset : _kPaperBright,
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: _kInkBorder),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: unavailable ? _kYellow.withValues(alpha: 0.45) : _kYellow,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: unavailable
+                    ? _kInkBorder.withValues(alpha: 0.5)
+                    : _kInkBorder,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Opacity(
+              opacity: unavailable ? 0.5 : 1,
+              child: _storageIcon(file.storage),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  file.nickname,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _uText(
+                    12,
+                    contentColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _shortenPath(file.displayPath),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _uText(
+                    11,
+                    unavailable
+                        ? _kLabel.withValues(alpha: 0.75)
+                        : _kLabel,
+                  ),
+                ),
+                if (warning != null) ...<Widget>[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: <Widget>[
+                      const Icon(
+                        TablerIcons.alert_triangle,
+                        size: 12,
+                        color: DcColors.amberOnLight,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          warning,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: _uText(10, DcColors.amberOnLight),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: _isOpening ? null : () => _removeLocalFile(file),
+            child: Icon(
+              TablerIcons.x,
+              size: 15,
+              color: _kLabel,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildError(String message) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -489,62 +543,53 @@ class _OpenExistingDatabaseModalState
     );
   }
 
-  Widget _buildFooter({required bool canSubmit}) {
-    final enabled = !_isOpening && _selectedFile != null && canSubmit;
+  Widget _buildFooterRow({required bool canSubmit}) {
+    final enabled = !_isOpening &&
+        (_selectedFile != null || _localFiles.isNotEmpty) &&
+        canSubmit;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: const BoxDecoration(
-        color: _kCanvas,
-        border: Border(top: BorderSide(color: _kBorderSoft)),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(7),
-          bottomRight: Radius.circular(7),
+    return Row(
+      children: <Widget>[
+        OutlinedButton(
+          onPressed: _isOpening ? null : () => Navigator.of(context).pop(),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _kTitle,
+            side: const BorderSide(color: _kInkBorder),
+            backgroundColor: _kPaperBright,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(7),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
+          ),
+          child: const Text('Cancel'),
         ),
-      ),
-      child: Row(
-        children: <Widget>[
-          OutlinedButton(
-            onPressed: _isOpening ? null : () => Navigator.of(context).pop(),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _kTitle,
-              side: const BorderSide(color: _kInkBorder),
-              backgroundColor: _kPaperBright,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(7),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
+        const Spacer(),
+        ElevatedButton(
+          onPressed: enabled ? _submit : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kBlue,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: _kBorderSoft,
+            shadowColor: _kInkBorder,
+            elevation: 2,
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(7),
             ),
-            child: const Text('Cancel'),
+            textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
           ),
-          const Spacer(),
-          ElevatedButton(
-            onPressed: enabled ? _submit : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _kBlue,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: _kBorderSoft,
-              shadowColor: _kInkBorder,
-              elevation: 2,
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(7),
-              ),
-              textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
-            ),
-            child: _isOpening
-                ? const SizedBox.square(
-                    dimension: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text('Open Database'),
-          ),
-        ],
-      ),
+          child: _isOpening
+              ? const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Open Database'),
+        ),
+      ],
     );
   }
 
@@ -557,6 +602,7 @@ class _OpenExistingDatabaseModalState
         setState(() {
           _googleAccount = account.email;
           _storage = _StorageType.googleDrive;
+          _localFiles = const <_SelectedDatabaseFile>[];
           _errorMessage = null;
         });
       }
@@ -606,6 +652,7 @@ class _OpenExistingDatabaseModalState
           _dropboxAccount =
               ref.read(backupDropboxAccountProvider) ?? 'Connected';
           _storage = _StorageType.dropbox;
+          _localFiles = const <_SelectedDatabaseFile>[];
           _errorMessage = null;
         });
       }
@@ -655,6 +702,7 @@ class _OpenExistingDatabaseModalState
           _oneDriveAccount =
               ref.read(backupOneDriveAccountProvider) ?? 'Connected';
           _storage = _StorageType.oneDrive;
+          _localFiles = const <_SelectedDatabaseFile>[];
           _errorMessage = null;
         });
       }
@@ -697,18 +745,16 @@ class _OpenExistingDatabaseModalState
   Future<void> _connectWebDav() async {
     setState(() => _isConnectingWebDav = true);
     try {
-      final account = await showDialog<String?>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => WebDavConfigDialog(
-          initialConfig: BackupService.instance.currentWebDavConfig,
-        ),
+      final account = await pushWebDavConfigPage(
+        context,
+        initialConfig: BackupService.instance.currentWebDavConfig,
       );
       if (!mounted) return;
       if (account != null) {
         setState(() {
           _webDavAccount = account;
           _storage = _StorageType.webDav;
+          _localFiles = const <_SelectedDatabaseFile>[];
           _errorMessage = null;
         });
       }
@@ -752,18 +798,16 @@ class _OpenExistingDatabaseModalState
   Future<void> _connectSftp() async {
     setState(() => _isConnectingSftp = true);
     try {
-      final account = await showDialog<String?>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => SftpConfigDialog(
-          initialConfig: BackupService.instance.currentSftpConfig,
-        ),
+      final account = await pushSftpConfigPage(
+        context,
+        initialConfig: BackupService.instance.currentSftpConfig,
       );
       if (!mounted) return;
       if (account != null) {
         setState(() {
           _sftpAccount = account;
           _storage = _StorageType.sftp;
+          _localFiles = const <_SelectedDatabaseFile>[];
           _errorMessage = null;
         });
       }
@@ -807,18 +851,16 @@ class _OpenExistingDatabaseModalState
   Future<void> _connectS3() async {
     setState(() => _isConnectingS3 = true);
     try {
-      final account = await showDialog<String?>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => S3ConfigDialog(
-          initialConfig: BackupService.instance.currentS3Config,
-        ),
+      final account = await pushS3ConfigPage(
+        context,
+        initialConfig: BackupService.instance.currentS3Config,
       );
       if (!mounted) return;
       if (account != null) {
         setState(() {
           _s3Account = account;
           _storage = _StorageType.s3;
+          _localFiles = const <_SelectedDatabaseFile>[];
           _errorMessage = null;
         });
       }
@@ -865,26 +907,37 @@ class _OpenExistingDatabaseModalState
       if (_selectedFile?.storage != storage) {
         _selectedFile = null;
       }
+      if (storage != _StorageType.local) {
+        _localFiles = const <_SelectedDatabaseFile>[];
+      }
       _errorMessage = null;
     });
   }
 
   Future<void> _pickLocalFile() async {
-    final picked = await BookmarkService.instance.pickFileWithBookmark();
-    if (picked == null) {
+    final pickedFiles = await BookmarkService.instance.pickFilesWithBookmarks();
+    if (!mounted || pickedFiles.isEmpty) {
       return;
     }
 
-    _applySelection(
-      _SelectedDatabaseFile(
-        storage: _StorageType.local,
-        sourceId: picked.path,
-        databasePath: picked.path,
-        displayName: _fileName(picked.path),
-        displayPath: picked.path,
-        bookmark: picked.bookmark.isNotEmpty ? picked.bookmark : null,
-      ),
-    );
+    final picked = <_SelectedDatabaseFile>[
+      for (final file in pickedFiles)
+        _SelectedDatabaseFile(
+          storage: _StorageType.local,
+          sourceId: file.path,
+          databasePath: file.path,
+          displayName: _fileName(file.path),
+          displayPath: file.path,
+          bookmark: file.bookmark.isNotEmpty ? file.bookmark : null,
+        ),
+    ];
+
+    setState(() {
+      _localFiles = picked;
+      _storage = _StorageType.local;
+      _selectedFile = null;
+      _errorMessage = null;
+    });
   }
 
   Future<void> _pickGoogleDriveFile() async {
@@ -1029,11 +1082,24 @@ class _OpenExistingDatabaseModalState
     setState(() {
       _selectedFile = selectedFile;
       _storage = selectedFile.storage;
+      _localFiles = const <_SelectedDatabaseFile>[];
+      _errorMessage = null;
+    });
+  }
+
+  void _removeLocalFile(_SelectedDatabaseFile file) {
+    setState(() {
+      _localFiles = _localFiles.where((f) => !identical(f, file)).toList();
       _errorMessage = null;
     });
   }
 
   Future<void> _submit() async {
+    if (_localFiles.isNotEmpty) {
+      await _submitLocalFiles();
+      return;
+    }
+
     final selectedFile = _selectedFile;
     if (selectedFile == null) {
       setState(() => _errorMessage = 'Select a database file to continue.');
@@ -1116,6 +1182,67 @@ class _OpenExistingDatabaseModalState
     }
   }
 
+  Future<void> _submitLocalFiles() async {
+    final files = _localFiles;
+    if (files.isEmpty) {
+      setState(() => _errorMessage = 'Select a database file to continue.');
+      return;
+    }
+
+    for (final file in files) {
+      final blocking = _blockingSelectionError(file);
+      if (blocking != null) {
+        setState(() => _errorMessage = blocking);
+        return;
+      }
+    }
+
+    // Vaults that are already registered stay visible but are skipped here;
+    // the row itself carries the grayed-out warning.
+    final pending =
+        files.where((file) => !_isRegistered(file)).toList(growable: false);
+    if (pending.isEmpty) {
+      setState(() {
+        _errorMessage = files.length == 1
+            ? 'This database is already in your list.'
+            : 'All selected databases are already in your list.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isOpening = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final registry = ref.read(databaseRegistryProvider.notifier);
+      for (final file in pending) {
+        await registry.addDatabase(
+          nickname: file.nickname,
+          databasePath: file.databasePath,
+          bookmark: file.bookmark,
+          storageType: _storageValue(file.storage),
+        );
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context).pop();
+      await widget.onOpened(pending.first.databasePath);
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isOpening = false;
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
   Future<String> _cloudCachePath(_StorageType storage, CloudFile file) async {
     final appSupport = await getApplicationSupportDirectory();
     final String storageFolder;
@@ -1150,15 +1277,12 @@ class _OpenExistingDatabaseModalState
     );
   }
 
-  String? _selectionError(_SelectedDatabaseFile selectedFile) {
-    if (!_isSupportedDatabaseFile(selectedFile.displayName)) {
-      return 'Please choose a .kdbx or .kdb file.';
-    }
-
+  /// Whether [selectedFile] already exists in the database registry.
+  bool _isRegistered(_SelectedDatabaseFile selectedFile) {
     final normalizedPath = _normalizePath(selectedFile.databasePath);
     final nickname = selectedFile.nickname.toLowerCase();
 
-    final duplicate = ref.read(databaseRegistryProvider).any((record) {
+    return ref.read(databaseRegistryProvider).any((record) {
       if (_normalizePath(record.databasePath) == normalizedPath) {
         return true;
       }
@@ -1170,8 +1294,34 @@ class _OpenExistingDatabaseModalState
       return record.storageType == _storageValue(selectedFile.storage) &&
           record.nickname.toLowerCase() == nickname;
     });
+  }
 
-    if (duplicate) {
+  /// Errors that block opening [selectedFile] outright.
+  String? _blockingSelectionError(_SelectedDatabaseFile selectedFile) {
+    if (!_isSupportedDatabaseFile(selectedFile.displayName)) {
+      return 'Please choose a .kdbx or .kdb file.';
+    }
+    return null;
+  }
+
+  /// Non-blocking, row-level warning for a picked file (e.g. duplicates).
+  String? _localFileWarning(_SelectedDatabaseFile file) {
+    if (_blockingSelectionError(file) != null) {
+      return null;
+    }
+    if (_isRegistered(file)) {
+      return 'Already in your list — will be skipped';
+    }
+    return null;
+  }
+
+  String? _selectionError(_SelectedDatabaseFile selectedFile) {
+    final blocking = _blockingSelectionError(selectedFile);
+    if (blocking != null) {
+      return blocking;
+    }
+
+    if (_isRegistered(selectedFile)) {
       return 'This database is already in your list.';
     }
 
@@ -1319,21 +1469,29 @@ class _CloudDatabasePickerDialogState
                         ? 'Select SFTP Database'
                         : 'Select Amazon S3 Database';
 
+    final String current = _breadcrumb.isEmpty ? 'Root' : _breadcrumb.last.name;
     return Theme(
       data: AppTheme.driveClueLight(),
-      child: Dialog(
-        backgroundColor: DcColors.sidebar,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          width: 420,
+      child: DcFlowPage(
+        title: title,
+        subtitle: current,
+        icon: TablerIcons.folder_open,
+        onBack: _breadcrumb.isEmpty
+            ? () => Navigator.of(context).pop()
+            : () {
+                setState(() => _breadcrumb.removeLast());
+                _loadEntries();
+              },
+        scrollable: false,
+        inset: false,
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        body: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _buildHeader(title),
               if (_breadcrumb.isNotEmpty) _buildBreadcrumb(),
-              SizedBox(
-                height: 300,
+              Expanded(
                 child: _loading
                     ? const Center(child: CircularProgressIndicator())
                     : _error != null
@@ -1349,76 +1507,10 @@ class _CloudDatabasePickerDialogState
                           )
                         : _buildEntryList(),
               ),
-              _buildFooter(),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(String title) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
-      decoration: const BoxDecoration(
-        color: _kHeaderBg,
-        border: Border(bottom: BorderSide(color: _kHeaderLine)),
-      ),
-      child: Row(
-        children: <Widget>[
-          if (_breadcrumb.isNotEmpty)
-            GestureDetector(
-              onTap: () {
-                setState(() => _breadcrumb.removeLast());
-                _loadEntries();
-              },
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const Icon(TablerIcons.arrow_left,
-                        size: 14, color: _kHeaderAccent),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Back',
-                      style: _uText(11, _kHeaderAccent,
-                          fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else ...<Widget>[
-            widget.cloudType == _CloudType.webDav
-                ? Image.asset('assets/images/webdav.png', width: 16, height: 16)
-                : widget.cloudType == _CloudType.sftp
-                    ? Image.asset('assets/images/sftp.png',
-                        width: 16, height: 16)
-                    : widget.cloudType == _CloudType.s3
-                        ? Image.asset('assets/images/aws-s3-icon.png',
-                            width: 16, height: 16)
-                        : Icon(
-                            widget.cloudType == _CloudType.googleDrive
-                                ? TablerIcons.brand_google_drive
-                                : TablerIcons.cloud,
-                            size: 16,
-                            color: _kHeaderAccent,
-                          ),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: Text(
-              _breadcrumb.isEmpty ? title : _breadcrumb.last.name,
-              style: _uText(13, _kHeaderTitle, fontWeight: FontWeight.w700),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: const Icon(TablerIcons.x, size: 16, color: _kHeaderLabel),
-          ),
-        ],
+        footer: _buildFooterRow(),
       ),
     );
   }
@@ -1518,38 +1610,32 @@ class _CloudDatabasePickerDialogState
     );
   }
 
-  Widget _buildFooter() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: _kBorderSoft)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Text(
-            'Select a .kdbx or .kdb file',
-            style: _uText(11, _kLabel),
-          ),
-          const Spacer(),
-          OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: DcColors.sidebarText,
-              side: const BorderSide(color: DcColors.lightLineStrong),
-              backgroundColor: DcColors.sidebar,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-              minimumSize: const Size(0, 36),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+  Widget _buildFooterRow() {
+    return Row(
+      children: <Widget>[
+        Text(
+          'Select a .kdbx or .kdb file',
+          style: _uText(11, _kLabel),
+        ),
+        const Spacer(),
+        OutlinedButton(
+          onPressed: () => Navigator.of(context).pop(),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: DcColors.sidebarText,
+            side: const BorderSide(color: DcColors.lightLineStrong),
+            backgroundColor: DcColors.sidebar,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text('Cancel'),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            minimumSize: const Size(0, 36),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle:
+                const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
           ),
-        ],
-      ),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 }

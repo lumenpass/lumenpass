@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../../../core/models/database_record.dart';
+import '../../../core/services/appearance_preferences.dart';
 import '../../../core/services/backup_service.dart';
 
 import '../../../presentation/theme/app_theme.dart';
+import '../../../presentation/theme/drive_clue_tokens.dart';
+import '../../../presentation/widgets/drive_clue/dc_dialog_title_bar.dart';
 import '../../unlock/application/database_registry.dart';
 import 'cloud_service_provider.dart';
-import '../../../presentation/theme/drive_clue_tokens.dart';
 
-const Color _kTitle = DcColors.text;
-const Color _kLabel = DcColors.muted;
-const Color _kWarnText = DcColors.red;
+// ── Light palette (sidebar-toned, matches the Cloud Services page) ─────────
+const Color _kSurface = DcColors.lightSurface;
+const Color _kBorderSoft = DcColors.sidebarLine;
+const Color _kBorderRow = DcColors.lightLineStrong;
+const Color _kTitle = DcColors.sidebarText;
+const Color _kLabel = DcColors.sidebarMuted;
+const Color _kDanger = DcColors.redOnLight;
 
 TextStyle _t(
   double size,
@@ -23,8 +30,145 @@ TextStyle _t(
     fontSize: size,
     color: color,
     fontWeight: fontWeight,
-    fontFamily: 'Ubuntu Sans',
+    fontFamily: currentFontFamily,
     height: height,
+  );
+}
+
+/// Page-heading style used by the inner pages: tight tracking, heavy weight.
+TextStyle _heading(double size, Color color, {double? height}) {
+  return TextStyle(
+    fontSize: size,
+    color: color,
+    fontWeight: FontWeight.w700,
+    fontFamily: currentFontFamily,
+    letterSpacing: -0.3,
+    height: height,
+  );
+}
+
+/// Shared light confirmation sheet: branded title bar, a warning-tile heading
+/// with the explanatory copy, then a Cancel / confirm footer. Pops `true` only
+/// when the confirm action is pressed; cancel, close and the backdrop pop
+/// `false`.
+Widget _buildConfirmDialog(
+  BuildContext ctx, {
+  required String barTitle,
+  required String heading,
+  required String message,
+  required String confirmLabel,
+}) {
+  return Theme(
+    data: AppTheme.driveClue(),
+    child: Dialog(
+      backgroundColor: _kSurface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+      clipBehavior: Clip.antiAlias,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      child: SizedBox(
+        width: 460,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            DcDialogTitleBar(
+              title: barTitle,
+              onClose: () => Navigator.of(ctx).pop(false),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Container(
+                    width: 46,
+                    height: 46,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _kDanger.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _kDanger.withValues(alpha: 0.24),
+                      ),
+                    ),
+                    child: const Icon(
+                      TablerIcons.alert_triangle,
+                      size: 22,
+                      color: _kDanger,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          heading,
+                          style: _heading(17, _kTitle, height: 1.2),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(message, style: _t(12.5, _kLabel, height: 1.5)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: _kBorderSoft)),
+              ),
+              child: Row(
+                children: <Widget>[
+                  const Spacer(),
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _kLabel,
+                      side: const BorderSide(color: _kBorderRow),
+                      backgroundColor: _kSurface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 0,
+                      ),
+                      minimumSize: const Size(0, 38),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: _t(12, _kLabel, fontWeight: FontWeight.w600),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _kDanger,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 0,
+                      ),
+                      minimumSize: const Size(0, 38),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle:
+                          _t(12, Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                    child: Text(confirmLabel),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
   );
 }
 
@@ -37,36 +181,15 @@ Future<bool> confirmCloudDisconnect(BuildContext context) async {
   final confirmed = await showDialog<bool>(
     context: context,
     barrierDismissible: true,
-    builder: (ctx) => Theme(
-      data: AppTheme.driveClue(),
-      child: AlertDialog(
-        backgroundColor: DcColors.panel,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-        title: Text(
-          'Do you want to disconnect this service?',
-          style: _t(16, _kTitle, fontWeight: FontWeight.w700),
-        ),
-        content: Text(
+    builder: (ctx) => _buildConfirmDialog(
+      ctx,
+      barTitle: 'Disconnect service',
+      heading: 'Do you want to disconnect this service?',
+      message:
           'The vaults connected through this provider will be removed from '
           'this app (local references only). The actual vault files remain '
           'stored on the cloud disk and will not be deleted.',
-          style: _t(13, _kLabel, height: 1.45),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: _t(13, _kLabel)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: _kWarnText,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Disconnect'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Disconnect',
     ),
   );
   return confirmed ?? false;
@@ -97,36 +220,15 @@ Future<bool> confirmUnlinkCloudDatabases(
   final confirmed = await showDialog<bool>(
     context: context,
     barrierDismissible: true,
-    builder: (ctx) => Theme(
-      data: AppTheme.driveClue(),
-      child: AlertDialog(
-        backgroundColor: DcColors.panel,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-        title: Text(
-          'Unlink all $providerLabel vaults?',
-          style: _t(16, _kTitle, fontWeight: FontWeight.w700),
-        ),
-        content: Text(
+    builder: (ctx) => _buildConfirmDialog(
+      ctx,
+      barTitle: 'Unlink vaults',
+      heading: 'Unlink all $providerLabel vaults?',
+      message:
           'Every vault linked through $providerLabel will be removed from this '
           'app (local references only). The actual vault files remain on '
           '$providerLabel and will not be deleted.',
-          style: _t(13, _kLabel, height: 1.45),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: _t(13, _kLabel)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: _kWarnText,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Unlink Databases'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Unlink Databases',
     ),
   );
   return confirmed ?? false;

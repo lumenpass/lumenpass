@@ -14,6 +14,11 @@ const Color _sidebarTextSecondary = DcColors.sidebarMuted;
 const Color _sidebarSelectedItemBackground = DcColors.selection;
 const Color _sidebarHoverItemBackground = DcColors.sidebarHover;
 
+/// Colorful IconScout artwork for the "All Items" filter chip. The per-type
+/// glyphs reuse `_NewItemType.imagePath` so the filter chip, the picker, the
+/// list rows and the detail header all share one icon family.
+const String _kSidebarAllArtwork = 'assets/images/sidebar_all.png';
+
 /// Splits a sidebar title such as `Work (12)` into its name and count so the
 /// count can be drawn in a DriveClue pill. The full title stays the
 /// semantics label.
@@ -140,6 +145,7 @@ class _SidebarPane extends ConsumerWidget {
                   child: _SidebarItem(
                     icon: TablerIcons.layout_grid,
                     iconColor: DcColors.selection,
+                    imageAsset: 'assets/images/sidebar_all.png',
                     title: 'All ($totalCount)',
                     selected: selectedGroupUuid == kCategoryFilterAll,
                     onTap: () {
@@ -157,7 +163,7 @@ class _SidebarPane extends ConsumerWidget {
                   child: _SidebarItem(
                     icon: TablerIcons.inbox,
                     iconColor: DcColors.selection,
-                    imageAsset: 'assets/images/categories/383.png',
+                    imageAsset: 'assets/images/sidebar_folder.png',
                     title: 'Uncategorized ($uncategorizedCount)',
                     selected: selectedGroupUuid == kCategoryFilterUncategorized,
                     onTap: () {
@@ -206,6 +212,7 @@ class _SidebarPane extends ConsumerWidget {
                 _SidebarItem(
                   icon: TablerIcons.clock,
                   iconColor: DcColors.deepOrange,
+                  imageAsset: 'assets/images/sidebar_totp.png',
                   title: 'TOTP ($totpCount)',
                   selected: selectedItemTypeId == kQuickFilterTotp,
                   onTap: () {
@@ -220,6 +227,7 @@ class _SidebarPane extends ConsumerWidget {
                 _SidebarItem(
                   icon: TablerIcons.fingerprint,
                   iconColor: const Color(0xFF2A93C4),
+                  imageAsset: 'assets/images/sidebar_passkey.png',
                   title: 'Passkeys ($passkeyCount)',
                   selected: selectedItemTypeId == kQuickFilterPasskeys,
                   onTap: () {
@@ -233,6 +241,7 @@ class _SidebarPane extends ConsumerWidget {
                 _SidebarItem(
                   icon: TablerIcons.shield_check,
                   iconColor: const Color(0xFFD9443F),
+                  imageAsset: 'assets/images/sidebar_audit.png',
                   title: 'Password Audits',
                   selected: selectedItemTypeId == kQuickFilterPasswordAudits,
                   onTap: () {
@@ -254,6 +263,7 @@ class _SidebarPane extends ConsumerWidget {
                 _SidebarItem(
                   icon: TablerIcons.trash,
                   iconColor: const Color(0xFFD9443F),
+                  imageAsset: 'assets/images/sidebar_trash.png',
                   title: 'Trash ($trashCount)',
                   selected: selectedGroupUuid == kGroupFilterTrash,
                   onTap: () {
@@ -271,6 +281,7 @@ class _SidebarPane extends ConsumerWidget {
                   _SidebarItem(
                     icon: TablerIcons.tag,
                     iconColor: const Color(0xFF8A63D2),
+                    imageAsset: 'assets/images/sidebar_tag.png',
                     title: '${tag.tag} (${tag.count})',
                     selected: selectedTag == tag.tag,
                     onTap: () {
@@ -369,20 +380,24 @@ class VaultSidebarDropdown extends StatelessWidget {
       itemBuilder: (context) => <PopupMenuEntry<_SidebarVaultMenuAction>>[
         const PopupMenuItem<_SidebarVaultMenuAction>(
           value: _SidebarVaultMenuAction.switchVault,
-          height: 36,
+          height: 48,
           padding: EdgeInsets.zero,
           child: _SidebarVaultMenuRow(
             icon: TablerIcons.switch_horizontal,
+            iconBadgeColor: Color(0x1A4C6EF5),
             label: 'Switch vault',
+            subtitle: 'Open a different vault file',
           ),
         ),
         const PopupMenuItem<_SidebarVaultMenuAction>(
           value: _SidebarVaultMenuAction.import,
-          height: 36,
+          height: 48,
           padding: EdgeInsets.zero,
           child: _SidebarVaultMenuRow(
             icon: TablerIcons.download,
+            iconBadgeColor: Color(0x1A18A05C),
             label: 'Import items',
+            subtitle: 'Bring entries in from other apps',
           ),
         ),
       ],
@@ -443,32 +458,92 @@ class VaultSidebarDropdown extends StatelessWidget {
   }
 }
 
-class _SidebarVaultMenuRow extends StatelessWidget {
+class _SidebarVaultMenuRow extends StatefulWidget {
   const _SidebarVaultMenuRow({
     required this.icon,
+    required this.iconBadgeColor,
     required this.label,
+    required this.subtitle,
   });
 
   final IconData icon;
+  final Color iconBadgeColor;
   final String label;
+  final String subtitle;
+
+  @override
+  State<_SidebarVaultMenuRow> createState() => _SidebarVaultMenuRowState();
+}
+
+class _SidebarVaultMenuRowState extends State<_SidebarVaultMenuRow> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 224,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+    final menuRadius = BorderRadius.circular(DcMetrics.controlRadius);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        width: 248,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: _hovered ? _sidebarHoverItemBackground : Colors.transparent,
+          borderRadius: menuRadius,
+        ),
         child: Row(
           children: <Widget>[
-            Icon(icon, size: 18, color: _kPrimaryButtonColor),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: _text(
-                13,
-                DcColors.sidebarText,
-                fontWeight: FontWeight.w500,
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: widget.iconBadgeColor,
+                borderRadius: BorderRadius.circular(8),
               ),
+              alignment: Alignment.center,
+              child: Icon(
+                widget.icon,
+                size: 16,
+                color: _hovered ? _kPrimaryButtonColor : DcColors.sidebarText,
+              ),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _text(
+                      13,
+                      DcColors.sidebarText,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    widget.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _text(11, DcColors.sidebarMuted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              TablerIcons.chevron_right,
+              size: 14,
+              color: _hovered
+                  ? DcColors.sidebarText
+                  : DcColors.sidebarMuted.withValues(alpha: 0.55),
             ),
           ],
         ),
@@ -653,7 +728,10 @@ class _SidebarBuildInfoLabel extends StatelessWidget {
 /// [vaultAutoSyncControllerProvider] for state and re-renders the
 /// human-readable timestamp every second so "X seconds ago" stays fresh.
 class _VaultSyncStatusRow extends ConsumerStatefulWidget {
-  const _VaultSyncStatusRow();
+  const _VaultSyncStatusRow({this.compact = false});
+
+  /// Shortens the error copy so the row fits inside the status bar.
+  final bool compact;
 
   @override
   ConsumerState<_VaultSyncStatusRow> createState() =>
@@ -735,15 +813,21 @@ class _VaultSyncStatusRowState extends ConsumerState<_VaultSyncStatusRow>
     return Padding(
       padding: const EdgeInsets.only(top: 2, bottom: 2),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Expanded(
+          // The label must not stretch: this row is the status bar's anchor
+          // for the refresh button, and `Expanded` inside a min-size Row
+          // would assert under unbounded constraints.
+          Flexible(
             child: ValueListenableBuilder<DateTime>(
               valueListenable: _tick,
               builder: (context, now, _) {
                 final label = state.isSyncing
                     ? 'Syncing…'
                     : (state.hasError
-                        ? 'Sync failed — tap to retry'
+                        ? (widget.compact
+                            ? 'Sync failed'
+                            : 'Sync failed — tap to retry')
                         : formatLastSync(state.lastSyncAt, now: now));
                 return Text(
                   label,
@@ -759,7 +843,7 @@ class _VaultSyncStatusRowState extends ConsumerState<_VaultSyncStatusRow>
               },
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 2),
           Tooltip(
             message: disabled ? 'Syncing…' : 'Sync now',
             child: SizedBox(
@@ -881,6 +965,9 @@ class _SidebarItemTypeDropdownState
                   iconColor: isAllItemsSelected
                       ? _kPrimaryButtonColor
                       : resolvedItem.iconColor,
+                  imageAsset: isAllItemsSelected
+                      ? _kSidebarAllArtwork
+                      : resolvedItem.imagePath,
                   backgroundColor: const Color(0x00000000),
                   size: 22,
                 ),
@@ -985,6 +1072,7 @@ class _SidebarItemTypeDropdownState
                         count: widget.totalCount,
                         icon: TablerIcons.layout_grid,
                         iconColor: _kPrimaryButtonColor,
+                        imageAsset: _kSidebarAllArtwork,
                         selected: selectedItemTypeId == null,
                         onTap: () => _selectItemType(null),
                       ),
@@ -1002,6 +1090,7 @@ class _SidebarItemTypeDropdownState
                           count: widget.sidebarCounts[item.id] ?? 0,
                           icon: item.icon!,
                           iconColor: item.iconColor,
+                          imageAsset: item.imagePath,
                           selected: selectedItemTypeId == item.id,
                           onTap: () => _selectItemType(item.id),
                         ),
@@ -1042,6 +1131,7 @@ class _SidebarItemTypeMenuOption extends StatefulWidget {
     required this.iconColor,
     required this.selected,
     required this.onTap,
+    this.imageAsset,
   });
 
   final String label;
@@ -1050,6 +1140,7 @@ class _SidebarItemTypeMenuOption extends StatefulWidget {
   final Color iconColor;
   final bool selected;
   final VoidCallback onTap;
+  final String? imageAsset;
 
   @override
   State<_SidebarItemTypeMenuOption> createState() =>
@@ -1095,6 +1186,7 @@ class _SidebarItemTypeMenuOptionState
               _SidebarItemTypeGlyph(
                 icon: widget.icon,
                 iconColor: widget.selected ? Colors.white : widget.iconColor,
+                imageAsset: widget.imageAsset,
                 backgroundColor:
                     widget.icon == TablerIcons.layout_grid && !widget.selected
                         ? DcColors.lightSelectionFill
@@ -1156,12 +1248,14 @@ class _SidebarItemTypeGlyph extends StatelessWidget {
     required this.iconColor,
     required this.backgroundColor,
     required this.size,
+    this.imageAsset,
   });
 
   final IconData icon;
   final Color iconColor;
   final Color backgroundColor;
   final double size;
+  final String? imageAsset;
 
   @override
   Widget build(BuildContext context) {
@@ -1173,11 +1267,24 @@ class _SidebarItemTypeGlyph extends StatelessWidget {
         borderRadius: BorderRadius.circular(7),
       ),
       alignment: Alignment.center,
-      child: Icon(
-        icon,
-        size: size == 22 ? 15 : size * 0.68,
-        color: iconColor,
-      ),
+      child: imageAsset != null
+          ? Image.asset(
+              imageAsset!,
+              width: size,
+              height: size,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              errorBuilder: (_, __, ___) => Icon(
+                icon,
+                size: size == 22 ? 15 : size * 0.68,
+                color: iconColor,
+              ),
+            )
+          : Icon(
+              icon,
+              size: size == 22 ? 15 : size * 0.68,
+              color: iconColor,
+            ),
     );
   }
 }
@@ -1356,13 +1463,18 @@ class _SidebarRowGlyph extends StatelessWidget {
     final box = large ? 19.0 : 17.0;
     Widget child;
     if (imageAsset != null) {
-      child = ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: Image.asset(
-          imageAsset!,
-          width: box,
-          height: box,
-          fit: BoxFit.cover,
+      // Colorful IconScout artwork — keep its own transparency and padding
+      // rather than cropping into a rounded square.
+      child = Image.asset(
+        imageAsset!,
+        width: box,
+        height: box,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+        errorBuilder: (_, __, ___) => Icon(
+          icon,
+          size: 14,
+          color: selected ? Colors.white : iconColor,
         ),
       );
     } else if (badgeColor != null) {

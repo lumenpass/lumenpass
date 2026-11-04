@@ -11,21 +11,20 @@ import 'package:path_provider/path_provider.dart';
 import '../../../core/models/database_record.dart';
 import '../../../core/services/backup_service.dart';
 import '../../../core/services/bookmark_service.dart';
-import '../../../core/services/sftp_service.dart';
-import '../../../core/services/webdav_service.dart';
 import '../../../presentation/theme/app_theme.dart';
 import '../application/database_registry.dart';
-import 'sftp_config_dialog.dart';
-import 'webdav_config_dialog.dart';
+import 'provider_config_route.dart';
 import '../../../presentation/theme/drive_clue_tokens.dart';
+import '../../../presentation/widgets/drive_clue/dc_flow_page.dart';
 
-const Color _kCanvas = DcColors.panel;
-const Color _kBorderSoft = DcColors.line;
-const Color _kBorderRow = DcColors.line;
-const Color _kTitle = DcColors.text;
-const Color _kLabel = DcColors.muted;
-const Color _kIcon = DcColors.faint;
+const Color _kCanvas = DcColors.lightInset;
+const Color _kBorderSoft = DcColors.sidebarLine;
+const Color _kBorderRow = DcColors.lightLineStrong;
+const Color _kTitle = DcColors.sidebarText;
+const Color _kLabel = DcColors.sidebarMuted;
+const Color _kIcon = DcColors.sidebarMuted;
 const Color _kBlue = DcColors.selection;
+const Color _kSurface = DcColors.lightSurface;
 
 TextStyle _uText(
   double size,
@@ -152,110 +151,31 @@ class _DuplicateDatabaseModalState
   Widget build(BuildContext context) {
     return Theme(
       data: AppTheme.driveClue(),
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 80, vertical: 40),
-        child: Container(
-          decoration: BoxDecoration(
-            color: DcColors.panel,
-            borderRadius: BorderRadius.circular(7),
-            boxShadow: const <BoxShadow>[
-              BoxShadow(
-                color: DcColors.shadowSoft,
-                blurRadius: 40,
-                offset: Offset(0, 16),
-              ),
+      child: DcFlowPage(
+        title: 'Duplicate Database',
+        subtitle:
+            'Create a copy of "${widget.source.nickname}" in a new location',
+        icon: TablerIcons.copy,
+        iconBackground: DcColors.selection,
+        onBack: _isSubmitting ? null : () => Navigator.of(context).pop(),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            _buildNameField(),
+            const SizedBox(height: 16),
+            _buildStorageSection(),
+            if (_errorMessage != null) ...<Widget>[
+              const SizedBox(height: 12),
+              _buildError(_errorMessage!),
             ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              _buildHeader(),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      const SizedBox(height: 16),
-                      _buildNameField(),
-                      const SizedBox(height: 16),
-                      _buildStorageSection(),
-                      if (_errorMessage != null) ...<Widget>[
-                        const SizedBox(height: 12),
-                        _buildError(_errorMessage!),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              _buildFooter(),
-            ],
-          ),
+          ],
         ),
+        footer: _buildFooter(),
       ),
     );
   }
 
   // ── Sections ──────────────────────────────────────────────────────────────
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 16, 14),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _kBorderSoft)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[DcColors.selection, DcColors.purple],
-              ),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: const Icon(TablerIcons.copy, size: 16, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Duplicate Database',
-                  style: _uText(15, _kTitle, fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  'Create a copy of "${widget.source.nickname}" in a new location.',
-                  style: _uText(11, _kLabel),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: _isSubmitting ? null : () => Navigator.of(context).pop(),
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: _kCanvas,
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(color: _kBorderSoft),
-              ),
-              child: const Icon(TablerIcons.x, size: 14, color: _kIcon),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildNameField() {
     return Column(
@@ -432,19 +352,19 @@ class _DuplicateDatabaseModalState
           const Icon(
             TablerIcons.alert_circle,
             size: 14,
-            color: DcColors.red,
+            color: DcColors.redOnLight,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              style: _uText(11, DcColors.red),
+              style: _uText(11, DcColors.redOnLight),
             ),
           ),
           GestureDetector(
             onTap: () => setState(() => _errorMessage = null),
             child:
-                const Icon(TablerIcons.x, size: 13, color: DcColors.red),
+                const Icon(TablerIcons.x, size: 13, color: DcColors.redOnLight),
           ),
         ],
       ),
@@ -452,56 +372,46 @@ class _DuplicateDatabaseModalState
   }
 
   Widget _buildFooter() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: _kBorderSoft)),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(7),
-          bottomRight: Radius.circular(7),
+    return Row(
+      children: <Widget>[
+        OutlinedButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _kLabel,
+            side: const BorderSide(color: _kBorderSoft),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
+          ),
+          child: const Text('Cancel'),
         ),
-      ),
-      child: Row(
-        children: <Widget>[
-          OutlinedButton(
-            onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _kLabel,
-              side: const BorderSide(color: _kBorderSoft),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              textStyle: _uText(12, _kLabel, fontWeight: FontWeight.w600),
+        const Spacer(),
+        ElevatedButton(
+          onPressed: _isSubmitting ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: DcColors.selection,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: DcColors.selectionLine,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text('Cancel'),
+            textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
           ),
-          const Spacer(),
-          ElevatedButton(
-            onPressed: _isSubmitting ? null : _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DcColors.selection,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: DcColors.muted,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              textStyle: _uText(12, Colors.white, fontWeight: FontWeight.w600),
-            ),
-            child: _isSubmitting
-                ? const SizedBox.square(
-                    dimension: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text('Duplicate'),
-          ),
-        ],
-      ),
+          child: _isSubmitting
+              ? const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Duplicate'),
+        ),
+      ],
     );
   }
 
@@ -629,20 +539,15 @@ class _DuplicateDatabaseModalState
   Future<void> _connectWebDav() async {
     setState(() => _isConnectingWebDav = true);
     try {
-      final config = await showDialog<WebDavConfig>(
-        context: context,
-        builder: (_) => WebDavConfigDialog(
-          initialConfig: BackupService.instance.currentWebDavConfig,
-        ),
+      final account = await pushWebDavConfigPage(
+        context,
+        initialConfig: BackupService.instance.currentWebDavConfig,
       );
-      if (config == null) {
+      if (account == null) {
         if (mounted) setState(() => _isConnectingWebDav = false);
         return;
       }
-      await BackupService.instance.connectWebDav(config);
       if (mounted) {
-        final account =
-            ref.read(backupWebDavAccountProvider) ?? config.accountLabel;
         setState(() {
           _webDavAccount = account;
           _storage = _DuplicateStorage.webDav;
@@ -690,20 +595,15 @@ class _DuplicateDatabaseModalState
   Future<void> _connectSftp() async {
     setState(() => _isConnectingSftp = true);
     try {
-      final config = await showDialog<SftpConfig>(
-        context: context,
-        builder: (_) => SftpConfigDialog(
-          initialConfig: BackupService.instance.currentSftpConfig,
-        ),
+      final account = await pushSftpConfigPage(
+        context,
+        initialConfig: BackupService.instance.currentSftpConfig,
       );
-      if (config == null) {
+      if (account == null) {
         if (mounted) setState(() => _isConnectingSftp = false);
         return;
       }
-      await BackupService.instance.connectSftp(config);
       if (mounted) {
-        final account =
-            ref.read(backupSftpAccountProvider) ?? config.accountLabel;
         setState(() {
           _sftpAccount = account;
           _storage = _DuplicateStorage.sftp;
@@ -1150,7 +1050,7 @@ class _StorageRow extends StatelessWidget {
         height: 50,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: selected ? DcColors.selectionSoft : DcColors.rowAlternate,
+          color: selected ? DcColors.lightSelectionFill : _kSurface,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: selected ? DcColors.selectionLine : _kBorderRow,
@@ -1164,9 +1064,7 @@ class _StorageRow extends StatelessWidget {
               height: 28,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: selected
-                    ? DcColors.selectionSoft
-                    : DcColors.row,
+                color: selected ? DcColors.lightSelectionFill : _kCanvas,
                 borderRadius: BorderRadius.circular(7),
               ),
               child: iconChild,
@@ -1187,9 +1085,9 @@ class _StorageRow extends StatelessWidget {
             OutlinedButton(
               onPressed: onAction,
               style: OutlinedButton.styleFrom(
-                foregroundColor: DcColors.text,
-                side: const BorderSide(color: DcColors.lineStrong),
-                backgroundColor: DcColors.panel,
+                foregroundColor: DcColors.sidebarText,
+                side: const BorderSide(color: DcColors.sidebarLine),
+                backgroundColor: _kSurface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -1243,7 +1141,7 @@ class _CloudStorageRow extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? DcColors.selectionSoft : DcColors.rowAlternate,
+          color: selected ? DcColors.lightSelectionFill : _kSurface,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: selected ? DcColors.selectionLine : _kBorderRow,
@@ -1261,9 +1159,7 @@ class _CloudStorageRow extends StatelessWidget {
                   height: 28,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: selected
-                        ? DcColors.selectionSoft
-                        : DcColors.row,
+                    color: selected ? DcColors.lightSelectionFill : DcColors.lightInset,
                     borderRadius: BorderRadius.circular(7),
                   ),
                   child: iconChild,
@@ -1305,7 +1201,7 @@ class _CloudStorageRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
-                  color: DcColors.row,
+                  color: _kCanvas,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(
@@ -1547,7 +1443,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
     return Theme(
       data: AppTheme.driveClue(),
       child: Dialog(
-        backgroundColor: DcColors.panel,
+        backgroundColor: _kSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         child: SizedBox(
           width: 400,
@@ -1731,7 +1627,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: const BoxDecoration(
-        color: DcColors.rowAlternate,
+        color: _kCanvas,
         border: Border(top: BorderSide(color: _kBorderSoft)),
       ),
       child: Column(
@@ -1760,7 +1656,7 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
                     hintText: 'New folder name',
                     hintStyle: _uText(12, _kIcon),
                     filled: true,
-                    fillColor: DcColors.well,
+                    fillColor: _kSurface,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 0,
@@ -1853,9 +1749,9 @@ class _CloudFolderPickerDialogState extends State<_CloudFolderPickerDialog> {
           OutlinedButton(
             onPressed: () => Navigator.of(context).pop(),
             style: OutlinedButton.styleFrom(
-              foregroundColor: DcColors.text,
-              side: const BorderSide(color: DcColors.lineStrong),
-              backgroundColor: DcColors.panel,
+              foregroundColor: _kTitle,
+              side: const BorderSide(color: _kBorderRow),
+              backgroundColor: _kSurface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1923,7 +1819,7 @@ class _FolderListTileState extends State<_FolderListTile> {
           duration: const Duration(milliseconds: 80),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
-            color: _hovered ? DcColors.selectionSoft : DcColors.rowAlternate,
+            color: _hovered ? DcColors.lightSelectionFill : _kSurface,
             border: const Border(bottom: BorderSide(color: _kBorderSoft)),
           ),
           child: Row(

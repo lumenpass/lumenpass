@@ -11,16 +11,20 @@ import 'package:path/path.dart' as p;
 import '../../../core/models/database_record.dart';
 import '../../../core/services/backup_service.dart';
 import '../../../presentation/theme/drive_clue_tokens.dart';
+import '../../../presentation/widgets/drive_clue/dc_confirm_dialog.dart';
 
-// ── Palette (mirrors unlock_screen) ─────────────────────────────────────────
-const Color _kCanvas = DcColors.panel;
-const Color _kBorderSoft = DcColors.line;
-const Color _kBorderRow = DcColors.line;
-const Color _kTitle = DcColors.text;
-const Color _kLabel = DcColors.muted;
-const Color _kIcon = DcColors.faint;
+// ── Light palette (matches the unlock screen's light vault list) ───────────
+const Color _kCanvas = DcColors.lightInset;
+const Color _kBorderSoft = DcColors.sidebarLine;
+const Color _kBorderRow = DcColors.lightLineStrong;
+const Color _kTitle = DcColors.sidebarText;
+const Color _kLabel = DcColors.sidebarMuted;
+const Color _kIcon = DcColors.sidebarMuted;
 const Color _kActionDark = DcColors.selection;
-const Color _kDanger = DcColors.red;
+const Color _kDanger = DcColors.redOnLight;
+const Color _kSurface = DcColors.lightSurface;
+const Color _kMint = DcColors.tealOnLight;
+const Color _kMintSoft = Color(0x1F1F8A7D);
 
 TextStyle _uText(
   double size,
@@ -372,11 +376,11 @@ class _RestoreBackupsModalState extends ConsumerState<RestoreBackupsModal> {
           minHeight: 360,
         ),
         child: Material(
-          color: DcColors.panel,
+          color: _kSurface,
           borderRadius: BorderRadius.circular(7),
           clipBehavior: Clip.antiAlias,
           elevation: 18,
-          shadowColor: DcColors.shadow,
+          shadowColor: DcColors.lightCardShadow,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
@@ -401,14 +405,14 @@ class _RestoreBackupsModalState extends ConsumerState<RestoreBackupsModal> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: DcColors.greenSoft,
+              color: _kMintSoft,
               borderRadius: BorderRadius.circular(6),
             ),
             alignment: Alignment.center,
             child: const Icon(
               TablerIcons.history,
               size: 20,
-              color: _kTitle,
+              color: _kMint,
             ),
           ),
           const SizedBox(width: 12),
@@ -749,7 +753,7 @@ class _PagerButton extends StatelessWidget {
       message: tooltip,
       waitDuration: const Duration(milliseconds: 350),
       child: Material(
-        color: active ? _kCanvas : DcColors.row,
+        color: active ? _kCanvas : _kMintSoft,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
@@ -927,10 +931,10 @@ class _BackupRowState extends State<_BackupRow> {
         margin: const EdgeInsets.only(top: 6),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: _hovered ? DcColors.rowAlternate : DcColors.rowAlternate,
+          color: _hovered ? _kSurface : _kCanvas,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: _hovered ? DcColors.line : _kBorderRow,
+            color: _hovered ? _kBorderRow : _kBorderSoft,
           ),
         ),
         child: Row(
@@ -950,14 +954,14 @@ class _BackupRowState extends State<_BackupRow> {
                     width: 30,
                     height: 30,
                     decoration: BoxDecoration(
-                      color: DcColors.greenSoft,
+                      color: _kMintSoft,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     alignment: Alignment.center,
                     child: const Icon(
                       TablerIcons.database,
                       size: 15,
-                      color: DcColors.teal,
+                      color: _kMint,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1047,8 +1051,7 @@ class _ActionChip extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color:
-            enabled ? color.withValues(alpha: 0.08) : DcColors.row,
+        color: enabled ? color.withValues(alpha: 0.08) : DcColors.lightInset,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
@@ -1085,39 +1088,13 @@ class _ConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: DcColors.panel,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-      title: Text(
-        title,
-        style: _uText(15, _kTitle, fontWeight: FontWeight.w700),
-      ),
-      content: Text(
-        message,
-        style: _uText(12, _kLabel, height: 1.45),
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text('Cancel', style: _uText(12, _kLabel)),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isDestructive ? _kDanger : _kActionDark,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(
-            confirmLabel,
-            style: _uText(12, Colors.white, fontWeight: FontWeight.w700),
-          ),
-        ),
-      ],
+    return DcConfirmDialog(
+      barTitle: 'Backup',
+      heading: title,
+      message: message,
+      confirmLabel: confirmLabel,
+      icon: isDestructive ? TablerIcons.trash : TablerIcons.history,
+      isDestructive: isDestructive,
     );
   }
 }
@@ -1143,103 +1120,61 @@ class _RestoreConfirmDialogState extends State<_RestoreConfirmDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: DcColors.panel,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-      title: Text(
-        'Restore from backup',
-        style: _uText(15, _kTitle, fontWeight: FontWeight.w700),
-      ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              'You are about to overwrite "${widget.vaultName}" with:',
-              style: _uText(12, _kLabel, height: 1.4),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: _kCanvas,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: _kBorderSoft),
-              ),
-              child: Text(
-                widget.backup.fileName,
-                style: _uText(12, _kTitle, fontWeight: FontWeight.w700),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: DcColors.amberSoft,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: DcColors.amberLine),
-              ),
-              child: Text(
-                'After restore you must unlock again using the credentials '
-                'that were configured for this backup.',
-                style: _uText(11, DcColors.amber, height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 10),
-            CheckboxListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              value: _ackOverwrite,
-              activeColor: _kActionDark,
-              onChanged: (v) => setState(() => _ackOverwrite = v ?? false),
-              title: Text(
-                'I understand the current database will be overwritten and cannot be undone.',
-                style: _uText(12, _kTitle, height: 1.35),
-              ),
-            ),
-            CheckboxListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              value: _ackUnlock,
-              activeColor: _kActionDark,
-              onChanged: (v) => setState(() => _ackUnlock = v ?? false),
-              title: Text(
-                'I have the credentials needed to unlock the restored database.',
-                style: _uText(12, _kTitle, height: 1.35),
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text('Cancel', style: _uText(12, _kLabel)),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _kActionDark,
-            foregroundColor: Colors.white,
-            disabledBackgroundColor: _kActionDark.withValues(alpha: 0.4),
-            elevation: 0,
-            shape: RoundedRectangleBorder(
+    return DcConfirmDialog(
+      barTitle: 'Restore from backup',
+      heading: 'Restore from backup',
+      message:
+          'You are about to overwrite "${widget.vaultName}" with the backup '
+          'below. After the restore you must unlock again using the '
+          'credentials configured for that backup.',
+      confirmLabel: 'Restore',
+      icon: TablerIcons.history,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: _kCanvas,
               borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: _kBorderSoft),
+            ),
+            child: Text(
+              widget.backup.fileName,
+              style: _uText(12, _kTitle, fontWeight: FontWeight.w700),
             ),
           ),
-          onPressed: _canSubmit ? () => Navigator.of(context).pop(true) : null,
-          child: Text(
-            'Restore',
-            style: _uText(12, Colors.white, fontWeight: FontWeight.w700),
+          const SizedBox(height: 10),
+          CheckboxListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            value: _ackOverwrite,
+            activeColor: _kActionDark,
+            onChanged: (v) => setState(() => _ackOverwrite = v ?? false),
+            title: Text(
+              'I understand the current database will be overwritten and cannot be undone.',
+              style: _uText(12, _kTitle, height: 1.35),
+            ),
           ),
-        ),
-      ],
+          CheckboxListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            value: _ackUnlock,
+            activeColor: _kActionDark,
+            onChanged: (v) => setState(() => _ackUnlock = v ?? false),
+            title: Text(
+              'I have the credentials needed to unlock the restored database.',
+              style: _uText(12, _kTitle, height: 1.35),
+            ),
+          ),
+        ],
+      ),
+      confirmEnabled: _canSubmit,
+      onConfirm: () => Navigator.of(context).pop(true),
     );
   }
 }
@@ -1322,11 +1257,11 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
           width: 420,
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: DcColors.panel,
+            color: _kSurface,
             borderRadius: BorderRadius.circular(7),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                color: DcColors.shadow,
+                color: DcColors.lightCardShadow,
                 blurRadius: 40,
                 offset: Offset(0, 16),
               ),
@@ -1356,8 +1291,7 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
                 const SizedBox(height: 16),
                 Text(
                   'Restore Complete',
-                  style: _uText(20, DcColors.text,
-                      fontWeight: FontWeight.w700),
+                  style: _uText(20, _kTitle, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -1368,8 +1302,7 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
               ] else ...<Widget>[
                 Text(
                   'Restoring Database',
-                  style: _uText(18, DcColors.text,
-                      fontWeight: FontWeight.w700),
+                  style: _uText(18, _kTitle, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -1383,7 +1316,7 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
                   child: LinearProgressIndicator(
                     value: value <= 0 ? null : value,
                     minHeight: 8,
-                    backgroundColor: DcColors.row,
+                    backgroundColor: _kCanvas,
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       _kActionDark,
                     ),
@@ -1396,7 +1329,7 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
                     '$percent%',
                     style: _uText(
                       24,
-                      DcColors.text,
+                      _kTitle,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1419,9 +1352,9 @@ class _RestoreProgressDialogState extends ConsumerState<_RestoreProgressDialog>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: DcColors.rowAlternate,
+                      color: _kCanvas,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: DcColors.line),
+                      border: Border.all(color: _kBorderSoft),
                     ),
                     child: ListView.builder(
                       controller: _logScrollController,

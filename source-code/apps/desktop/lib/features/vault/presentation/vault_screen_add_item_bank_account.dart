@@ -707,6 +707,7 @@ class _AddBankAccountItemModalState
                           const _AddItemTypeIcon(
                             icon: TablerIcons.building_bank,
                             color: DcColors.tealOnLight,
+                            imagePath: 'assets/images/item_type_bank.png',
                           ),
                           const SizedBox(width: 10),
                           if (!_isEditing) ...<Widget>[
@@ -902,7 +903,8 @@ class _AddBankAccountItemModalState
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: <Widget>[
                           _LoginFooterButton(
-                            label: 'Cancel',
+                            icon: TablerIcons.x,
+                            tooltip: 'Cancel',
                             backgroundColor: _ItemModalColors.surfaceMuted,
                             textColor: _ItemModalColors.headerLabel,
                             borderColor: _ItemModalColors.borderPane,
@@ -910,7 +912,10 @@ class _AddBankAccountItemModalState
                           ),
                           const SizedBox(width: 10),
                           _LoginFooterButton(
-                            label: _isSaving
+                            icon: _isSaving
+                                ? TablerIcons.loader_2
+                                : TablerIcons.check,
+                            tooltip: _isSaving
                                 ? 'Saving...'
                                 : (_isEditing ? 'Save changes' : 'Save'),
                             backgroundColor: _kPrimaryButtonColor,

@@ -5,19 +5,19 @@ Future<String?> _showPasswordGeneratorDialog(BuildContext context) {
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Password generator',
-    builder: (ctx) => const _PasswordGeneratorDialog(),
+    builder: (ctx) => const PasswordGeneratorDialog(),
   );
 }
 
-class _PasswordGeneratorDialog extends StatefulWidget {
-  const _PasswordGeneratorDialog();
+class PasswordGeneratorDialog extends StatefulWidget {
+  const PasswordGeneratorDialog({super.key});
 
   @override
-  State<_PasswordGeneratorDialog> createState() =>
-      _PasswordGeneratorDialogState();
+  State<PasswordGeneratorDialog> createState() =>
+      PasswordGeneratorDialogState();
 }
 
-class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
+class PasswordGeneratorDialogState extends State<PasswordGeneratorDialog> {
   _GenType _genType = _GenType.smart;
   int _genLength = 25;
   bool _genLetters = true;
@@ -132,10 +132,16 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
         container: true,
         child: Container(
           width: 570,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: _VaultColors.surface,
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(color: _VaultColors.borderPane),
+            // Light body under the shared dark title bar, matching the other
+            // refreshed dialogs (add item, confirmations, cloud services).
+            //
+            // No outer border here: a border insets the child by its width, so
+            // the white panel would peek out as a ring around the dark title
+            // bar. The other light modals rely on the shadow alone too.
+            color: DcColors.lightSurface,
+            borderRadius: BorderRadius.circular(DcMetrics.panelRadius),
             boxShadow: const <BoxShadow>[
               BoxShadow(
                 color: DcColors.shadow,
@@ -144,26 +150,38 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
               ),
             ],
           ),
-          padding: const EdgeInsets.all(22),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _buildHeader(),
-              const SizedBox(height: 20),
-              _buildContent(),
-              const SizedBox(height: 20),
-              _buildActionButtons(),
-              if (_toastMessage != null) ...<Widget>[
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.center,
-                  child: _InAppToast(
-                    message: _toastMessage!,
-                    danger: _toastDanger,
+              DcDialogTitleBar(
+                title: 'Generate Password',
+                onClose: () => Navigator.of(context).pop(),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _buildContent(),
+                      const SizedBox(height: 16),
+                      _buildActionButtons(),
+                      if (_toastMessage != null) ...<Widget>[
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.center,
+                          child: _InAppToast(
+                            message: _toastMessage!,
+                            danger: _toastDanger,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -171,57 +189,12 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
     );
   }
 
-  Widget _buildHeader() {
-    return Row(
-      children: <Widget>[
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: _VaultColors.peachSoft,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          alignment: Alignment.center,
-          child: const Icon(
-            TablerIcons.shield_lock,
-            color: _kPrimaryButtonColor,
-            size: 21,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'Generate Password',
-            style: _genText(
-              18,
-              _VaultColors.title,
-              weight: FontWeight.w700,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        IconButton(
-          tooltip: 'Close',
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(TablerIcons.x, size: 20),
-          color: _VaultColors.icon,
-          style: IconButton.styleFrom(
-            hoverColor: _VaultColors.peachSoft,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildContent() {
     return Container(
       decoration: BoxDecoration(
-        color: _VaultColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _VaultColors.borderSoft),
+        color: DcColors.lightInset,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: DcColors.sidebarLine),
       ),
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
       child: Column(
@@ -245,18 +218,18 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                       decoration: BoxDecoration(
                         color: active
                             ? _kPrimaryButtonColor
-                            : _VaultColors.surface,
+                            : DcColors.lightSurface,
                         borderRadius: BorderRadius.circular(7),
                         border: active
                             ? null
-                            : Border.all(color: _VaultColors.borderSoft),
+                            : Border.all(color: DcColors.lightLineStrong),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         _genTypeLabel(t),
                         style: _genText(
                           12,
-                          active ? Colors.white : _VaultColors.title,
+                          active ? Colors.white : DcColors.sidebarText,
                           weight: FontWeight.w600,
                         ),
                       ),
@@ -271,9 +244,9 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
             height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: _VaultColors.surface,
+              color: DcColors.lightSurface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _VaultColors.borderSoft),
+              border: Border.all(color: DcColors.lightLineStrong),
             ),
             child: Row(
               children: <Widget>[
@@ -287,7 +260,7 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                             'Generating...',
                             style: _genText(
                               12,
-                              _VaultColors.icon,
+                              DcColors.sidebarMuted,
                             ),
                           )
                         : SingleChildScrollView(
@@ -299,9 +272,9 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                                   col = _kPrimaryButtonColor;
                                 } else if (RegExp(r'[^A-Za-z0-9]')
                                     .hasMatch(c)) {
-                                  col = DcColors.orange;
+                                  col = DcColors.deepOrange;
                                 } else {
-                                  col = _VaultColors.title;
+                                  col = DcColors.sidebarText;
                                 }
                                 return Text(
                                   c,
@@ -325,14 +298,14 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                     size: 18,
                   ),
                   color:
-                      _genCopied ? DcColors.teal : _VaultColors.icon,
+                      _genCopied ? DcColors.tealOnLight : DcColors.sidebarMuted,
                   visualDensity: VisualDensity.compact,
                 ),
                 IconButton(
                   tooltip: 'Regenerate password',
                   onPressed: _doRegen,
                   icon: const Icon(TablerIcons.refresh, size: 18),
-                  color: _VaultColors.icon,
+                  color: DcColors.sidebarMuted,
                   visualDensity: VisualDensity.compact,
                 ),
               ],
@@ -345,7 +318,7 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                 'Length',
                 style: _genText(
                   12,
-                  _VaultColors.headerLabel,
+                  DcColors.sidebarMuted,
                   weight: FontWeight.w600,
                 ),
               ),
@@ -354,7 +327,7 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
                 '$_genLength',
                 style: _genText(
                   12,
-                  _VaultColors.title,
+                  DcColors.sidebarText,
                   weight: FontWeight.w700,
                 ),
               ),
@@ -366,9 +339,9 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
               activeTrackColor: _kPrimaryButtonColor,
-              inactiveTrackColor: _VaultColors.borderSoft,
+              inactiveTrackColor: DcColors.sidebarLine,
               thumbColor: _kPrimaryButtonColor,
-              overlayColor: _VaultColors.peach,
+              overlayColor: DcColors.lightSelectionFill,
             ),
             child: Slider(
               value: _genLength.toDouble(),
@@ -415,7 +388,7 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
           ? null
           : const BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: _VaultColors.borderSoft, width: 0.5),
+                bottom: BorderSide(color: DcColors.sidebarLine, width: 0.5),
               ),
             ),
       child: Row(
@@ -425,18 +398,15 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
               label,
               style: _genText(
                 12,
-                _VaultColors.title,
+                DcColors.sidebarText,
                 weight: FontWeight.w500,
               ),
             ),
           ),
-          Switch(
+          Switch.adaptive(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: DcColors.panel,
             activeTrackColor: _kPrimaryButtonColor,
-            inactiveThumbColor: _VaultColors.surface,
-            inactiveTrackColor: _VaultColors.borderPane,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ],
@@ -452,16 +422,16 @@ class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
             onPressed: () => Navigator.of(context).pop(),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(42),
-              foregroundColor: _VaultColors.title,
-              backgroundColor: _VaultColors.surface,
-              side: const BorderSide(color: _VaultColors.borderPane),
+              foregroundColor: DcColors.sidebarMuted,
+              backgroundColor: DcColors.lightSurface,
+              side: const BorderSide(color: DcColors.lightLineStrong),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
             child: Text('Cancel',
-                style:
-                    _genText(13, _VaultColors.title, weight: FontWeight.w600)),
+                style: _genText(13, DcColors.sidebarMuted,
+                    weight: FontWeight.w600)),
           ),
         ),
         const SizedBox(width: 10),

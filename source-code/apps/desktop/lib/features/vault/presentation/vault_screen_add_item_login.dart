@@ -1141,12 +1141,23 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Row(
                         children: <Widget>[
-                          const _AddItemTypeIcon(
-                            icon: TablerIcons.lock,
-                            color: DcColors.cyan,
-                            size: 40,
-                            iconSize: 19,
-                          ),
+                          if (_isEditing && widget.editingEntry != null)
+                            _FaviconTile(
+                              entry: widget.editingEntry!,
+                              size: 40,
+                              accent: _detailAccentFor(
+                                widget.editingEntry!,
+                                DcColors.cyan,
+                              ),
+                            )
+                          else
+                            const _AddItemTypeIcon(
+                              icon: TablerIcons.lock,
+                              color: DcColors.cyan,
+                              size: 40,
+                              iconSize: 19,
+                              imagePath: 'assets/images/item_type_login.png',
+                            ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Container(
@@ -1168,7 +1179,7 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
                                 focusNode: _titleFocusNode,
                                 controller: _titleController,
                                 maxLines: 1,
-                                textAlign: TextAlign.center,
+                                textAlign: TextAlign.left,
                                 textAlignVertical: TextAlignVertical.center,
                                 style: _displayText(
                                   18,
@@ -1413,7 +1424,8 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: <Widget>[
                           _LoginFooterButton(
-                            label: 'Cancel',
+                            icon: TablerIcons.x,
+                            tooltip: 'Cancel',
                             backgroundColor: _ItemModalColors.surfaceMuted,
                             textColor: _ItemModalColors.headerLabel,
                             borderColor: _ItemModalColors.borderPane,
@@ -1421,7 +1433,10 @@ class _AddLoginItemModalState extends ConsumerState<_AddLoginItemModal> {
                           ),
                           const SizedBox(width: 10),
                           _LoginFooterButton(
-                            label: _isSaving
+                            icon: _isSaving
+                                ? TablerIcons.loader_2
+                                : TablerIcons.check,
+                            tooltip: _isSaving
                                 ? 'Saving...'
                                 : (_isEditing ? 'Save changes' : 'Save'),
                             backgroundColor: _kPrimaryButtonColor,

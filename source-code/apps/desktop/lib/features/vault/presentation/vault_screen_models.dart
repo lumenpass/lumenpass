@@ -24,10 +24,14 @@ class _LoginCustomAttribute {
     required String value,
     this.isSecret = false,
   })  : labelController = TextEditingController(text: label),
-        valueController = TextEditingController(text: value);
+        valueController = TextEditingController(text: value),
+        labelFocusNode = FocusNode(),
+        valueFocusNode = FocusNode();
 
   final TextEditingController labelController;
   final TextEditingController valueController;
+  final FocusNode labelFocusNode;
+  final FocusNode valueFocusNode;
   final bool isSecret;
 
   bool get shouldProtect =>
@@ -36,6 +40,8 @@ class _LoginCustomAttribute {
   void dispose() {
     labelController.dispose();
     valueController.dispose();
+    labelFocusNode.dispose();
+    valueFocusNode.dispose();
   }
 }
 
@@ -91,6 +97,7 @@ class _EntryDetailFieldData {
     required this.icon,
     required this.iconColor,
     this.labelColor,
+    this.imagePath,
     bool isSecret = false,
     bool showStrength = false,
     bool isCardNumber = false,
@@ -103,6 +110,10 @@ class _EntryDetailFieldData {
   final IconData icon;
   final Color iconColor;
   final Color? labelColor;
+
+  /// Optional colorful artwork for this field row. When present the detail
+  /// pane renders it instead of the flat [icon] glyph.
+  final String? imagePath;
   final bool? _isSecret;
   final bool? _showStrength;
   final bool? _isCardNumber;
@@ -282,32 +293,38 @@ class _MockAttachment {
   final Uint8List? bytes;
 }
 
+/// Artwork directory for the colorful IconScout line family that replaced the
+/// flat Tabler glyphs across the vault list, detail pane and item pickers.
+const String _kItemTypeArtDir = 'assets/images';
+
 const List<_NewItemType> _allNewItemTypes = <_NewItemType>[
   _NewItemType(
     id: 'login',
     label: 'Login',
     icon: TablerIcons.lock,
     iconColor: DcColors.cyan,
+    imagePath: '$_kItemTypeArtDir/item_type_login.png',
   ),
   _NewItemType(
     id: 'secure-note',
     label: 'Secure Note',
     icon: TablerIcons.notes,
     iconColor: DcColors.orange,
-    imagePath: 'assets/images/item_type_note.png',
+    imagePath: '$_kItemTypeArtDir/item_type_note.png',
   ),
   _NewItemType(
     id: 'credit-card',
     label: 'Credit Card',
     icon: TablerIcons.credit_card,
     iconColor: DcColors.selection,
+    imagePath: '$_kItemTypeArtDir/item_type_card.png',
   ),
   _NewItemType(
     id: 'identity',
     label: 'Identity',
     icon: TablerIcons.id,
     iconColor: DcColors.green,
-    imagePath: 'assets/images/item_type_identity.png',
+    imagePath: '$_kItemTypeArtDir/item_type_identity.png',
   ),
   _NewItemType(
     id: 'ssh-key',
@@ -315,44 +332,49 @@ const List<_NewItemType> _allNewItemTypes = <_NewItemType>[
     icon: TablerIcons.key,
     iconColor: DcColors.teal,
     showPlus: true,
-    imagePath: 'assets/images/item_type_ssh.png',
+    imagePath: '$_kItemTypeArtDir/item_type_ssh.png',
   ),
   _NewItemType(
     id: 'document',
     label: 'Document',
     icon: TablerIcons.file_description,
     iconColor: DcColors.selection,
+    imagePath: '$_kItemTypeArtDir/item_type_document.png',
   ),
   _NewItemType(
     id: 'bank-account',
     label: 'Bank Account',
     icon: TablerIcons.building_bank,
     iconColor: DcColors.teal,
-    imagePath: 'assets/images/item_type_bank.png',
+    imagePath: '$_kItemTypeArtDir/item_type_bank.png',
   ),
   _NewItemType(
     id: 'api-credential',
     label: 'API Credential',
     icon: TablerIcons.key,
     iconColor: DcColors.purple,
+    imagePath: '$_kItemTypeArtDir/item_type_key.png',
   ),
   _NewItemType(
     id: 'server',
     label: 'Server',
     icon: TablerIcons.server,
     iconColor: DcColors.selection,
+    imagePath: '$_kItemTypeArtDir/item_type_server.png',
   ),
   _NewItemType(
     id: 'wifi-password',
     label: 'Wi-Fi Password',
     icon: TablerIcons.wifi,
     iconColor: DcColors.orange,
+    imagePath: '$_kItemTypeArtDir/item_type_wifi.png',
   ),
   _NewItemType(
     id: 'passport',
     label: 'Passport',
     icon: Icons.menu_book_outlined,
     iconColor: DcColors.cyan,
+    imagePath: '$_kItemTypeArtDir/item_type_passport.png',
   ),
 ];
 
@@ -916,6 +938,12 @@ List<_EntryDetailFieldData> _buildDetailFields(
         icon: visual.icon,
         iconColor: visual.iconColor,
         labelColor: visual.labelColor,
+        imagePath: _fieldArtworkFor(
+          sourceKey: sourceKey ?? label,
+          label: label,
+          itemType: itemType,
+          isSecret: effectiveIsSecret,
+        ),
         isSecret: effectiveIsSecret,
         showStrength: showStrength,
         isCardNumber: isCardNumber,
@@ -1564,6 +1592,73 @@ String _displayLabelForFieldKey(String key) {
     iconColor: DcColors.muted,
     labelColor: null,
   );
+}
+
+/// Colorful IconScout artwork for one detail field row.
+///
+/// Uses the same precedence as [_fieldVisualFor] so the artwork and the
+/// fallback glyph always describe the same concept. Returns `null` for the
+/// generic label case, where the flat glyph stays the best signal.
+String? _fieldArtworkFor({
+  required String sourceKey,
+  required String label,
+  required VaultItemType itemType,
+  required bool isSecret,
+}) {
+  final normalized = '${sourceKey.toLowerCase()} ${label.toLowerCase()}';
+
+  if (normalized.contains('url') || normalized.contains('website')) {
+    return '$_kItemTypeArtDir/field_globe.png';
+  }
+  if (normalized.contains('card') ||
+      normalized.contains('cvv') ||
+      normalized.contains('cvc') ||
+      itemType == VaultItemType.creditCard) {
+    return '$_kItemTypeArtDir/item_type_card.png';
+  }
+  if (normalized.contains('expiry') ||
+      normalized.contains('expiration') ||
+      normalized.contains('date')) {
+    return '$_kItemTypeArtDir/field_calendar.png';
+  }
+  if (normalized.contains('bank') ||
+      normalized.contains('routing') ||
+      normalized.contains('iban') ||
+      normalized.contains('swift') ||
+      normalized.contains('bic')) {
+    return '$_kItemTypeArtDir/item_type_bank.png';
+  }
+  if (normalized.contains('host') ||
+      normalized.contains('server') ||
+      normalized.contains('port') ||
+      normalized.contains('ip')) {
+    return '$_kItemTypeArtDir/item_type_server.png';
+  }
+  if (normalized.contains('wifi') || normalized.contains('ssid')) {
+    return '$_kItemTypeArtDir/item_type_wifi.png';
+  }
+  if (normalized.contains('passport') || normalized.contains('identity')) {
+    return '$_kItemTypeArtDir/item_type_passport.png';
+  }
+  if (normalized.contains('private key') ||
+      normalized.contains('public key') ||
+      normalized.contains('fingerprint') ||
+      normalized.contains('ssh')) {
+    return '$_kItemTypeArtDir/item_type_key.png';
+  }
+  if (normalized.contains('password') || normalized.contains('passphrase')) {
+    return '$_kItemTypeArtDir/field_lock.png';
+  }
+  if (normalized.contains('phone')) {
+    return '$_kItemTypeArtDir/field_phone.png';
+  }
+  if (normalized.contains('address')) {
+    return '$_kItemTypeArtDir/field_location.png';
+  }
+  if (isSecret) {
+    return '$_kItemTypeArtDir/field_lock.png';
+  }
+  return null;
 }
 
 // ignore: unused_element

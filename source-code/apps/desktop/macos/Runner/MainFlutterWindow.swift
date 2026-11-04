@@ -2,6 +2,7 @@ import Carbon.HIToolbox
 import Cocoa
 import FlutterMacOS
 import ServiceManagement
+import UniformTypeIdentifiers
 import Vision
 
 class MainFlutterWindow: NSWindow {
@@ -41,6 +42,21 @@ class MainFlutterWindow: NSWindow {
     private var savedHasShadow = true
     private var savedFrame: NSRect?
     private var savedMinSize: NSSize?
+
+    // ── Canonical shell size ────────────────────────────────────────────────
+    // Every flow (create/open/duplicate vault, provider config, cloud
+    // services) is now a full-page route drawn inside the main window instead
+    // of a modal dialog, so the window is sized exactly once and never
+    // resized again. Earlier builds called `lumenpass/window setSize` before
+    // and after each dialog, which made the whole app frame jump.
+    static let kShellWidth: CGFloat = 1200
+    static let kShellHeight: CGFloat = 760
+
+    // ── Detached Settings window ────────────────────────────────────────────
+    // Settings opens in its own native window backed by a second engine, so
+    // the main window keeps its canonical size and stays usable. See
+    // SettingsWindowController.swift.
+    private var settingsWindowController: SettingsWindowController?
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
@@ -638,13 +654,15 @@ class MainFlutterWindow: NSWindow {
         // Render Flutter edge-to-edge from first paint while preserving the
         // native macOS traffic-light controls inside the application surface.
         self.embedNativeWindowControls()
+
+        self.minSize = NSSize(width: 960, height: 640)
+        self.repositionEmbeddedWindowControls()
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(repositionEmbeddedWindowControls),
             name: NSWindow.didResizeNotification,
             object: self
         )
-
         let channel = FlutterMethodChannel(
             name: "lumenpass/window",
             binaryMessenger: flutterViewController.engine.binaryMessenger
@@ -739,30 +757,37 @@ class MainFlutterWindow: NSWindow {
                     DispatchQueue.main.async { result(qrResult) }
                 }
 
-            // ── Security-scoped file picker (returns path + bookmark) ──────────────
-            case "pickFileWithBookmark":
+            // ── Security-scoped multi-file picker (returns path + bookmark pairs) ──
+            case "pickFilesWithBookmarks":
                 DispatchQueue.main.async {
                     let panel = NSOpenPanel()
-                    panel.title = "Open KeePass Database"
-                    panel.allowsMultipleSelection = false
+                    panel.title = "Open KeePass Databases"
+                    panel.allowsMultipleSelection = true
                     panel.canChooseFiles = true
                     panel.canChooseDirectories = false
+                    panel.allowedContentTypes = [
+                        UTType(filenameExtension: "kdbx") ?? .data,
+                        UTType(filenameExtension: "kdb") ?? .data,
+                    ]
                     panel.begin { response in
-                        guard response == .OK, let url = panel.url else {
+                        guard response == .OK, !panel.urls.isEmpty else {
                             result(nil)
                             return
                         }
-                        url.startAccessingSecurityScopedResource()
-                        do {
-                            let data = try url.bookmarkData(
-                                options: [.withSecurityScope],
-                                includingResourceValuesForKeys: nil,
-                                relativeTo: nil
-                            )
-                            result(["path": url.path, "bookmark": data.base64EncodedString()])
-                        } catch {
-                            result(["path": url.path, "bookmark": ""])
+                        let picked: [[String: String]] = panel.urls.map { url in
+                            url.startAccessingSecurityScopedResource()
+                            do {
+                                let data = try url.bookmarkData(
+                                    options: [.withSecurityScope],
+                                    includingResourceValuesForKeys: nil,
+                                    relativeTo: nil
+                                )
+                                return ["path": url.path, "bookmark": data.base64EncodedString()]
+                            } catch {
+                                return ["path": url.path, "bookmark": ""]
+                            }
                         }
+                        result(picked)
                     }
                 }
 
@@ -916,6 +941,16 @@ class MainFlutterWindow: NSWindow {
             case "showQuickSearchWindow":
                 DispatchQueue.main.async {
                     self.showQuickSearchWindow()
+                }
+                result(nil)
+
+            // ── Detached Settings window ──────────────────────────────────────
+            // Opens Settings in its own OS window (second engine). The main
+            // window is never resized or hidden; both stay interactive.
+            case "openSettingsWindow":
+                let requested = (call.arguments as? [String: Any])?["section"] as? String
+                DispatchQueue.main.async {
+                    self.openDetachedSettings(section: requested)
                 }
                 result(nil)
 
@@ -1083,11 +1118,80 @@ class MainFlutterWindow: NSWindow {
         super.awakeFromNib()
         registerQuickSearchHotKey()
 
-        // Override any autosaved frame — compact size for unlock screen
+        // Never let macOS restore a previously saved frame: an older build
+        // persisted a much smaller window, and restoring it would clamp to
+        // `minSize` and silently undo the canonical shell size.
+        self.isRestorable = false
+
+        applyCanonicalShellSize()
         self.setFrameAutosaveName("")
-        self.setContentSize(NSSize(width: 820, height: 380))
-        self.minSize = NSSize(width: 720, height: 340)
+
+        // Restoration can also run after the nib wakes, so re-assert the
+        // canonical size once the first launch pass has completed. Guarded so
+        // an already-correct frame is never touched.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let expected = self.contentRect(forFrameRect: self.frame).size
+            if abs(expected.width - MainFlutterWindow.kShellWidth) > 1
+                || abs(expected.height - MainFlutterWindow.kShellHeight) > 1
+            {
+                self.applyCanonicalShellSize()
+            }
+        }
+
+        #if DEBUG
+        // Debug affordance: `--open-settings-window` opens the detached
+        // Settings window at launch so the second-engine path can be verified
+        // without unlocking a vault or driving the macOS key equivalent.
+        // Add `--section=<name>` to land on a specific pane, e.g.
+        // `--open-settings-window --section=advanced`.
+        if CommandLine.arguments.contains("--open-settings-window") {
+            let sectionArg = CommandLine.arguments.first { $0.hasPrefix("--section=") }
+            let section = sectionArg.map { String($0.dropFirst("--section=".count)) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                self?.openDetachedSettings(section: section)
+            }
+        }
+        #endif
+    }
+
+    /// Opens the detached Settings window (second engine). Exposed so the
+    /// macOS menu item `⌘,` / `openSettings:` can reach it directly from
+    /// native code, without going through the Dart vault screen — Settings is
+    /// usable even while the vault is locked.
+    ///
+    /// `section` mirrors the Dart `_SettingsSectionId` name (`general`,
+    /// `appearance`, `security`, `advanced`, `about`) so deep links such as
+    /// "manage SSH agent" land on the right pane.
+    func openDetachedSettings(section: String? = nil) {
+        if settingsWindowController == nil {
+            guard
+                let controller = contentViewController as? FlutterViewController
+            else { return }
+            settingsWindowController = SettingsWindowController(
+                mainEngineMessenger: controller.engine.binaryMessenger
+            )
+        }
+        settingsWindowController?.show(section: section)
+    }
+
+    /// Applies the one canonical shell size.
+    ///
+    /// Called once at launch (after the nib and any restoration have run) so
+    /// the frame is identical on every launch. No Dart route resizes the
+    /// window afterwards, which is what keeps the UI from jumping.
+    func applyCanonicalShellSize() {
+        let visibleFrame = self.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
+        let targetWidth = min(
+            MainFlutterWindow.kShellWidth,
+            max((visibleFrame?.width ?? MainFlutterWindow.kShellWidth) - 24, 960))
+        let targetHeight = min(
+            MainFlutterWindow.kShellHeight,
+            max((visibleFrame?.height ?? MainFlutterWindow.kShellHeight) - 24, 640))
+        self.minSize = NSSize(width: 960, height: 640)
+        self.setContentSize(NSSize(width: targetWidth, height: targetHeight))
         self.centerOnActiveScreen()
+        self.repositionEmbeddedWindowControls()
     }
 }
 

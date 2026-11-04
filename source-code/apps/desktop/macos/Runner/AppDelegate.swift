@@ -58,14 +58,20 @@ class AppDelegate: FlutterAppDelegate {
   }
 
   @IBAction func openSettings(_ sender: Any) {
-    guard let controller = mainFlutterWindow?.contentViewController as? FlutterViewController else { return }
+    // Settings now lives in its own native window (second Flutter engine), so
+    // it opens independently of the main window and works even while the
+    // vault is locked.
     NSApp.activate(ignoringOtherApps: true)
-    mainFlutterWindow?.makeKeyAndOrderFront(nil)
+    if let window = mainFlutterWindow as? MainFlutterWindow {
+      window.openDetachedSettings()
+      return
+    }
+    guard let controller = mainFlutterWindow?.contentViewController as? FlutterViewController else { return }
     let channel = FlutterMethodChannel(
       name: "lumenpass/window",
       binaryMessenger: controller.engine.binaryMessenger
     )
-    channel.invokeMethod("openSettings", arguments: nil)
+    channel.invokeMethod("openSettingsWindow", arguments: nil)
   }
 
   // MARK: - Start minimized at login

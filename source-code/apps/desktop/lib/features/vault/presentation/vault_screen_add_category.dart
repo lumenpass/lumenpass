@@ -251,8 +251,8 @@ String _encodeCategoryVisual({
   );
 }
 
-class _AddCategoryOverlay extends ConsumerStatefulWidget {
-  const _AddCategoryOverlay({
+class AddCategoryOverlay extends ConsumerStatefulWidget {
+  const AddCategoryOverlay({
     required this.onClose,
     required this.onShowToast,
     required this.onCategoryCreated,
@@ -263,11 +263,11 @@ class _AddCategoryOverlay extends ConsumerStatefulWidget {
   final Future<void> Function(String groupUuid) onCategoryCreated;
 
   @override
-  ConsumerState<_AddCategoryOverlay> createState() =>
-      _AddCategoryOverlayState();
+  ConsumerState<AddCategoryOverlay> createState() =>
+      AddCategoryOverlayState();
 }
 
-class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
+class AddCategoryOverlayState extends ConsumerState<AddCategoryOverlay> {
   late final TextEditingController _nameController;
   String _selectedPresetId = 'img:1';
   String _selectedColorId = 'teal';
@@ -306,7 +306,7 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final modalWidth = math.min(720.0, constraints.maxWidth);
+                final modalWidth = math.min(520.0, constraints.maxWidth);
                 final modalMaxHeight = math.min(620.0, constraints.maxHeight);
 
                 return Center(
@@ -315,15 +315,17 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                     child: Stack(
                       children: <Widget>[
                         Container(
+                          width: modalWidth,
                           constraints: BoxConstraints(
-                            maxWidth: modalWidth,
                             maxHeight: modalMaxHeight,
                           ),
-                          padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
+                          clipBehavior: Clip.antiAlias,
                           decoration: BoxDecoration(
-                            color: DcColors.panel,
-                            borderRadius: BorderRadius.circular(7),
-                            border: Border.all(color: DcColors.line),
+                            // Light body under the shared dark title bar, the
+                            // same shell the other refreshed dialogs use.
+                            color: DcColors.lightSurface,
+                            borderRadius:
+                                BorderRadius.circular(DcMetrics.panelRadius),
                             boxShadow: const <BoxShadow>[
                               BoxShadow(
                                 color: DcColors.shadow,
@@ -334,35 +336,21 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                           ),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  const SizedBox(width: 30, height: 30),
-                                  Expanded(
-                                    child: Text(
-                                      'Add Category',
-                                      textAlign: TextAlign.center,
-                                      style: _text(
-                                        22,
-                                        DcColors.text,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  _ModalIconAction(
-                                    icon: TablerIcons.x,
-                                    onTap: _isSaving ? () {} : widget.onClose,
-                                  ),
-                                ],
+                              DcDialogTitleBar(
+                                title: 'Add Category',
+                                onClose:
+                                    _isSaving ? null : widget.onClose,
                               ),
-                              const SizedBox(height: 18),
                               Flexible(
-                                fit: FlexFit.loose,
                                 child: SingleChildScrollView(
+                                  padding: const EdgeInsets.fromLTRB(
+                                      24, 18, 24, 18),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: <Widget>[
-                                      Container(
+                                      SizedBox(
                                         width: 148,
                                         height: 148,
                                         child: Stack(
@@ -386,8 +374,8 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                                                         shape: BoxShape.circle,
                                                         gradient:
                                                             LinearGradient(
-                                                          begin:
-                                                              Alignment.topLeft,
+                                                          begin: Alignment
+                                                              .topLeft,
                                                           end: Alignment
                                                               .bottomRight,
                                                           colors: <Color>[
@@ -441,22 +429,20 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                                                   width: 40,
                                                   height: 40,
                                                   decoration: BoxDecoration(
-                                                    color: DcColors.panel,
+                                                    color:
+                                                        DcColors.lightSurface,
                                                     shape: BoxShape.circle,
                                                     border: Border.all(
-                                                      color: const Color(
-                                                        0xFFD9E2EF,
-                                                      ),
+                                                      color: DcColors
+                                                          .lightLineStrong,
                                                     ),
-                                                    boxShadow: const <BoxShadow>[
+                                                    boxShadow:
+                                                        const <BoxShadow>[
                                                       BoxShadow(
-                                                        color:
-                                                            DcColors.shadowSoft,
-                                                        blurRadius: 18,
-                                                        offset: Offset(
-                                                          0,
-                                                          8,
-                                                        ),
+                                                        color: DcColors
+                                                            .lightCardShadow,
+                                                        blurRadius: 12,
+                                                        offset: Offset(0, 4),
                                                       ),
                                                     ],
                                                   ),
@@ -467,9 +453,8 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                                                         : TablerIcons
                                                             .chevron_down,
                                                     size: 18,
-                                                    color: const Color(
-                                                      0xFF5F6F84,
-                                                    ),
+                                                    color:
+                                                        DcColors.sidebarMuted,
                                                   ),
                                                 ),
                                               ),
@@ -481,56 +466,44 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
                                       Container(
                                         width: double.infinity,
                                         padding: const EdgeInsets.fromLTRB(
-                                          16,
-                                          14,
-                                          16,
-                                          16,
-                                        ),
+                                            16, 14, 16, 16),
                                         decoration: BoxDecoration(
-                                          color: DcColors.panel,
+                                          color: DcColors.lightInset,
                                           borderRadius:
                                               BorderRadius.circular(7),
                                           border: Border.all(
-                                            color: DcColors.line,
+                                            color: DcColors.sidebarLine,
                                           ),
                                         ),
-                                        child: Column(
-                                          children: <Widget>[
-                                            _CategoryNameField(
-                                              controller: _nameController,
-                                              errorText: _errorText,
-                                              enabled: !_isSaving,
-                                              accentColor: color.iconColor,
-                                              onSubmitted: (_) =>
-                                                  _saveCategory(),
-                                            ),
-                                          ],
+                                        child: _CategoryNameField(
+                                          controller: _nameController,
+                                          errorText: _errorText,
+                                          enabled: !_isSaving,
+                                          accentColor: color.iconColor,
+                                          onSubmitted: (_) => _saveCategory(),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 18),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: <Widget>[
-                                  _LoginFooterButton(
-                                    label: 'Cancel',
-                                    backgroundColor: DcColors.rowAlternate,
-                                    textColor: DcColors.text,
-                                    onTap: _isSaving ? null : widget.onClose,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  _LoginFooterButton(
-                                    label: _isSaving
-                                        ? 'Creating...'
-                                        : 'Create Category',
-                                    backgroundColor: _createCategoryButtonColor,
-                                    textColor: Colors.white,
-                                    onTap: _isSaving ? null : _saveCategory,
-                                  ),
-                                ],
+                              Container(
+                                height: 1,
+                                color: DcColors.sidebarLine,
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                    20, 12, 20, 14),
+                                child: _CategoryFooterActions(
+                                  onCancel:
+                                      _isSaving ? null : widget.onClose,
+                                  onConfirm:
+                                      _isSaving ? null : _saveCategory,
+                                  busy: _isSaving,
+                                  confirmLabel: _isSaving
+                                      ? 'Creating...'
+                                      : 'Create Category',
+                                ),
                               ),
                             ],
                           ),
@@ -653,8 +626,8 @@ class _AddCategoryOverlayState extends ConsumerState<_AddCategoryOverlay> {
   }
 }
 
-class _EditCategoryOverlay extends ConsumerStatefulWidget {
-  const _EditCategoryOverlay({
+class EditCategoryOverlay extends ConsumerStatefulWidget {
+  const EditCategoryOverlay({
     required this.category,
     required this.onClose,
     required this.onShowToast,
@@ -667,11 +640,11 @@ class _EditCategoryOverlay extends ConsumerStatefulWidget {
   final Future<void> Function(String groupUuid) onCategoryUpdated;
 
   @override
-  ConsumerState<_EditCategoryOverlay> createState() =>
-      _EditCategoryOverlayState();
+  ConsumerState<EditCategoryOverlay> createState() =>
+      EditCategoryOverlayState();
 }
 
-class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
+class EditCategoryOverlayState extends ConsumerState<EditCategoryOverlay> {
   late final TextEditingController _nameController;
   late String _selectedPresetId;
   late String _selectedColorId;
@@ -693,7 +666,6 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
     _nameController.dispose();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
     final imagePath = _categoryImagePathFromPresetId(_selectedPresetId);
@@ -713,7 +685,7 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final modalWidth = math.min(720.0, constraints.maxWidth);
+                final modalWidth = math.min(520.0, constraints.maxWidth);
                 final modalMaxHeight = math.min(620.0, constraints.maxHeight);
 
                 return Center(
@@ -722,15 +694,17 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                     child: Stack(
                       children: <Widget>[
                         Container(
+                          width: modalWidth,
                           constraints: BoxConstraints(
-                            maxWidth: modalWidth,
                             maxHeight: modalMaxHeight,
                           ),
-                          padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
+                          clipBehavior: Clip.antiAlias,
                           decoration: BoxDecoration(
-                            color: DcColors.panel,
-                            borderRadius: BorderRadius.circular(7),
-                            border: Border.all(color: DcColors.line),
+                            // Light body under the shared dark title bar, the
+                            // same shell the other refreshed dialogs use.
+                            color: DcColors.lightSurface,
+                            borderRadius:
+                                BorderRadius.circular(DcMetrics.panelRadius),
                             boxShadow: const <BoxShadow>[
                               BoxShadow(
                                 color: DcColors.shadow,
@@ -741,31 +715,17 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                           ),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  const SizedBox(width: 30, height: 30),
-                                  Expanded(
-                                    child: Text(
-                                      'Edit Category',
-                                      textAlign: TextAlign.center,
-                                      style: _text(
-                                        22,
-                                        DcColors.text,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  _ModalIconAction(
-                                    icon: TablerIcons.x,
-                                    onTap: _isSaving ? () {} : widget.onClose,
-                                  ),
-                                ],
+                              DcDialogTitleBar(
+                                title: 'Edit Category',
+                                onClose:
+                                    _isSaving ? null : widget.onClose,
                               ),
-                              const SizedBox(height: 18),
                               Flexible(
-                                fit: FlexFit.loose,
                                 child: SingleChildScrollView(
+                                  padding: const EdgeInsets.fromLTRB(
+                                      24, 18, 24, 18),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: <Widget>[
@@ -793,8 +753,8 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                                                         shape: BoxShape.circle,
                                                         gradient:
                                                             LinearGradient(
-                                                          begin:
-                                                              Alignment.topLeft,
+                                                          begin: Alignment
+                                                              .topLeft,
                                                           end: Alignment
                                                               .bottomRight,
                                                           colors: <Color>[
@@ -848,19 +808,20 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                                                   width: 40,
                                                   height: 40,
                                                   decoration: BoxDecoration(
-                                                    color: DcColors.panel,
+                                                    color:
+                                                        DcColors.lightSurface,
                                                     shape: BoxShape.circle,
                                                     border: Border.all(
-                                                      color: const Color(
-                                                        0xFFD9E2EF,
-                                                      ),
+                                                      color: DcColors
+                                                          .lightLineStrong,
                                                     ),
-                                                    boxShadow: const <BoxShadow>[
+                                                    boxShadow:
+                                                        const <BoxShadow>[
                                                       BoxShadow(
-                                                        color:
-                                                            DcColors.shadowSoft,
-                                                        blurRadius: 18,
-                                                        offset: Offset(0, 8),
+                                                        color: DcColors
+                                                            .lightCardShadow,
+                                                        blurRadius: 12,
+                                                        offset: Offset(0, 4),
                                                       ),
                                                     ],
                                                   ),
@@ -872,7 +833,7 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                                                             .chevron_down,
                                                     size: 18,
                                                     color:
-                                                        DcColors.muted,
+                                                        DcColors.sidebarMuted,
                                                   ),
                                                 ),
                                               ),
@@ -886,11 +847,11 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                                         padding: const EdgeInsets.fromLTRB(
                                             16, 14, 16, 16),
                                         decoration: BoxDecoration(
-                                          color: DcColors.panel,
+                                          color: DcColors.lightInset,
                                           borderRadius:
                                               BorderRadius.circular(7),
                                           border: Border.all(
-                                            color: DcColors.line,
+                                            color: DcColors.sidebarLine,
                                           ),
                                         ),
                                         child: _CategoryNameField(
@@ -905,26 +866,23 @@ class _EditCategoryOverlayState extends ConsumerState<_EditCategoryOverlay> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 18),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: <Widget>[
-                                  _LoginFooterButton(
-                                    label: 'Cancel',
-                                    backgroundColor: DcColors.rowAlternate,
-                                    textColor: DcColors.text,
-                                    onTap: _isSaving ? null : widget.onClose,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  _LoginFooterButton(
-                                    label: _isSaving
-                                        ? 'Saving...'
-                                        : 'Save Changes',
-                                    backgroundColor: _createCategoryButtonColor,
-                                    textColor: Colors.white,
-                                    onTap: _isSaving ? null : _saveCategory,
-                                  ),
-                                ],
+                              Container(
+                                height: 1,
+                                color: DcColors.sidebarLine,
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                    20, 12, 20, 14),
+                                child: _CategoryFooterActions(
+                                  onCancel:
+                                      _isSaving ? null : widget.onClose,
+                                  onConfirm:
+                                      _isSaving ? null : _saveCategory,
+                                  busy: _isSaving,
+                                  confirmLabel: _isSaving
+                                      ? 'Saving...'
+                                      : 'Save Changes',
+                                ),
                               ),
                             ],
                           ),
@@ -1056,9 +1014,9 @@ class _CategoryIconPickerMenu extends StatelessWidget {
       constraints: const BoxConstraints(maxHeight: 520),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
-        color: DcColors.panel,
+        color: DcColors.lightSurface,
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: DcColors.line),
+        border: Border.all(color: DcColors.sidebarLine),
         boxShadow: const <BoxShadow>[
           BoxShadow(
             color: DcColors.shadow,
@@ -1077,15 +1035,12 @@ class _CategoryIconPickerMenu extends StatelessWidget {
                   'Choose icon',
                   style: _text(
                     14,
-                    DcColors.text,
+                    DcColors.sidebarText,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              _ModalIconAction(
-                icon: TablerIcons.x,
-                onTap: onClose,
-              ),
+              _CategoryCloseButton(onTap: onClose),
             ],
           ),
           const SizedBox(height: 12),
@@ -1223,7 +1178,7 @@ class _CategoryNameField extends StatelessWidget {
           'Category name',
           style: _text(
             12,
-            DcColors.text,
+            DcColors.sidebarMuted,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -1232,11 +1187,11 @@ class _CategoryNameField extends StatelessWidget {
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: DcColors.panel,
+            color: DcColors.lightSurface,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
               color: errorText != null
-                  ? DcColors.red
+                  ? DcColors.redOnLight
                   : accentColor.withValues(alpha: 0.45),
               width: errorText != null ? 1.4 : 2.4,
             ),
@@ -1248,14 +1203,14 @@ class _CategoryNameField extends StatelessWidget {
             onSubmitted: onSubmitted,
             style: _text(
               16,
-              DcColors.text,
+              DcColors.sidebarText,
               fontWeight: FontWeight.w600,
             ),
             decoration: InputDecoration(
               hintText: 'Personal, Work, Travel...',
               hintStyle: _text(
                 15,
-                DcColors.faint,
+                DcColors.sidebarMuted.withValues(alpha: 0.7),
                 fontWeight: FontWeight.w500,
               ),
               filled: false,
@@ -1277,7 +1232,7 @@ class _CategoryNameField extends StatelessWidget {
             errorText!,
             style: _text(
               12,
-              DcColors.red,
+              DcColors.redOnLight,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1414,6 +1369,121 @@ class _CategoryColorSwatchState extends State<_CategoryColorSwatch> {
               : null,
         ),
       ),
+    );
+  }
+}
+
+/// Ghost icon button used inside the light category modals.
+class _CategoryCloseButton extends StatefulWidget {
+  const _CategoryCloseButton({required this.onTap});
+
+  final VoidCallback? onTap;
+
+  @override
+  State<_CategoryCloseButton> createState() => _CategoryCloseButtonState();
+}
+
+class _CategoryCloseButtonState extends State<_CategoryCloseButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: _hovered ? DcColors.lightInset : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.center,
+          child: Icon(
+            TablerIcons.x,
+            size: 17,
+            color: DcColors.sidebarMuted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Footer row for the category modals: outlined Cancel plus a primary
+/// "create / save" button using the same type scale as the other dialogs.
+class _CategoryFooterActions extends StatelessWidget {
+  const _CategoryFooterActions({
+    required this.onCancel,
+    required this.onConfirm,
+    required this.busy,
+    required this.confirmLabel,
+  });
+
+  final VoidCallback? onCancel;
+  final VoidCallback? onConfirm;
+  final bool busy;
+  final String confirmLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: <Widget>[
+        OutlinedButton(
+          onPressed: onCancel,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: DcColors.sidebarMuted,
+            backgroundColor: DcColors.lightSurface,
+            side: const BorderSide(color: DcColors.lightLineStrong),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            minimumSize: const Size(0, 38),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Text(
+            'Cancel',
+            style: _text(12, DcColors.sidebarMuted,
+                fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 8),
+        FilledButton(
+          onPressed: onConfirm,
+          style: FilledButton.styleFrom(
+            backgroundColor: _createCategoryButtonColor,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            minimumSize: const Size(0, 38),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                busy ? TablerIcons.loader_2 : TablerIcons.check,
+                size: 15,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                confirmLabel,
+                style:
+                    _text(12, Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

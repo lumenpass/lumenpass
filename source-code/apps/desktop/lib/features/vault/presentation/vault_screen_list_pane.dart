@@ -49,9 +49,7 @@ class _ListPane extends StatefulWidget {
     required this.passwordAuditSelection,
     required this.onPasswordAuditIssueSelected,
     required this.onPasswordAuditBack,
-    required this.floatingActionsKey,
     required this.onNewItemPressed,
-    required this.onEntryRequested,
     this.passwordAuditDuplicateGroupLabel,
   });
 
@@ -79,9 +77,7 @@ class _ListPane extends StatefulWidget {
   final PasswordAuditIssue? passwordAuditSelection;
   final ValueChanged<PasswordAuditIssue> onPasswordAuditIssueSelected;
   final VoidCallback onPasswordAuditBack;
-  final GlobalKey<_VaultFloatingActionsState> floatingActionsKey;
   final VoidCallback onNewItemPressed;
-  final ValueChanged<String> onEntryRequested;
 
   /// When non-null, the list pane is rendering members of a specific
   /// duplicate group (level 3 of the duplicate-items audit flow). The
@@ -309,14 +305,9 @@ class _ListPaneState extends State<_ListPane> {
             ),
           ),
           Positioned(
-            left: 14,
             right: 14,
             bottom: 14,
-            child: _VaultFloatingActions(
-              key: widget.floatingActionsKey,
-              onNewItemPressed: widget.onNewItemPressed,
-              onEntryRequested: widget.onEntryRequested,
-            ),
+            child: _NewItemButton(onPressed: widget.onNewItemPressed),
           ),
         ],
       ),
@@ -645,67 +636,6 @@ class _NewItemButton extends StatelessWidget {
   }
 }
 
-class _SocialIconTile extends StatelessWidget {
-  const _SocialIconTile({required this.provider, required this.size});
-  final String provider;
-  final double size;
-
-  String _providerDomain(String id) {
-    switch (id.toLowerCase()) {
-      case 'google':
-        return 'google.com';
-      case 'apple':
-        return 'apple.com';
-      case 'facebook':
-        return 'facebook.com';
-      case 'github':
-        return 'github.com';
-      case 'microsoft':
-        return 'microsoft.com';
-      case 'twitter':
-        return 'x.com';
-      case 'linkedin':
-        return 'linkedin.com';
-      default:
-        return '$id.com';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final domain = _providerDomain(provider);
-    final faviconUrl =
-        'https://www.google.com/s2/favicons?sz=32&domain=$domain';
-    final fallback =
-        Icon(TablerIcons.link, size: size * 0.65, color: _kListIndigoOnLight);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: DcColors.lightSurface,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: DcColors.sidebarLine),
-      ),
-      alignment: Alignment.center,
-      child: RepaintBoundary(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Image.network(
-            faviconUrl,
-            width: size * 0.65,
-            height: size * 0.65,
-            fit: BoxFit.cover,
-            cacheWidth: (size * 0.65 * 2).ceil(),
-            cacheHeight: (size * 0.65 * 2).ceil(),
-            gaplessPlayback: true,
-            errorBuilder: (_, __, ___) => fallback,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _ListRow extends StatefulWidget {
   const _ListRow({
     required this.entry,
@@ -1009,28 +939,20 @@ class _ListRowState extends State<_ListRow> {
             highlightColor: Colors.transparent,
             splashColor: Colors.transparent,
             splashFactory: NoSplash.splashFactory,
-            child: AnimatedContainer(
+              child: AnimatedContainer(
               duration: const Duration(milliseconds: 140),
               curve: Curves.easeOut,
               height: _ListPaneState._rowHeight,
               padding: const EdgeInsets.fromLTRB(14, 0, 12, 0),
               decoration: BoxDecoration(
-                color: selected
-                    ? DcColors.selection
-                    : (_hovered
-                        ? DcColors.sidebarHover
-                        : DcColors.lightSurface),
+                color: selected ? DcColors.selection : DcColors.lightSurface,
                 border: const Border(
                   bottom: BorderSide(color: _kListRowDivider),
                 ),
               ),
               child: Row(
                 children: <Widget>[
-                  if (widget.entry.socialProvider.isNotEmpty)
-                    _SocialIconTile(
-                        provider: widget.entry.socialProvider, size: 28)
-                  else
-                    _FaviconTile(entry: widget.entry, size: 28),
+                  _FaviconTile(entry: widget.entry, size: 28),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1047,7 +969,10 @@ class _ListRowState extends State<_ListRow> {
                                 style: _text(
                                   14,
                                   titleColor,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight:
+                                      (selected || _hovered)
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
                                 ),
                               ),
                             ),

@@ -49,7 +49,7 @@ void main() {
     await tester.pump();
 
     // Compact vault picker header; search is revealed on demand.
-    expect(find.text('YOUR VAULTS'), findsOneWidget);
+    expect(find.text('Your vaults'), findsOneWidget);
     expect(find.text('Your databases.'), findsNothing);
     expect(find.text('Unlock'), findsNothing);
     expect(find.text('Exit'), findsNothing);
@@ -79,7 +79,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Search databases'));
     await tester.pump();
-    await tester.tap(find.text('YOUR VAULTS'));
+    await tester.tap(find.text('Your vaults'));
     await tester.pump();
     expect(find.text('Search databases'), findsNothing);
   });

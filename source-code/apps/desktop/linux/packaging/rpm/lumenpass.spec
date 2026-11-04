@@ -30,7 +30,7 @@ Version:        %{?_lumenpass_version}%{!?_lumenpass_version:1.0.3}
 Release:        1%{?dist}
 Summary:        KeePass-compatible password manager
 
-License:        MPL-2.0
+License:        Apache-2.0
 URL:            https://lumenpass.app
 # Source0 is provided out-of-band by build-rpm.sh, which stages the
 # Flutter Linux bundle and packaging assets into a tarball at SOURCES/.

@@ -287,6 +287,36 @@ void main() {
         findsOneWidget);
   });
 
+  testWidgets('custom attributes render as a grouped card like detail rows',
+      (tester) async {
+    await pumpPicker(tester);
+    await tester.tap(find.text('Login'));
+    await tester.pump();
+
+    expect(find.byKey(const Key('custom-attribute-group')), findsNothing);
+
+    await tester.tap(find.text('+ add more'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Text'));
+    await tester.pumpAndSettle();
+
+    final group = find.byKey(const Key('custom-attribute-group'));
+    expect(group, findsOneWidget);
+
+    final decoration =
+        tester.widget<Container>(group).decoration as BoxDecoration;
+    expect(decoration.color, DcColors.lightSurface);
+    expect(decoration.borderRadius, BorderRadius.circular(10));
+    expect(decoration.border, isNotNull);
+
+    // Fields are grouped inside one card, in the detail-row style.
+    expect(
+        find.descendant(of: group, matching: find.text('Enter value')),
+        findsOneWidget);
+    expect(tester.getSize(group).width, greaterThan(300));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('narrow login editor can scroll to optional fields and save',
       (tester) async {
     await pumpPicker(tester, windowSize: const Size(450, 520));
@@ -298,7 +328,8 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.ensureVisible(find.text('notes'));
     await tester.pump();
-    expect(find.text('Save'), findsOneWidget);
+    expect(find.byTooltip('Save'), findsOneWidget);
+    expect(find.text('Save'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

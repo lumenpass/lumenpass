@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../theme/drive_clue_tokens.dart';
 
@@ -293,6 +296,7 @@ class DcBorderedButton extends StatelessWidget {
     required this.onPressed,
     this.label,
     this.icon,
+    this.imagePath,
     this.tooltip,
     this.height = 26,
     this.foreground = DcColors.text,
@@ -302,6 +306,9 @@ class DcBorderedButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String? label;
   final IconData? icon;
+
+  /// Colorful artwork shown instead of [icon] when set.
+  final String? imagePath;
   final String? tooltip;
   final double height;
   final Color foreground;
@@ -332,8 +339,19 @@ class DcBorderedButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                if (icon != null) Icon(icon, size: 14, color: fg),
-                if (icon != null && label != null) const SizedBox(width: 6),
+                if (imagePath != null)
+                  Image.asset(
+                    imagePath!,
+                    width: 16,
+                    height: 16,
+                    filterQuality: FilterQuality.high,
+                    errorBuilder: (_, __, ___) =>
+                        Icon(icon, size: 14, color: fg),
+                  )
+                else if (icon != null)
+                  Icon(icon, size: 14, color: fg),
+                if ((icon != null || imagePath != null) && label != null)
+                  const SizedBox(width: 6),
                 if (label != null)
                   Text(
                     label!,
@@ -416,12 +434,18 @@ class DcPrimaryButton extends StatelessWidget {
 }
 
 /// 28 px gray bar pinned to the bottom of a window.
+///
+/// Below [compactWidth] the trailing [DcStatusBarAction]s collapse to icon-only
+/// so the bar never overflows; their tooltips keep them discoverable.
 class DcStatusBar extends StatelessWidget {
   const DcStatusBar({
     super.key,
     required this.leading,
     this.trailing = const <Widget>[],
   });
+
+  /// Width under which action labels are dropped in favor of icons.
+  static const double compactWidth = 900;
 
   final List<Widget> leading;
   final List<Widget> trailing;
@@ -442,15 +466,23 @@ class DcStatusBar extends StatelessWidget {
         style: labelStyle,
         child: IconTheme.merge(
           data: const IconThemeData(color: DcColors.sidebarText, size: 13),
-          child: Row(
-            children: <Widget>[
-              ...leading,
-              const Spacer(),
-              for (var i = 0; i < trailing.length; i++) ...<Widget>[
-                if (i > 0) const _DcStatusBarSeparator(),
-                trailing[i],
-              ],
-            ],
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool compact = constraints.maxWidth < compactWidth;
+              return _StatusBarDensity(
+                compact: compact,
+                child: Row(
+                  children: <Widget>[
+                    ...leading,
+                    const Spacer(),
+                    for (var i = 0; i < trailing.length; i++) ...<Widget>[
+                      if (i > 0) _DcStatusBarSeparator(compact: compact),
+                      trailing[i],
+                    ],
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -458,16 +490,154 @@ class DcStatusBar extends StatelessWidget {
   }
 }
 
+/// Tells descendant [DcStatusBarAction]s whether labels still fit.
+class _StatusBarDensity extends InheritedWidget {
+  const _StatusBarDensity({required this.compact, required super.child});
+
+  final bool compact;
+
+  static bool compactOf(BuildContext context) {
+    final widget = context
+        .dependOnInheritedWidgetOfExactType<_StatusBarDensity>();
+    return widget?.compact ?? false;
+  }
+
+  @override
+  bool updateShouldNotify(_StatusBarDensity oldWidget) {
+    return oldWidget.compact != compact;
+  }
+}
+
 class _DcStatusBarSeparator extends StatelessWidget {
-  const _DcStatusBarSeparator();
+  const _DcStatusBarSeparator({this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 1,
       height: 12,
-      margin: const EdgeInsets.symmetric(horizontal: 10),
+      margin: EdgeInsets.symmetric(horizontal: compact ? 6 : 10),
       color: const Color(0x40263340),
+    );
+  }
+}
+
+/// Clickable status-bar action: a small glyph plus label that underlines and
+/// darkens on hover, matching the flat, quiet tone of the footer.
+///
+/// Provide either [onTap] for a custom callback or [url] to open it in the
+/// user's browser. [url] keeps the widget `const`-constructible, which matters
+/// for the static license/download/support links in the vault footer.
+class DcStatusBarAction extends StatefulWidget {
+  const DcStatusBarAction({
+    super.key,
+    required this.icon,
+    required this.label,
+    this.onTap,
+    this.url,
+    this.tooltip,
+    this.accentColor,
+    this.bold = false,
+  }) : assert(
+         onTap != null || url != null,
+         'DcStatusBarAction needs an onTap or a url',
+       );
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  /// External link opened in the user's browser. A `String` (rather than a
+  /// `Uri`) keeps the widget `const`-constructible.
+  final String? url;
+  final String? tooltip;
+
+  /// Overrides the default ink color (e.g. amber for the support action).
+  final Color? accentColor;
+
+  /// Emphasises the label, used for the "FREE license" promise.
+  final bool bold;
+
+  @override
+  State<DcStatusBarAction> createState() => _DcStatusBarActionState();
+}
+
+class _DcStatusBarActionState extends State<DcStatusBarAction> {
+  bool _hovered = false;
+
+  void _handleTap() {
+    final onTap = widget.onTap;
+    if (onTap != null) {
+      onTap();
+      return;
+    }
+    final url = widget.url;
+    if (url != null) {
+      final uri = Uri.tryParse(url);
+      if (uri != null) {
+        unawaited(launchUrl(uri, mode: LaunchMode.externalApplication));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool compact = _StatusBarDensity.compactOf(context);
+    final Color base = widget.accentColor ?? DcColors.sidebarText;
+    final Color ink = _hovered
+        ? (widget.accentColor ?? const Color(0xFF1F5FA8))
+        : base;
+
+    final Widget content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(widget.icon, size: 12, color: ink),
+        if (!compact) ...<Widget>[
+          const SizedBox(width: 4),
+          Text(
+            widget.label,
+            maxLines: 1,
+            softWrap: false,
+            style: _dcStyle(
+              11,
+              ink,
+              weight: widget.bold ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ],
+      ],
+    );
+
+    // In compact mode the label is gone, so the tooltip becomes the only way
+    // to identify the action — always attach one.
+    final String tooltip = widget.tooltip ?? widget.label;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _handleTap,
+        child: Tooltip(
+          message: tooltip,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: _hovered ? const Color(0x14263340) : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 5 : 4,
+                vertical: 2,
+              ),
+              child: content,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
