@@ -16,6 +16,7 @@
 
 #include "flutter/generated_plugin_registrant.h"
 #include "quick_search_panel.h"
+#include "settings_window.h"
 #include "ssh_agent_server.h"
 #include "window_channel_handler.h"
 
@@ -24,6 +25,7 @@ struct _MyApplication {
   char** dart_entrypoint_arguments;
   WindowChannelHandler* window_channel_handler;
   QuickSearchPanel* quick_search_panel;
+  SettingsWindow* settings_window;
   gboolean start_hidden;
 };
 
@@ -159,6 +161,12 @@ static void my_application_activate(GApplication* application) {
         view, self->window_channel_handler->channel());
     self->window_channel_handler->SetQuickSearchPanel(
         self->quick_search_panel);
+
+    // Detached Settings window (second engine on `settingsMain` via the
+    // `--settings-window` sentinel). Its window and engine boot lazily on
+    // first open and are released again when the user closes it.
+    self->settings_window = new SettingsWindow(view);
+    self->window_channel_handler->SetSettingsWindow(self->settings_window);
   }
 
   // Bind the SSH agent control channel onto the same Flutter engine. The
@@ -300,6 +308,11 @@ static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
   if (self->window_channel_handler != nullptr) {
     self->window_channel_handler->SetQuickSearchPanel(nullptr);
+    self->window_channel_handler->SetSettingsWindow(nullptr);
+  }
+  if (self->settings_window != nullptr) {
+    delete self->settings_window;
+    self->settings_window = nullptr;
   }
   if (self->quick_search_panel != nullptr) {
     delete self->quick_search_panel;
@@ -324,6 +337,7 @@ static void my_application_class_init(MyApplicationClass* klass) {
 static void my_application_init(MyApplication* self) {
   self->window_channel_handler = nullptr;
   self->quick_search_panel = nullptr;
+  self->settings_window = nullptr;
   self->start_hidden = FALSE;
 }
 

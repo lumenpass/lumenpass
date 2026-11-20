@@ -11,6 +11,7 @@
 #include "system_tray.h"
 
 class QuickSearchPanel;
+class SettingsWindow;
 
 class WindowChannelHandler {
  public:
@@ -35,6 +36,10 @@ class WindowChannelHandler {
     quick_search_panel_ = panel;
   }
 
+  // Associates the detached Settings window so `openSettingsWindow` and the
+  // tray's Settings/About items open it. Not owned.
+  void SetSettingsWindow(SettingsWindow* window) { settings_window_ = window; }
+
  private:
   static constexpr int kQuickSearchHotKeyId = 1;
   static constexpr int kLockVaultHotKeyId = 2;
@@ -47,6 +52,10 @@ class WindowChannelHandler {
   // Isolated Quick Search panel (second Flutter engine). Not owned; owned by
   // FlutterWindow which outlives this handler.
   QuickSearchPanel* quick_search_panel_ = nullptr;
+
+  // Detached Settings window (second Flutter engine). Not owned; owned by
+  // FlutterWindow.
+  SettingsWindow* settings_window_ = nullptr;
 
   int quick_search_vk_ = 0;
   UINT quick_search_modifiers_ = 0;
@@ -74,6 +83,9 @@ class WindowChannelHandler {
   void ShowQuickSearchWindow();
   void ShowQuickSearchPanel(bool open_generator);
   void HideQuickSearchPanel();
+  // Opens the detached Settings window on |section|. Returns false when no
+  // native window is available so callers can fall back to the main window.
+  bool OpenSettingsWindow(const std::string& section);
   void DecodeQRFromFile(
       const std::string& path,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);

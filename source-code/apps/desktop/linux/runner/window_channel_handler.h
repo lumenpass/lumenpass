@@ -10,6 +10,7 @@
 #include "system_tray.h"
 
 class QuickSearchPanel;
+class SettingsWindow;
 
 class WindowChannelHandler {
  public:
@@ -30,6 +31,10 @@ class WindowChannelHandler {
     quick_search_panel_ = panel;
   }
 
+  // Associates the detached Settings window so `openSettingsWindow` and the
+  // tray's Settings/About items open it. Not owned.
+  void SetSettingsWindow(SettingsWindow* window) { settings_window_ = window; }
+
  private:
   static void OnMethodCall(FlMethodChannel* channel,
                           FlMethodCall* method_call,
@@ -39,6 +44,9 @@ class WindowChannelHandler {
                        FlMethodResponse** response);
 
   void BringToFront();
+  // Opens the detached Settings window on |section|. Returns false when no
+  // native window is available so callers can fall back to the main window.
+  bool OpenSettingsWindow(const std::string& section);
   void Quit();
   void InitSystemTray();
   void OnTrayAction(SystemTray::MenuAction action);
@@ -58,6 +66,9 @@ class WindowChannelHandler {
 
   // Isolated Quick Search panel (second Flutter engine). Not owned.
   QuickSearchPanel* quick_search_panel_ = nullptr;
+
+  // Detached Settings window (second Flutter engine). Not owned.
+  SettingsWindow* settings_window_ = nullptr;
 };
 
 #endif  // RUNNER_WINDOW_CHANNEL_HANDLER_H_

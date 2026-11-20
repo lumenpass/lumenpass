@@ -3,12 +3,16 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 
 /// Opens the **detached** Settings window (a real, separate OS window backed
-/// by a second Flutter engine — see `SettingsWindowController.swift` and
-/// `settingsMain()` in `main.dart`).
+/// by a second Flutter engine running `settingsMain()` in `main.dart`).
+///
+/// Native hosts:
+///   • macOS   — `SettingsWindowController` (macos/Runner/SettingsWindow.swift)
+///   • Windows — `SettingsWindow` (windows/runner/settings_window.cpp)
+///   • Linux   — `SettingsWindow` (linux/runner/settings_window.cc)
 ///
 /// Returns `true` when the native window was opened, so callers can skip the
-/// in-window settings overlay. Returns `false` on platforms that do not
-/// implement the native host yet, letting the caller fall back to the existing
+/// in-window settings overlay. Returns `false` when the platform has no native
+/// host or it failed to create the window, letting the caller fall back to the
 /// in-window settings UI.
 ///
 /// Only preference-only sections are hosted here. Panes that need the
@@ -19,7 +23,9 @@ import 'package:flutter/services.dart';
 /// `general`, `appearance`, `security`, `advanced`, `about`. Callers may also
 /// pass `developer` (the SSH Agent pane), which maps to `advanced`.
 Future<bool> openDetachedSettingsWindow({String section = 'general'}) async {
-  if (!Platform.isMacOS) return false;
+  if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
+    return false;
+  }
   try {
     await const MethodChannel('lumenpass/window').invokeMethod<void>(
       'openSettingsWindow',

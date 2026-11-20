@@ -4,6 +4,7 @@
 
 #include "flutter/generated_plugin_registrant.h"
 #include "quick_search_panel.h"
+#include "settings_window.h"
 #include "ssh_agent_server.h"
 #include "window_channel_handler.h"
 
@@ -40,6 +41,12 @@ bool FlutterWindow::OnCreate() {
       GetHandle(), project_, window_channel_handler_->channel());
   window_channel_handler_->SetQuickSearchPanel(quick_search_panel_.get());
 
+  // Detached Settings window. Cheap to construct: the window and its engine
+  // only boot on first open, and are released again when it is closed.
+  settings_window_ = std::make_unique<SettingsWindow>(
+      GetHandle(), project_, flutter_controller_->engine()->messenger());
+  window_channel_handler_->SetSettingsWindow(settings_window_.get());
+
   lumenpass::SshAgentServer::Instance().Register(
       flutter_controller_->engine()->messenger());
 
@@ -63,7 +70,10 @@ void FlutterWindow::OnDestroy() {
   lumenpass::SshAgentServer::Instance().Stop();
   if (window_channel_handler_) {
     window_channel_handler_->SetQuickSearchPanel(nullptr);
+    window_channel_handler_->SetSettingsWindow(nullptr);
   }
+  // Tear the settings engine down before the main engine it relays to.
+  settings_window_ = nullptr;
   quick_search_panel_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;

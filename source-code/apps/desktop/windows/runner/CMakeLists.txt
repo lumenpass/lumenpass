@@ -13,6 +13,7 @@ add_executable(${BINARY_NAME} WIN32
   "win32_window.cpp"
   "window_channel_handler.cpp"
   "quick_search_panel.cpp"
+  "settings_window.cpp"
   "system_tray.cpp"
   "ssh_agent_server.cpp"
   "ssh_agent_ed25519.cpp"

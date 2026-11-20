@@ -10,6 +10,7 @@
 #include <limits.h>
 
 #include "quick_search_panel.h"
+#include "settings_window.h"
 
 namespace {
 
@@ -156,6 +157,25 @@ void WindowChannelHandler::HandleMethodCall(FlMethodCall* method_call,
     }
     *response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
 
+  } else if (g_strcmp0(method, "openSettingsWindow") == 0) {
+    // Detached Settings window (second engine). The main window is never
+    // resized or overlaid; both stay interactive.
+    std::string section;
+    if (args != nullptr && fl_value_get_type(args) == FL_VALUE_TYPE_MAP) {
+      FlValue* s = fl_value_lookup_string(args, "section");
+      if (s != nullptr && fl_value_get_type(s) == FL_VALUE_TYPE_STRING) {
+        section = fl_value_get_string(s);
+      }
+    }
+    if (OpenSettingsWindow(section)) {
+      *response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    } else {
+      // Dart falls back to the in-window settings overlay on error.
+      *response = FL_METHOD_RESPONSE(fl_method_error_response_new(
+          "SETTINGS_WINDOW_UNAVAILABLE",
+          "Could not create the Settings window", nullptr));
+    }
+
   } else {
     *response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
   }
@@ -169,6 +189,10 @@ void WindowChannelHandler::BringToFront() {
   gtk_widget_show(GTK_WIDGET(window));
   gtk_window_deiconify(window);
   gtk_window_present(window);
+}
+
+bool WindowChannelHandler::OpenSettingsWindow(const std::string& section) {
+  return settings_window_ != nullptr && settings_window_->Open(section);
 }
 
 void WindowChannelHandler::Quit() {
@@ -237,10 +261,16 @@ void WindowChannelHandler::OnTrayAction(SystemTray::MenuAction action) {
       Notify("lockVault");
       break;
     case MA::kSettings:
-      BringToFront();
+      // Settings lives in its own window, so it opens without surfacing the
+      // main window and works while the vault is locked (mirrors macOS).
+      if (!OpenSettingsWindow("general")) {
+        BringToFront();
+      }
       break;
     case MA::kAbout:
-      BringToFront();
+      if (!OpenSettingsWindow("about")) {
+        BringToFront();
+      }
       break;
     case MA::kQuit:
       Quit();

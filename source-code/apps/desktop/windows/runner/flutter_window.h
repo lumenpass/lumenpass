@@ -10,6 +10,7 @@
 #include "window_channel_handler.h"
 
 class QuickSearchPanel;
+class SettingsWindow;
 
 // A window that does nothing but host a Flutter view.
 class FlutterWindow : public Win32Window {
@@ -45,6 +46,11 @@ class FlutterWindow : public Win32Window {
   // hotkey press is instant. Outlives window_channel_handler_ destruction
   // order-wise because it is declared after it (destroyed first).
   std::unique_ptr<QuickSearchPanel> quick_search_panel_;
+
+  // Detached Settings window: a second Flutter engine on `settingsMain` in its
+  // own top-level window (mirrors macOS SettingsWindowController). Its window
+  // and engine are created lazily on first open.
+  std::unique_ptr<SettingsWindow> settings_window_;
 
   // When true the window is created but not shown after the first frame.
   bool start_hidden_ = false;

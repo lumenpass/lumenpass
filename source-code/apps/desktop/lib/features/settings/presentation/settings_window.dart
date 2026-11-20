@@ -16,8 +16,9 @@ import '../../../presentation/widgets/lumenpass_wordmark.dart';
 /// ─────────────────────────────────────────────────────────────────────────
 ///
 /// This widget is the *entire* UI hosted by the standalone native Settings
-/// window (see `settingsMain()` in `main.dart`, and `SettingsWindowController`
-/// in `macos/Runner/SettingsWindow.swift`).
+/// window (see `settingsMain()` in `main.dart`, `SettingsWindowController`
+/// in `macos/Runner/SettingsWindow.swift`, and `SettingsWindow` in
+/// `windows/runner/settings_window.cpp` / `linux/runner/settings_window.cc`).
 ///
 /// Like [QuickSearchWindow] it runs in its own Dart isolate with its own
 /// Riverpod container, so it holds **no** vault data. Everything it shows
@@ -675,13 +676,16 @@ class _GeneralPane extends StatelessWidget {
         ),
         _SettingsCard(
           children: <Widget>[
-            _SettingsToggle(
-              title: 'Keep LumenPass in the menu bar',
-              subtitle: 'Allows Quick Search and the SSH agent to work while '
-                  'the main window is closed.',
-              value: settings.hideDockIcon,
-              onChanged: (value) => onWrite('hideDockIcon', value),
-            ),
+            // Dock/menu-bar behaviour only exists on macOS; Windows and Linux
+            // always keep the tray icon.
+            if (Platform.isMacOS)
+              _SettingsToggle(
+                title: 'Keep LumenPass in the menu bar',
+                subtitle: 'Allows Quick Search and the SSH agent to work '
+                    'while the main window is closed.',
+                value: settings.hideDockIcon,
+                onChanged: (value) => onWrite('hideDockIcon', value),
+              ),
             _SettingsToggle(
               title: 'Start at login',
               subtitle: 'Launch LumenPass automatically when you sign in.',

@@ -12,6 +12,7 @@ add_executable(${BINARY_NAME}
   "system_tray.cc"
   "window_channel_handler.cc"
   "quick_search_panel.cc"
+  "settings_window.cc"
   "ssh_agent_server.cc"
   "ssh_agent_ed25519.cc"
   "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"

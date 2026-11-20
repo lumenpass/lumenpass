@@ -1755,7 +1755,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
 
   void _openSettings(
       {_SettingsSectionId section = _SettingsSectionId.general}) {
-    // macOS hosts Settings in its own native window (second engine), so the
+    // Desktop hosts Settings in its own native window (second engine), so the
     // main window keeps its size and stays usable while it is open. Only
     // preference-only sections live there; panes that need the decrypted
     // vault keep using the in-window overlay.
@@ -1785,7 +1785,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
   Future<void> _openDetachedSettings(_SettingsSectionId section) async {
     final opened = await openDetachedSettingsWindow(section: section.name);
     if (opened || !mounted) return;
-    // No native host (Windows/Linux today): keep Settings reachable.
+    // No native host (or it failed to open): keep Settings reachable.
     setState(() {
       _settingsInitialSection = section;
       _isSettingsOpen = true;

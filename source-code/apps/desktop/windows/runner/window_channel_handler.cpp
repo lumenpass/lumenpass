@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "quick_search_panel.h"
+#include "settings_window.h"
 
 namespace {
 
@@ -228,6 +229,27 @@ void WindowChannelHandler::HandleMethodCall(
   } else if (method == "clearQuickSearchData") {
     HideQuickSearchPanel();
     result->Success();
+
+  } else if (method == "openSettingsWindow") {
+    // Detached Settings window (second engine). The main window is never
+    // resized or overlaid; both stay interactive.
+    std::string section;
+    if (const auto* args =
+            std::get_if<flutter::EncodableMap>(call.arguments())) {
+      auto it = args->find(flutter::EncodableValue("section"));
+      if (it != args->end()) {
+        if (const auto* s = std::get_if<std::string>(&it->second)) {
+          section = *s;
+        }
+      }
+    }
+    if (OpenSettingsWindow(section)) {
+      result->Success();
+    } else {
+      // Dart falls back to the in-window settings overlay on error.
+      result->Error("SETTINGS_WINDOW_UNAVAILABLE",
+                    "Could not create the Settings window");
+    }
 
   } else if (method == "enterQuickSearchMode") {
     ShowQuickSearchWindow();
@@ -611,6 +633,10 @@ void WindowChannelHandler::HideQuickSearchPanel() {
   }
 }
 
+bool WindowChannelHandler::OpenSettingsWindow(const std::string& section) {
+  return settings_window_ != nullptr && settings_window_->Open(section);
+}
+
 void WindowChannelHandler::DecodeQRFromFile(
     const std::string& path,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
@@ -753,10 +779,16 @@ void WindowChannelHandler::OnTrayAction(SystemTray::MenuAction action) {
       }
       break;
     case MA::kSettings:
-      BringToFront();
+      // Settings lives in its own window, so it opens without surfacing the
+      // main window and works while the vault is locked (mirrors macOS).
+      if (!OpenSettingsWindow("general")) {
+        BringToFront();
+      }
       break;
     case MA::kAbout:
-      BringToFront();
+      if (!OpenSettingsWindow("about")) {
+        BringToFront();
+      }
       break;
     case MA::kQuit:
       if (system_tray_) {
